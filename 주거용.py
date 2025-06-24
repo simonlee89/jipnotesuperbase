@@ -136,15 +136,32 @@ def customer_site(management_site_id):
     customer_name, move_in_date, found = get_customer_info(management_site_id)
     if not found:
         print(f"[주거ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
+        
+        # DB에 있는 모든 고객 목록 확인
+        try:
+            import sqlite3
+            conn = sqlite3.connect('/data/integrated.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT management_site_id, customer_name FROM employee_customers LIMIT 10')
+            all_customers = cursor.fetchall()
+            conn.close()
+            customers_list = "<br>".join([f"ID: {c[0]}, 이름: {c[1]}" for c in all_customers])
+        except Exception as e:
+            customers_list = f"DB 조회 오류: {e}"
+        
         # 404 대신 디버깅 정보를 포함한 에러 페이지 반환
         return f"""
         <html><body>
         <h1>주거용 디버깅 정보</h1>
-        <p>Management Site ID: {management_site_id}</p>
-        <p>현재 디렉토리: {os.getcwd()}</p>
-        <p>/data 존재: {os.path.exists('/data')}</p>
-        <p>파일 목록: {os.listdir('/data') if os.path.exists('/data') else 'N/A'}</p>
-        <p>고객 정보를 찾을 수 없습니다.</p>
+        <p><strong>찾는 Management Site ID:</strong> {management_site_id}</p>
+        <p><strong>현재 디렉토리:</strong> {os.getcwd()}</p>
+        <p><strong>/data 존재:</strong> {os.path.exists('/data')}</p>
+        <p><strong>파일 목록:</strong> {os.listdir('/data') if os.path.exists('/data') else 'N/A'}</p>
+        <hr>
+        <h2>DB에 있는 모든 고객 목록:</h2>
+        <p>{customers_list}</p>
+        <hr>
+        <p style="color:red;"><strong>결론:</strong> 고객 정보를 찾을 수 없습니다.</p>
         </body></html>
         """, 404
     else:
