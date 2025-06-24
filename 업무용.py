@@ -13,169 +13,93 @@ try:
 except ImportError:
     PSYCOPG2_AVAILABLE = False
 
-# 데이터베이스 초기화
+# 데이터베이스 초기화 함수
 def init_db():
     print("=== 업무용 DB 초기화 시작 ===")
     try:
-        conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-        print(f"업무용 DB 연결 성공 - 타입: {db_type}")
-        
-        # 기존 테이블에 보증보험 칼럼이 없으면 추가
-        try:
-            if db_type == 'postgresql':
-                cursor.execute("ALTER TABLE office_links ADD COLUMN IF NOT EXISTS guarantee_insurance BOOLEAN DEFAULT FALSE")
-                cursor.execute("ALTER TABLE office_links ADD COLUMN IF NOT EXISTS is_checked BOOLEAN DEFAULT FALSE")
-            else:
-                cursor.execute("PRAGMA table_info(office_links)")
-                columns = [row[1] for row in cursor.fetchall()]
-                if 'guarantee_insurance' not in columns:
-                    cursor.execute("ALTER TABLE office_links ADD COLUMN guarantee_insurance BOOLEAN DEFAULT 0")
-                if 'is_checked' not in columns:
-                    cursor.execute("ALTER TABLE office_links ADD COLUMN is_checked INTEGER DEFAULT 0")
-            conn.commit()
-        except Exception as e:
-            print(f"칼럼 추가 중 오류 (무시 가능): {e}")
-            conn.rollback()
-        
-        if db_type == 'postgresql':
-            # PostgreSQL용 테이블 생성
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS office_links (
-                    id SERIAL PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    platform TEXT NOT NULL,
-                    added_by TEXT NOT NULL,
-                    date_added TEXT NOT NULL,
-                    rating INTEGER DEFAULT 5,
-                    liked BOOLEAN DEFAULT FALSE,
-                    disliked BOOLEAN DEFAULT FALSE,
-                    memo TEXT DEFAULT '',
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT '',
-                    management_site_id TEXT DEFAULT NULL,
-                    guarantee_insurance BOOLEAN DEFAULT FALSE,
-                    is_checked BOOLEAN DEFAULT FALSE
-                )
-            ''')
-            print("PostgreSQL office_links 테이블 생성 완료")
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS customer_info (
-                    id INTEGER PRIMARY KEY,
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT ''
-                )
-            ''')
-            print("PostgreSQL customer_info 테이블 생성 완료")
-            
-            # 기본 고객 정보 삽입 (ON CONFLICT로 중복 방지)
-            cursor.execute('''
-                INSERT INTO customer_info (id, customer_name, move_in_date) 
-                VALUES (1, '프리미엄등록', '') 
-                ON CONFLICT (id) DO NOTHING
-            ''')
+        # 공통 DB 유틸리티 사용
+        init_success = init_database()
+        if init_success:
+            print("=== 업무용 DB 초기화 완료 ===")
         else:
-            # SQLite용 테이블 생성 (기존 코드)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS office_links (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    url TEXT NOT NULL,
-                    platform TEXT NOT NULL,
-                    added_by TEXT NOT NULL,
-                    date_added TEXT NOT NULL,
-                    rating INTEGER DEFAULT 5,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
-                    memo TEXT DEFAULT '',
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT '',
-                    management_site_id TEXT DEFAULT NULL,
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_checked INTEGER DEFAULT 0
-                )
-            ''')
-            print("SQLite office_links 테이블 생성 완료")
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS customer_info (
-                    id INTEGER PRIMARY KEY,
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT ''
-                )
-            ''')
-            print("SQLite customer_info 테이블 생성 완료")
-            
-            cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "프리미엄등록", "")')
-        
-        conn.commit()
-        conn.close()
-        print("=== 업무용 DB 초기화 완료 ===")
+            print("=== 업무용 DB 초기화 실패 ===")
+            raise Exception("DB 초기화 실패")
         
     except Exception as e:
-        print(f"=== 업무용 DB 초기화 실패: {e} ===")
-        raise
-
-# 기존 get_db_connection 함수는 db_utils에서 import하므로 제거
+        print(f"=== 업무용 DB 초기화 오류: {e} ===")
+        # 실패해도 앱은 계속 실행
+        pass
 
 app = Flask(__name__)
 
 # Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
-init_db()
-
-# 기존 get_customer_info 함수는 db_utils에서 import하므로 제거
+try:
+    init_db()
+    print("✅ 업무용 DB 초기화 성공")
+except Exception as e:
+    print(f"❌ 업무용 DB 초기화 실패: {e}")
+    # 실패해도 앱은 계속 실행
 
 @app.route('/')
 def index():
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
-    # 고객 정보 가져오기
     try:
-        cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-        customer_info_raw = cursor.fetchone()
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
         
-        if customer_info_raw:
-            if db_type == 'postgresql':
+        # 고객 정보 가져오기
+        try:
+            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+            customer_info_raw = cursor.fetchone()
+            
+            if customer_info_raw:
                 customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
                 move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
             else:
-                customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
-                move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
-        else:
+                customer_name = '프리미엄등록'
+                move_in_date = ''
+        except Exception as e:
+            print(f"[업무용] customer_info 조회 오류: {e}")
             customer_name = '프리미엄등록'
             move_in_date = ''
+        
+        conn.close()
+        from flask import session
+        employee_id = session.get('employee_id', '')
+        return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
+        
     except Exception as e:
-        print(f"[업무용] customer_info 조회 오류: {e}")
-        customer_name = '프리미엄등록'
-        move_in_date = ''
-    
-    conn.close()
-    
-    return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date)
+        print(f"[업무용] 메인 페이지 오류: {e}")
+        return f"""
+        <html><head><title>업무용 오류</title></head><body>
+        <h1>❌ 업무용 사이트 오류</h1>
+        <p><strong>오류 내용:</strong> {e}</p>
+        <p><strong>현재 디렉토리:</strong> {os.getcwd()}</p>
+        <p><strong>/data 존재:</strong> {os.path.exists('/data')}</p>
+        <hr>
+        <p><a href="/force-init-work-db">🔧 DB 강제 초기화</a></p>
+        </body></html>
+        """, 500
 
 @app.route('/customer/<management_site_id>')
 def customer_site(management_site_id):
-    """고객별 매물 사이트 페이지"""
-    print(f"[ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
-    print(f"[ROUTE] 현재 작업 디렉토리: {os.getcwd()}")
-    print(f"[ROUTE] /data 디렉토리 존재: {os.path.exists('/data')}")
+    print(f"[업무ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
+    print(f"[업무ROUTE] 현재 작업 디렉토리: {os.getcwd()}")
+    print(f"[업무ROUTE] /data 디렉토리 존재: {os.path.exists('/data')}")
     
     # 디렉토리 내용 확인
     try:
         if os.path.exists('/data'):
             files = os.listdir('/data')
-            print(f"[ROUTE] /data 디렉토리 파일들: {files}")
+            print(f"[업무ROUTE] /data 디렉토리 파일들: {files}")
         else:
-            print(f"[ROUTE] /data 디렉토리가 존재하지 않음")
+            print(f"[업무ROUTE] /data 디렉토리가 존재하지 않음")
     except Exception as e:
-        print(f"[ROUTE] /data 디렉토리 읽기 오류: {e}")
+        print(f"[업무ROUTE] /data 디렉토리 읽기 오류: {e}")
     
     # 공통 get_customer_info 함수 사용
     customer_info = get_customer_info(management_site_id)
-    
     if not customer_info:
-        print(f"[ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
+        print(f"[업무ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
         
         # DB 상태 상세 확인
         debug_db_info = ""
@@ -250,8 +174,8 @@ def customer_site(management_site_id):
         
         # 404 대신 디버깅 정보를 포함한 에러 페이지 반환
         return f"""
-        <html><head><title>디버깅 정보</title></head><body>
-        <h1>🔍 디버깅 정보</h1>
+        <html><head><title>업무용 디버깅 정보</title></head><body>
+        <h1>💼 업무용 디버깅 정보</h1>
         <p><strong>찾는 Management Site ID:</strong> {management_site_id}</p>
         <p><strong>현재 디렉토리:</strong> {os.getcwd()}</p>
         <p><strong>/data 존재:</strong> {os.path.exists('/data')}</p>
@@ -264,26 +188,28 @@ def customer_site(management_site_id):
         <hr>
         <p><strong>🔧 해결 방법:</strong></p>
         <ol>
-        <li><a href="/force-init-db" target="_blank">DB 강제 초기화</a> 실행</li>
+        <li><a href="/force-init-work-db" target="_blank">업무용 DB 강제 초기화</a> 실행</li>
         <li>관리자페이지에서 고객 다시 등록</li>
         </ol>
         </body></html>
         """, 404
     
     customer_name = customer_info.get('customer_name', '고객')
-    print(f"[ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
+    print(f"[업무ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
     
-    # 미확인 좋아요 is_checked=0 → 1로 일괄 갱신
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    if db_type == 'postgresql':
-        cursor.execute('UPDATE office_links SET is_checked = TRUE, unchecked_likes_work = 0 WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
-    else:
-        cursor.execute('UPDATE office_links SET is_checked = 1, unchecked_likes_work = 0 WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
-    conn.commit()
-    conn.close()
+    # 미확인 좋아요 처리 (업무용은 unchecked_likes_work 컬럼 사용)
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        if db_type == 'postgresql':
+            cursor.execute('UPDATE office_links SET unchecked_likes_work = 0 WHERE management_site_id = %s', (management_site_id,))
+        else:
+            cursor.execute('UPDATE office_links SET unchecked_likes_work = 0 WHERE management_site_id = ?', (management_site_id,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"미확인 좋아요 처리 오류: {e}")
     
-    print(f"[ROUTE] 템플릿 렌더링 시작")
     return render_template('업무용_index.html', 
                          customer_name=customer_name, 
                          move_in_date=customer_info.get('residence_extra', ''),
@@ -720,67 +646,42 @@ def cleanup_customer_links(management_site_id):
 def force_init_work_db():
     """업무용 사이트에서 DB 강제 초기화 및 테이블 생성"""
     try:
-        # 관리자페이지와 동일한 DB 초기화 로직
-        conn = sqlite3.connect('/data/integrated.db')
-        cursor = conn.cursor()
+        # 공통 DB 초기화 함수 사용
+        success = init_database()
         
-        # employee_customers 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employee_customers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
-                management_site_id TEXT UNIQUE NOT NULL,
-                customer_name TEXT,
-                phone TEXT,
-                inquiry_date TEXT,
-                move_in_date TEXT,
-                amount TEXT,
-                room_count TEXT,
-                location TEXT,
-                loan_info TEXT,
-                parking TEXT,
-                pets TEXT,
-                progress_status TEXT DEFAULT '진행중',
-                memo TEXT,
-                created_date TEXT NOT NULL,
-                FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
-            )
-        ''')
-        print("✅ employee_customers 테이블 생성 완료")
-        
-        # employees 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employees (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT UNIQUE NOT NULL,
-                employee_name TEXT NOT NULL,
-                team TEXT NOT NULL,
-                password TEXT NOT NULL,
-                created_date TEXT NOT NULL,
-                is_active INTEGER DEFAULT 1
-            )
-        ''')
-        print("✅ employees 테이블 생성 완료")
-        
-        conn.commit()
-        
-        # 현재 테이블 목록 확인
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        conn.close()
-        
-        return f"""
-        <html><head><title>업무용 DB 초기화</title></head><body>
-        <h2>🏢 업무용 DB 초기화 성공!</h2>
-        <h3>현재 테이블 목록:</h3>
-        <ul>
-        {''.join([f'<li>{table[0]}</li>' for table in tables])}
-        </ul>
-        <hr>
-        <p><strong>✅ employee_customers 테이블이 생성되었습니다!</strong></p>
-        <p><a href="/">업무용 사이트로 돌아가기</a></p>
-        </body></html>
-        """
+        if success:
+            # 테이블 목록 확인
+            conn, db_type = get_db_connection()
+            cursor = conn.cursor()
+            
+            if db_type == 'postgresql':
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+            else:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            
+            tables = cursor.fetchall()
+            conn.close()
+            
+            return f"""
+            <html><head><title>업무용 DB 초기화</title></head><body>
+            <h2>💼 업무용 DB 초기화 성공! (DB 타입: {db_type})</h2>
+            <h3>현재 테이블 목록:</h3>
+            <ul>
+            {''.join([f'<li>{table[0]}</li>' for table in tables])}
+            </ul>
+            <hr>
+            <p><strong>✅ 모든 필요한 테이블이 생성되었습니다!</strong></p>
+            <p><a href="/">업무용 사이트로 돌아가기</a></p>
+            </body></html>
+            """
+        else:
+            return f"""
+            <html><head><title>업무용 DB 초기화 실패</title></head><body>
+            <h2>❌ DB 초기화 실패</h2>
+            <p>DB 초기화 중 오류가 발생했습니다.</p>
+            <p><a href="/">돌아가기</a></p>
+            </body></html>
+            """
     except Exception as e:
         return f"""
         <html><head><title>업무용 DB 초기화 실패</title></head><body>

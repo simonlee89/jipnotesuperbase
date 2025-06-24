@@ -9,146 +9,69 @@ from db_utils import get_db_connection, init_database, execute_query, get_custom
 def init_db():
     print("=== 주거용 DB 초기화 시작 ===")
     try:
-        conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-        print(f"주거용 DB 연결 성공 - 타입: {db_type}")
-        
-        if db_type == 'postgresql':
-            # PostgreSQL용 테이블 생성
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS links (
-                    id SERIAL PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    platform TEXT NOT NULL,
-                    added_by TEXT NOT NULL,
-                    date_added TEXT NOT NULL,
-                    rating INTEGER DEFAULT 5,
-                    liked BOOLEAN DEFAULT FALSE,
-                    disliked BOOLEAN DEFAULT FALSE,
-                    memo TEXT DEFAULT '',
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT '',
-                    management_site_id TEXT DEFAULT NULL,
-                    guarantee_insurance BOOLEAN DEFAULT FALSE,
-                    is_checked BOOLEAN DEFAULT FALSE,
-                    is_deleted BOOLEAN DEFAULT FALSE,
-                    residence_extra TEXT DEFAULT ''
-                )
-            ''')
-            print("PostgreSQL links 테이블 생성 완료")
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS customer_info (
-                    id INTEGER PRIMARY KEY,
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT ''
-                )
-            ''')
-            print("PostgreSQL customer_info 테이블 생성 완료")
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
-                    id SERIAL PRIMARY KEY,
-                    management_site_id TEXT,
-                    link_id INTEGER,
-                    click_time TEXT,
-                    user_ip TEXT
-                )
-            ''')
-            print("PostgreSQL guarantee_insurance_log 테이블 생성 완료")
-            
-            # 기본 고객 정보 삽입 (ON CONFLICT로 중복 방지)
-            cursor.execute('''
-                INSERT INTO customer_info (id, customer_name, move_in_date) 
-                VALUES (1, '제일좋은집 찾아드릴분', '') 
-                ON CONFLICT (id) DO NOTHING
-            ''')
+        # 공통 DB 유틸리티 사용
+        init_success = init_database()
+        if init_success:
+            print("=== 주거용 DB 초기화 완료 ===")
         else:
-            # SQLite용 테이블 생성 (기존 코드)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS links (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    url TEXT NOT NULL,
-                    platform TEXT NOT NULL,
-                    added_by TEXT NOT NULL,
-                    date_added TEXT NOT NULL,
-                    rating INTEGER DEFAULT 5,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
-                    memo TEXT DEFAULT '',
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT '',
-                    management_site_id TEXT DEFAULT NULL,
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_checked INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
-                    residence_extra TEXT DEFAULT ''
-                )
-            ''')
-            print("SQLite links 테이블 생성 완료")
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS customer_info (
-                    id INTEGER PRIMARY KEY,
-                    customer_name TEXT DEFAULT '000',
-                    move_in_date TEXT DEFAULT ''
-                )
-            ''')
-            print("SQLite customer_info 테이블 생성 완료")
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    management_site_id TEXT,
-                    link_id INTEGER,
-                    click_time TEXT,
-                    user_ip TEXT
-                )
-            ''')
-            print("SQLite guarantee_insurance_log 테이블 생성 완료")
-            
-            # 기본 고객 정보 삽입
-            cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "제일좋은집 찾아드릴분", "")')
-        
-        conn.commit()
-        conn.close()
-        print("=== 주거용 DB 초기화 완료 ===")
+            print("=== 주거용 DB 초기화 실패 ===")
+            raise Exception("DB 초기화 실패")
         
     except Exception as e:
-        print(f"=== 주거용 DB 초기화 실패: {e} ===")
-        raise
+        print(f"=== 주거용 DB 초기화 오류: {e} ===")
+        # 실패해도 앱은 계속 실행
+        pass
 
 app = Flask(__name__)
 
 # Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
-init_db()
+try:
+    init_db()
+    print("✅ 주거용 DB 초기화 성공")
+except Exception as e:
+    print(f"❌ 주거용 DB 초기화 실패: {e}")
+    # 실패해도 앱은 계속 실행
 
 @app.route('/')
 def index():
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
-    # 고객 정보 가져오기
     try:
-        cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-        customer_info_raw = cursor.fetchone()
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
         
-        if customer_info_raw:
-            customer_name = customer_info_raw[0] if customer_info_raw[0] else '제일좋은집 찾아드릴분'
-            move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
-        else:
+        # 고객 정보 가져오기
+        try:
+            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+            customer_info_raw = cursor.fetchone()
+            
+            if customer_info_raw:
+                customer_name = customer_info_raw[0] if customer_info_raw[0] else '제일좋은집 찾아드릴분'
+                move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
+            else:
+                customer_name = '제일좋은집 찾아드릴분'
+                move_in_date = ''
+        except Exception as e:
+            print(f"[주거용] customer_info 조회 오류: {e}")
             customer_name = '제일좋은집 찾아드릴분'
             move_in_date = ''
+        
+        conn.close()
+        # 로그인된 직원의 employee_id를 템플릿 변수로 전달
+        from flask import session
+        employee_id = session.get('employee_id', '')
+        return render_template('index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
+        
     except Exception as e:
-        print(f"[주거용] customer_info 조회 오류: {e}")
-        customer_name = '제일좋은집 찾아드릴분'
-        move_in_date = ''
-    
-    conn.close()
-    # 로그인된 직원의 employee_id를 템플릿 변수로 전달
-    from flask import session
-    employee_id = session.get('employee_id', '')
-    return render_template('index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
+        print(f"[주거용] 메인 페이지 오류: {e}")
+        return f"""
+        <html><head><title>주거용 오류</title></head><body>
+        <h1>❌ 주거용 사이트 오류</h1>
+        <p><strong>오류 내용:</strong> {e}</p>
+        <p><strong>현재 디렉토리:</strong> {os.getcwd()}</p>
+        <p><strong>/data 존재:</strong> {os.path.exists('/data')}</p>
+        <hr>
+        <p><a href="/force-init-residence-db">🔧 DB 강제 초기화</a></p>
+        </body></html>
+        """, 500
 
 @app.route('/customer/<management_site_id>')
 def customer_site(management_site_id):
@@ -670,67 +593,42 @@ def guarantee_log():
 def force_init_residence_db():
     """주거용 사이트에서 DB 강제 초기화 및 테이블 생성"""
     try:
-        # 관리자페이지와 동일한 DB 초기화 로직
-        conn = sqlite3.connect('/data/integrated.db')
-        cursor = conn.cursor()
+        # 공통 DB 초기화 함수 사용
+        success = init_database()
         
-        # employee_customers 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employee_customers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
-                management_site_id TEXT UNIQUE NOT NULL,
-                customer_name TEXT,
-                phone TEXT,
-                inquiry_date TEXT,
-                move_in_date TEXT,
-                amount TEXT,
-                room_count TEXT,
-                location TEXT,
-                loan_info TEXT,
-                parking TEXT,
-                pets TEXT,
-                progress_status TEXT DEFAULT '진행중',
-                memo TEXT,
-                created_date TEXT NOT NULL,
-                FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
-            )
-        ''')
-        print("✅ employee_customers 테이블 생성 완료")
-        
-        # employees 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employees (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT UNIQUE NOT NULL,
-                employee_name TEXT NOT NULL,
-                team TEXT NOT NULL,
-                password TEXT NOT NULL,
-                created_date TEXT NOT NULL,
-                is_active INTEGER DEFAULT 1
-            )
-        ''')
-        print("✅ employees 테이블 생성 완료")
-        
-        conn.commit()
-        
-        # 현재 테이블 목록 확인
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        conn.close()
-        
-        return f"""
-        <html><head><title>주거용 DB 초기화</title></head><body>
-        <h2>🏠 주거용 DB 초기화 성공!</h2>
-        <h3>현재 테이블 목록:</h3>
-        <ul>
-        {''.join([f'<li>{table[0]}</li>' for table in tables])}
-        </ul>
-        <hr>
-        <p><strong>✅ employee_customers 테이블이 생성되었습니다!</strong></p>
-        <p><a href="/">주거용 사이트로 돌아가기</a></p>
-        </body></html>
-        """
+        if success:
+            # 테이블 목록 확인
+            conn, db_type = get_db_connection()
+            cursor = conn.cursor()
+            
+            if db_type == 'postgresql':
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+            else:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            
+            tables = cursor.fetchall()
+            conn.close()
+            
+            return f"""
+            <html><head><title>주거용 DB 초기화</title></head><body>
+            <h2>🏠 주거용 DB 초기화 성공! (DB 타입: {db_type})</h2>
+            <h3>현재 테이블 목록:</h3>
+            <ul>
+            {''.join([f'<li>{table[0]}</li>' for table in tables])}
+            </ul>
+            <hr>
+            <p><strong>✅ 모든 필요한 테이블이 생성되었습니다!</strong></p>
+            <p><a href="/">주거용 사이트로 돌아가기</a></p>
+            </body></html>
+            """
+        else:
+            return f"""
+            <html><head><title>주거용 DB 초기화 실패</title></head><body>
+            <h2>❌ DB 초기화 실패</h2>
+            <p>DB 초기화 중 오류가 발생했습니다.</p>
+            <p><a href="/">돌아가기</a></p>
+            </body></html>
+            """
     except Exception as e:
         return f"""
         <html><head><title>주거용 DB 초기화 실패</title></head><body>

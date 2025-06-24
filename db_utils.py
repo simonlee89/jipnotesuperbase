@@ -1,12 +1,20 @@
 import os
 import sqlite3
-import psycopg2
-from psycopg2.extras import RealDictCursor
 import logging
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# PostgreSQL 모듈은 선택적으로 import (배포 환경에서만)
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    PSYCOPG2_AVAILABLE = True
+    logger.info("psycopg2 모듈 사용 가능")
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+    logger.warning("psycopg2 모듈을 찾을 수 없음 - SQLite만 사용")
 
 def get_db_connection():
     """
@@ -15,31 +23,75 @@ def get_db_connection():
     """
     database_url = os.environ.get('DATABASE_URL')
     
-    if database_url:
-        # PostgreSQL 연결 시도
+    # PostgreSQL 연결 시도 (모듈이 있고 DATABASE_URL이 설정된 경우)
+    if database_url and PSYCOPG2_AVAILABLE:
         try:
+            logger.info(f"PostgreSQL 연결 시도: {database_url[:30]}...")
             conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
-            logger.info("PostgreSQL 연결 성공")
+            
+            # 연결 테스트
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            cursor.close()
+            
+            logger.info("✅ PostgreSQL 연결 성공")
             return conn, 'postgresql'
+            
         except Exception as e:
-            logger.error(f"PostgreSQL 연결 실패: {e}")
-            logger.info("SQLite로 폴백합니다.")
-            # PostgreSQL 실패 시 SQLite로 폴백
+            logger.error(f"❌ PostgreSQL 연결 실패: {e}")
+            logger.info("SQLite로 폴백합니다...")
     
     # SQLite 연결 (로컬 개발용 또는 PostgreSQL 실패 시 폴백)
-    db_paths = ['/data/integrated.db', 'integrated.db', './integrated.db']
-    for db_path in db_paths:
-        if os.path.exists(db_path):
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            logger.info(f"SQLite 연결 성공: {db_path}")
-            return conn, 'sqlite'
+    logger.info("SQLite 연결 시도...")
     
-    # 기본 SQLite 파일 생성
-    conn = sqlite3.connect('integrated.db')
-    conn.row_factory = sqlite3.Row
-    logger.info("새 SQLite DB 생성: integrated.db")
-    return conn, 'sqlite'
+    # 여러 경로에서 DB 파일 찾기
+    db_paths = [
+        '/data/integrated.db',  # Railway persistent volume
+        'integrated.db',        # 현재 디렉토리
+        './integrated.db',      # 명시적 현재 디렉토리
+        '/app/integrated.db'    # Railway 앱 디렉토리
+    ]
+    
+    for db_path in db_paths:
+        try:
+            if os.path.exists(db_path):
+                logger.info(f"DB 파일 발견: {db_path}")
+                conn = sqlite3.connect(db_path, timeout=30)
+                conn.row_factory = sqlite3.Row
+                
+                # 연결 테스트
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+                cursor.close()
+                
+                logger.info(f"✅ SQLite 연결 성공: {db_path}")
+                return conn, 'sqlite'
+        except Exception as e:
+            logger.error(f"SQLite 연결 실패 ({db_path}): {e}")
+            continue
+    
+    # 모든 경로에서 실패하면 새 DB 생성
+    try:
+        db_path = '/data/integrated.db' if os.path.exists('/data') else 'integrated.db'
+        logger.info(f"새 SQLite DB 생성: {db_path}")
+        
+        conn = sqlite3.connect(db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        
+        # 연결 테스트
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+        
+        logger.info(f"✅ 새 SQLite DB 생성 성공: {db_path}")
+        return conn, 'sqlite'
+        
+    except Exception as e:
+        logger.error(f"❌ SQLite DB 생성 실패: {e}")
+        raise Exception(f"모든 DB 연결 시도 실패: {e}")
 
 def init_database():
     """
@@ -47,11 +99,15 @@ def init_database():
     관리자페이지와 동일한 구조로 생성합니다.
     """
     try:
+        logger.info("=== 데이터베이스 초기화 시작 ===")
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        logger.info(f"DB 타입: {db_type}")
         
         if db_type == 'postgresql':
             # PostgreSQL용 테이블 생성 (관리자페이지 구조와 동일)
+            logger.info("PostgreSQL 테이블 생성 중...")
+            
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id SERIAL PRIMARY KEY,
@@ -63,6 +119,7 @@ def init_database():
                     is_active BOOLEAN DEFAULT TRUE
                 )
             ''')
+            logger.info("✅ employees 테이블 생성")
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employee_customers (
@@ -84,6 +141,7 @@ def init_database():
                     created_date TIMESTAMP NOT NULL
                 )
             ''')
+            logger.info("✅ employee_customers 테이블 생성")
             
             # 추가 테이블들
             cursor.execute('''
@@ -103,6 +161,7 @@ def init_database():
                     is_checked BOOLEAN DEFAULT FALSE
                 )
             ''')
+            logger.info("✅ links 테이블 생성")
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS office_links (
@@ -124,6 +183,7 @@ def init_database():
                     is_deleted BOOLEAN DEFAULT FALSE
                 )
             ''')
+            logger.info("✅ office_links 테이블 생성")
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
@@ -135,9 +195,12 @@ def init_database():
                     timestamp TIMESTAMP
                 )
             ''')
+            logger.info("✅ guarantee_insurance_log 테이블 생성")
             
         else:
             # SQLite용 테이블 생성 (관리자페이지 구조와 동일)
+            logger.info("SQLite 테이블 생성 중...")
+            
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +212,7 @@ def init_database():
                     is_active INTEGER DEFAULT 1
                 )
             ''')
+            logger.info("✅ employees 테이블 생성")
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employee_customers (
@@ -171,6 +235,7 @@ def init_database():
                     FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
                 )
             ''')
+            logger.info("✅ employee_customers 테이블 생성")
             
             # 추가 테이블들
             cursor.execute('''
@@ -190,6 +255,7 @@ def init_database():
                     is_checked INTEGER DEFAULT 0
                 )
             ''')
+            logger.info("✅ links 테이블 생성")
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS office_links (
@@ -211,6 +277,7 @@ def init_database():
                     is_deleted INTEGER DEFAULT 0
                 )
             ''')
+            logger.info("✅ office_links 테이블 생성")
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
@@ -223,9 +290,10 @@ def init_database():
                     FOREIGN KEY (link_id) REFERENCES office_links (id)
                 )
             ''')
+            logger.info("✅ guarantee_insurance_log 테이블 생성")
         
         conn.commit()
-        logger.info(f"{db_type} 데이터베이스 테이블 초기화 완료")
+        logger.info(f"✅ {db_type} 데이터베이스 테이블 초기화 완료")
         
         # 테이블 목록 확인
         if db_type == 'postgresql':
@@ -238,20 +306,21 @@ def init_database():
         
         cursor.close()
         conn.close()
+        logger.info("=== 데이터베이스 초기화 완료 ===")
         return True
         
     except Exception as e:
-        logger.error(f"데이터베이스 초기화 실패: {e}")
+        logger.error(f"❌ 데이터베이스 초기화 실패: {e}")
         return False
 
 def execute_query(query, params=None, fetch=False):
     """
     공통 쿼리 실행 함수
     """
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
     try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
         if params:
             cursor.execute(query, params)
         else:
@@ -280,6 +349,7 @@ def get_customer_info(management_site_id):
     관리 사이트 ID로 고객 정보를 조회합니다.
     """
     try:
+        logger.info(f"고객 정보 조회 시작: {management_site_id}")
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
@@ -305,9 +375,12 @@ def get_customer_info(management_site_id):
         conn.close()
         
         if result:
+            logger.info(f"✅ 고객 정보 조회 성공: {result['customer_name'] if 'customer_name' in result else 'N/A'}")
             return dict(result)
-        return None
+        else:
+            logger.warning(f"❌ 고객 정보 없음: {management_site_id}")
+            return None
         
     except Exception as e:
-        logger.error(f"고객 정보 조회 실패: {e}")
+        logger.error(f"❌ 고객 정보 조회 실패: {e}")
         return None 
