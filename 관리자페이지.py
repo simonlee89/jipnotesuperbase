@@ -1014,10 +1014,180 @@ def force_init_db():
         <ul>
         {''.join([f'<li>{table[0]}</li>' for table in tables])}
         </ul>
+        <p><a href="/check-table-structure">📊 테이블 구조 확인</a></p>
+        <p><a href="/fix-missing-columns">🔧 누락된 컬럼 수정</a></p>
         <p><a href="/">관리자 페이지로 돌아가기</a></p>
         """
     except Exception as e:
         return f"<h2>❌ DB 초기화 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
+
+@app.route('/check-table-structure')
+def check_table_structure():
+    """테이블 구조 상세 확인"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
+        result = f"<html><head><title>테이블 구조 확인</title></head><body>"
+        result += f"<h1>📊 테이블 구조 확인 (DB 타입: {db_type})</h1>"
+        
+        if db_type == 'postgresql':
+            # employee_customers 테이블 구조 확인
+            cursor.execute("""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns 
+                WHERE table_name = 'employee_customers' 
+                ORDER BY ordinal_position
+            """)
+            columns = cursor.fetchall()
+            
+            result += "<h2>🏢 employee_customers 테이블 구조</h2>"
+            if columns:
+                result += "<table border='1'><tr><th>컬럼명</th><th>타입</th><th>NULL 허용</th><th>기본값</th></tr>"
+                for col in columns:
+                    result += f"<tr><td>{col[0]}</td><td>{col[1]}</td><td>{col[2]}</td><td>{col[3] or 'N/A'}</td></tr>"
+                result += "</table>"
+                
+                # phone 컬럼 존재 여부 확인
+                column_names = [col[0] for col in columns]
+                if 'phone' in column_names:
+                    result += "<p style='color:green;'>✅ phone 컬럼이 존재합니다!</p>"
+                else:
+                    result += "<p style='color:red;'>❌ phone 컬럼이 없습니다!</p>"
+            else:
+                result += "<p style='color:red;'>❌ employee_customers 테이블이 존재하지 않습니다!</p>"
+        else:
+            # SQLite 구조 확인
+            cursor.execute("PRAGMA table_info(employee_customers)")
+            columns = cursor.fetchall()
+            
+            result += "<h2>🏢 employee_customers 테이블 구조</h2>"
+            if columns:
+                result += "<table border='1'><tr><th>컬럼명</th><th>타입</th><th>NULL 허용</th><th>기본값</th></tr>"
+                for col in columns:
+                    result += f"<tr><td>{col[1]}</td><td>{col[2]}</td><td>{'NO' if col[3] else 'YES'}</td><td>{col[4] or 'N/A'}</td></tr>"
+                result += "</table>"
+                
+                # phone 컬럼 존재 여부 확인
+                column_names = [col[1] for col in columns]
+                if 'phone' in column_names:
+                    result += "<p style='color:green;'>✅ phone 컬럼이 존재합니다!</p>"
+                else:
+                    result += "<p style='color:red;'>❌ phone 컬럼이 없습니다!</p>"
+            else:
+                result += "<p style='color:red;'>❌ employee_customers 테이블이 존재하지 않습니다!</p>"
+        
+        conn.close()
+        result += "<hr><p><a href='/fix-missing-columns'>🔧 누락된 컬럼 수정</a> | <a href='/'>관리자 페이지</a></p></body></html>"
+        return result
+        
+    except Exception as e:
+        return f"<h2>❌ 테이블 구조 확인 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
+
+@app.route('/fix-missing-columns')
+def fix_missing_columns():
+    """누락된 컬럼 자동 수정"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
+        result = f"<html><head><title>컬럼 수정</title></head><body>"
+        result += f"<h1>🔧 누락된 컬럼 수정 (DB 타입: {db_type})</h1>"
+        
+        if db_type == 'postgresql':
+            # PostgreSQL에서 테이블 완전 재생성
+            try:
+                # 기존 테이블 백업
+                cursor.execute("SELECT COUNT(*) FROM employee_customers")
+                existing_count = cursor.fetchone()[0]
+                result += f"<p>기존 데이터: {existing_count}개</p>"
+                
+                if existing_count > 0:
+                    # 데이터가 있으면 백업 후 재생성
+                    cursor.execute("CREATE TABLE employee_customers_backup AS SELECT * FROM employee_customers")
+                    result += "<p>✅ 기존 데이터 백업 완료</p>"
+                
+                # 기존 테이블 삭제
+                cursor.execute("DROP TABLE IF EXISTS employee_customers")
+                result += "<p>✅ 기존 테이블 삭제 완료</p>"
+                
+                # 새 테이블 생성 (올바른 구조)
+                cursor.execute('''
+                    CREATE TABLE employee_customers (
+                        id SERIAL PRIMARY KEY,
+                        employee_id VARCHAR(100) NOT NULL,
+                        management_site_id VARCHAR(50) UNIQUE NOT NULL,
+                        customer_name VARCHAR(200),
+                        phone VARCHAR(50),
+                        inquiry_date VARCHAR(50),
+                        move_in_date VARCHAR(50),
+                        amount VARCHAR(100),
+                        room_count VARCHAR(50),
+                        location VARCHAR(200),
+                        loan_info TEXT,
+                        parking VARCHAR(50),
+                        pets VARCHAR(50),
+                        progress_status VARCHAR(50) DEFAULT '진행중',
+                        memo TEXT,
+                        created_date TIMESTAMP NOT NULL
+                    )
+                ''')
+                result += "<p>✅ 새 테이블 생성 완료 (phone 컬럼 포함)</p>"
+                
+                # 백업 데이터가 있으면 복원
+                if existing_count > 0:
+                    try:
+                        cursor.execute("""
+                            INSERT INTO employee_customers 
+                            (employee_id, management_site_id, customer_name, inquiry_date, 
+                             move_in_date, amount, room_count, location, progress_status, memo, created_date)
+                            SELECT employee_id, management_site_id, customer_name, inquiry_date,
+                             move_in_date, amount, room_count, location, progress_status, memo, created_date
+                            FROM employee_customers_backup
+                        """)
+                        cursor.execute("DROP TABLE employee_customers_backup")
+                        result += "<p>✅ 데이터 복원 완료</p>"
+                    except Exception as e:
+                        result += f"<p style='color:orange;'>⚠️ 데이터 복원 중 일부 오류: {e}</p>"
+                
+            except Exception as e:
+                result += f"<p style='color:red;'>❌ PostgreSQL 테이블 수정 실패: {e}</p>"
+                
+        else:
+            # SQLite에서 컬럼 추가
+            try:
+                cursor.execute("PRAGMA table_info(employee_customers)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                missing_columns = []
+                required_columns = ['phone', 'inquiry_date', 'move_in_date', 'amount', 'room_count', 
+                                  'location', 'loan_info', 'parking', 'pets', 'progress_status', 'memo']
+                
+                for col in required_columns:
+                    if col not in columns:
+                        missing_columns.append(col)
+                        if col == 'phone':
+                            cursor.execute("ALTER TABLE employee_customers ADD COLUMN phone TEXT")
+                        elif col == 'progress_status':
+                            cursor.execute("ALTER TABLE employee_customers ADD COLUMN progress_status TEXT DEFAULT '진행중'")
+                        else:
+                            cursor.execute(f"ALTER TABLE employee_customers ADD COLUMN {col} TEXT")
+                        result += f"<p>✅ {col} 컬럼 추가 완료</p>"
+                
+                if not missing_columns:
+                    result += "<p>✅ 모든 필수 컬럼이 이미 존재합니다!</p>"
+                    
+            except Exception as e:
+                result += f"<p style='color:red;'>❌ SQLite 컬럼 추가 실패: {e}</p>"
+        
+        conn.commit()
+        conn.close()
+        
+        result += "<hr><p><a href='/check-table-structure'>📊 테이블 구조 재확인</a> | <a href='/'>관리자 페이지</a></p></body></html>"
+        return result
+        
+    except Exception as e:
+        return f"<h2>❌ 컬럼 수정 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
 
 @app.route('/debug-db-status')
 def debug_db_status():
