@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # 데이터베이스 연결 함수 (integrated.db만 사용)
 def get_db_connection():
-    conn = sqlite3.connect('integrated.db')
+    conn = sqlite3.connect('/data/integrated.db')
     return conn
 
 # 고객 정보 조회 함수 (integrated.db만 사용)
@@ -17,7 +17,7 @@ def get_customer_info(management_site_id):
     customer_name = None
     move_in_date = ''
     try:
-        system_conn = sqlite3.connect('integrated.db')
+        system_conn = sqlite3.connect('/data/integrated.db')
         system_cursor = system_conn.cursor()
         system_cursor.execute('''
             SELECT customer_name, move_in_date 
@@ -386,7 +386,7 @@ def guarantee_insurance_reset():
     if not employee_id:
         return jsonify({'success': False, 'message': 'employee_id 누락'}), 400
     try:
-        conn = sqlite3.connect('integrated.db')
+        conn = sqlite3.connect('/data/integrated.db')
         c = conn.cursor()
         c.execute("UPDATE links SET guarantee_insurance = 0 WHERE added_by = ?", (employee_id,))
         affected = c.rowcount

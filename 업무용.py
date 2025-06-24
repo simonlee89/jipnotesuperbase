@@ -23,7 +23,7 @@ def get_db_connection():
         return conn, 'postgresql'
     else:
         # SQLite 연결 (업무용 전용)
-        conn = sqlite3.connect('integrated.db')
+        conn = sqlite3.connect('/data/integrated.db')
         return conn, 'sqlite'
 
 # 고객 정보 조회 함수 (새로 추가)
@@ -35,7 +35,7 @@ def get_customer_info(management_site_id):
     
     # integrated.db에서만 조회
     try:
-        system_conn = sqlite3.connect('integrated.db')
+        system_conn = sqlite3.connect('/data/integrated.db')
         system_cursor = system_conn.cursor()
         system_cursor.execute('''
             SELECT customer_name, move_in_date 
@@ -624,6 +624,23 @@ def cleanup_customer_links(management_site_id):
         return jsonify({'success': True, 'deleted_count': deleted_count})
     except Exception as e:
         print(f"링크 정리 실패: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/guarantee-insurance-reset', methods=['POST'])
+def guarantee_insurance_reset():
+    data = request.get_json()
+    employee_id = data.get('employee_id')
+    if not employee_id:
+        return jsonify({'success': False, 'message': 'employee_id 누락'}), 400
+    try:
+        conn = sqlite3.connect('/data/integrated.db')
+        c = conn.cursor()
+        c.execute("UPDATE links SET guarantee_insurance = 0 WHERE added_by = ?", (employee_id,))
+        affected = c.rowcount
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'affected': affected})
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
