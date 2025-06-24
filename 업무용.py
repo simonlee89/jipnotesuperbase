@@ -207,13 +207,32 @@ def customer_site(management_site_id):
     print(f"[ROUTE] 현재 작업 디렉토리: {os.getcwd()}")
     print(f"[ROUTE] /data 디렉토리 존재: {os.path.exists('/data')}")
     
+    # 디렉토리 내용 확인
+    try:
+        if os.path.exists('/data'):
+            files = os.listdir('/data')
+            print(f"[ROUTE] /data 디렉토리 파일들: {files}")
+        else:
+            print(f"[ROUTE] /data 디렉토리가 존재하지 않음")
+    except Exception as e:
+        print(f"[ROUTE] /data 디렉토리 읽기 오류: {e}")
+    
     # 고객 정보 조회
     customer_name, move_in_date, found = get_customer_info(management_site_id)
     
     if not found:
         print(f"[ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
-        # 삭제된 고객 전용 에러 페이지 표시
-        return render_template('customer_site.html'), 404
+        # 404 대신 디버깅 정보를 포함한 에러 페이지 반환
+        return f"""
+        <html><body>
+        <h1>디버깅 정보</h1>
+        <p>Management Site ID: {management_site_id}</p>
+        <p>현재 디렉토리: {os.getcwd()}</p>
+        <p>/data 존재: {os.path.exists('/data')}</p>
+        <p>파일 목록: {os.listdir('/data') if os.path.exists('/data') else 'N/A'}</p>
+        <p>고객 정보를 찾을 수 없습니다.</p>
+        </body></html>
+        """, 404
     else:
         print(f"[ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}, 입주일: {move_in_date}")
     
