@@ -1233,13 +1233,13 @@
                         </td>
                         <td>
                             ${customer.management_site_id ? 
-                                `<a href="https://web-production-d2f49.up.railway.app/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${jugAlarm}` : 
+                                `<a href="{{ residence_site_url }}/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${jugAlarm}` : 
                                 '<span class="property-link-placeholder">주거사이트 없음</span>'
                             }
                         </td>
                         <td>
                             ${customer.management_site_id ? 
-                                `<a href="http://localhost:5001/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${workAlarm}` : 
+                                `<a href="{{ business_site_url }}/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${workAlarm}` : 
                                 '<span class="property-link-placeholder">업무사이트 없음</span>'
                             }
                         </td>
@@ -1359,8 +1359,8 @@
                         if (result.management_site_id) {
                             const propertyLinkCell = row.querySelector('td:nth-last-child(3)');
                             const businessLinkCell = row.querySelector('td:nth-last-child(2)');
-                            const propertyUrl = `https://web-production-d2f49.up.railway.app/customer/${result.management_site_id}`;
-                            const businessUrl = `http://localhost:5001/customer/${result.management_site_id}`;
+                            const propertyUrl = `{{ residence_site_url }}/customer/${result.management_site_id}`;
+                            const businessUrl = `{{ business_site_url }}/customer/${result.management_site_id}`;
                             propertyLinkCell.innerHTML = `<a href="${propertyUrl}" target="_blank" class="management-link">주거사이트</a>`;
                             businessLinkCell.innerHTML = `<a href="${businessUrl}" target="_blank" class="management-link">업무사이트</a>`;
                         }

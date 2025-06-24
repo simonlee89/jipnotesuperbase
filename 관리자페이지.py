@@ -6,6 +6,10 @@ import os
 import requests
 import time
 
+# 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
+RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
+BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'http://localhost:5001')
+
 def init_admin_db():
     """관리자 데이터베이스 초기화"""
     print("=== DB 초기화 시작 ===")
@@ -237,7 +241,10 @@ def employee_dashboard():
     else:
         employee_name = session.get('employee_name', '직원')
     
-    return render_template('employee_dashboard.html', employee_name=employee_name)
+    return render_template('employee_dashboard.html', 
+                         employee_name=employee_name,
+                         residence_site_url=RESIDENCE_SITE_URL,
+                         business_site_url=BUSINESS_SITE_URL)
 
 @app.route('/admin')
 def admin_panel():
@@ -258,7 +265,10 @@ def admin_panel():
     guarantee_list = cursor.fetchall()
     conn.close()
 
-    return render_template('admin_panel.html', guarantee_list=guarantee_list)
+    return render_template('admin_panel.html', 
+                         guarantee_list=guarantee_list,
+                         residence_site_url=RESIDENCE_SITE_URL,
+                         business_site_url=BUSINESS_SITE_URL)
 
 @app.route('/admin/guarantee-delete/<int:id>', methods=['POST'])
 def guarantee_delete(id):
@@ -509,7 +519,8 @@ def manage_customers():
                 'progress_status': customer[12] if len(customer) > 12 else customer[9],
                 'memo': customer[13] if len(customer) > 13 else customer[10],
                 'employee_id': customer[14] if len(customer) > 14 else employee_id,
-                'management_url': f'http://localhost:5001/customer/{customer[1]}',
+                'residence_url': f'{RESIDENCE_SITE_URL}/customer/{customer[1]}',
+                'business_url': f'{BUSINESS_SITE_URL}/customer/{customer[1]}',
                 'unchecked_likes_jug': unchecked_likes_jug,
                 'unchecked_likes_work': unchecked_likes_work
             })
