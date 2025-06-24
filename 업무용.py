@@ -223,31 +223,65 @@ def customer_site(management_site_id):
     if not found:
         print(f"[ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
         
-        # DB에 있는 모든 고객 목록 확인
+        # DB 상태 상세 확인
+        debug_db_info = ""
         try:
             import sqlite3
             conn = sqlite3.connect('/data/integrated.db')
             cursor = conn.cursor()
-            cursor.execute('SELECT management_site_id, customer_name FROM employee_customers LIMIT 10')
-            all_customers = cursor.fetchall()
+            
+            # 테이블 목록 확인
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
+            debug_db_info += f"<strong>DB 테이블 목록:</strong><br>"
+            debug_db_info += "<br>".join([f"- {t[0]}" for t in tables]) + "<br><br>"
+            
+            # employee_customers 테이블 스키마 확인
+            try:
+                cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='employee_customers';")
+                schema = cursor.fetchone()
+                if schema:
+                    debug_db_info += f"<strong>employee_customers 테이블 스키마:</strong><br><code>{schema[0]}</code><br><br>"
+                else:
+                    debug_db_info += "<strong>❌ employee_customers 테이블이 존재하지 않습니다!</strong><br><br>"
+            except Exception as e:
+                debug_db_info += f"스키마 조회 오류: {e}<br><br>"
+            
+            # 고객 목록 조회
+            try:
+                cursor.execute('SELECT management_site_id, customer_name FROM employee_customers LIMIT 10')
+                all_customers = cursor.fetchall()
+                debug_db_info += f"<strong>고객 목록:</strong><br>"
+                if all_customers:
+                    debug_db_info += "<br>".join([f"ID: {c[0]}, 이름: {c[1]}" for c in all_customers])
+                else:
+                    debug_db_info += "고객 데이터가 없습니다."
+            except Exception as e:
+                debug_db_info += f"고객 조회 오류: {e}"
+            
             conn.close()
-            customers_list = "<br>".join([f"ID: {c[0]}, 이름: {c[1]}" for c in all_customers])
         except Exception as e:
-            customers_list = f"DB 조회 오류: {e}"
+            debug_db_info = f"DB 연결 오류: {e}"
         
         # 404 대신 디버깅 정보를 포함한 에러 페이지 반환
         return f"""
-        <html><body>
-        <h1>디버깅 정보</h1>
+        <html><head><title>디버깅 정보</title></head><body>
+        <h1>🔍 디버깅 정보</h1>
         <p><strong>찾는 Management Site ID:</strong> {management_site_id}</p>
         <p><strong>현재 디렉토리:</strong> {os.getcwd()}</p>
         <p><strong>/data 존재:</strong> {os.path.exists('/data')}</p>
         <p><strong>파일 목록:</strong> {os.listdir('/data') if os.path.exists('/data') else 'N/A'}</p>
         <hr>
-        <h2>DB에 있는 모든 고객 목록:</h2>
-        <p>{customers_list}</p>
+        <h2>📊 DB 상태 정보</h2>
+        <div>{debug_db_info}</div>
         <hr>
-        <p style="color:red;"><strong>결론:</strong> 고객 정보를 찾을 수 없습니다.</p>
+        <p style="color:red; font-size:18px;"><strong>❌ 결론:</strong> 고객 정보를 찾을 수 없습니다.</p>
+        <hr>
+        <p><strong>🔧 해결 방법:</strong></p>
+        <ol>
+        <li><a href="/force-init-db" target="_blank">DB 강제 초기화</a> 실행</li>
+        <li>관리자페이지에서 고객 다시 등록</li>
+        </ol>
         </body></html>
         """, 404
     else:

@@ -172,7 +172,12 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # 세션용 비밀키
 
 # Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
-init_admin_db()
+try:
+    init_admin_db()
+    print("✅ 관리자 DB 초기화 성공")
+except Exception as e:
+    print(f"❌ 관리자 DB 초기화 실패: {e}")
+    # 실패해도 앱은 계속 실행
 
 @app.route('/')
 def index():
@@ -847,6 +852,30 @@ def hide_link(link_id, db_path='/data/integrated.db'):
         return False
 
 # 보증보험 리스트 조회 쿼리 수정
+@app.route('/force-init-db')
+def force_init_db():
+    """Railway에서 DB 강제 초기화용 엔드포인트"""
+    try:
+        init_admin_db()
+        
+        # 테이블 존재 확인
+        conn = sqlite3.connect('/data/integrated.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        conn.close()
+        
+        return f"""
+        <h2>✅ DB 초기화 성공!</h2>
+        <h3>생성된 테이블:</h3>
+        <ul>
+        {''.join([f'<li>{table[0]}</li>' for table in tables])}
+        </ul>
+        <p><a href="/">관리자 페이지로 돌아가기</a></p>
+        """
+    except Exception as e:
+        return f"<h2>❌ DB 초기화 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
+
 @app.route('/api/guarantee-list', methods=['GET'])
 def get_guarantee_list():
     """보증보험이 가능한 매물 리스트 반환 (관리자+직원용, 숨김 처리 반영)"""
