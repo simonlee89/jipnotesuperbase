@@ -876,6 +876,132 @@ def force_init_db():
     except Exception as e:
         return f"<h2>❌ DB 초기화 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
 
+@app.route('/debug-db-status')
+def debug_db_status():
+    """DB 상태 상세 확인용 디버깅 엔드포인트"""
+    try:
+        conn = sqlite3.connect('/data/integrated.db')
+        cursor = conn.cursor()
+        
+        debug_info = "<html><head><title>DB 상태 디버깅</title></head><body>"
+        debug_info += "<h1>🔍 DB 상태 디버깅 정보</h1>"
+        
+        # 1. 테이블 목록
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        debug_info += f"<h2>📊 테이블 목록</h2><ul>"
+        for table in tables:
+            debug_info += f"<li>{table[0]}</li>"
+        debug_info += "</ul>"
+        
+        # 2. employees 테이블 데이터
+        try:
+            cursor.execute("SELECT * FROM employees LIMIT 10")
+            employees = cursor.fetchall()
+            debug_info += f"<h2>👥 employees 테이블 ({len(employees)}개)</h2>"
+            if employees:
+                debug_info += "<table border='1'><tr><th>ID</th><th>Employee ID</th><th>Name</th><th>Team</th><th>Active</th></tr>"
+                for emp in employees:
+                    debug_info += f"<tr><td>{emp[0]}</td><td>{emp[1]}</td><td>{emp[2]}</td><td>{emp[3]}</td><td>{emp[6]}</td></tr>"
+                debug_info += "</table>"
+            else:
+                debug_info += "<p style='color:red;'>❌ employees 테이블이 비어있습니다!</p>"
+        except Exception as e:
+            debug_info += f"<p style='color:red;'>employees 조회 오류: {e}</p>"
+        
+        # 3. employee_customers 테이블 데이터
+        try:
+            cursor.execute("SELECT * FROM employee_customers LIMIT 10")
+            customers = cursor.fetchall()
+            debug_info += f"<h2>🏠 employee_customers 테이블 ({len(customers)}개)</h2>"
+            if customers:
+                debug_info += "<table border='1'><tr><th>ID</th><th>Employee ID</th><th>Management Site ID</th><th>Customer Name</th><th>Status</th></tr>"
+                for cust in customers:
+                    debug_info += f"<tr><td>{cust[0]}</td><td>{cust[1]}</td><td>{cust[2]}</td><td>{cust[3]}</td><td>{cust[13]}</td></tr>"
+                debug_info += "</table>"
+            else:
+                debug_info += "<p style='color:red;'>❌ employee_customers 테이블이 비어있습니다!</p>"
+        except Exception as e:
+            debug_info += f"<p style='color:red;'>employee_customers 조회 오류: {e}</p>"
+        
+        # 4. 특정 management_site_id 검색
+        debug_info += "<h2>🔍 특정 ID 검색</h2>"
+        test_ids = ['f3a90de4', 'bc612330', '424ee340']
+        for test_id in test_ids:
+            try:
+                cursor.execute("SELECT * FROM employee_customers WHERE management_site_id = ?", (test_id,))
+                result = cursor.fetchone()
+                if result:
+                    debug_info += f"<p style='color:green;'>✅ {test_id}: 찾음 - {result[3]}</p>"
+                else:
+                    debug_info += f"<p style='color:red;'>❌ {test_id}: 없음</p>"
+            except Exception as e:
+                debug_info += f"<p style='color:red;'>{test_id} 검색 오류: {e}</p>"
+        
+        conn.close()
+        debug_info += "<hr><p><a href='/'>관리자 페이지로 돌아가기</a></p></body></html>"
+        return debug_info
+        
+    except Exception as e:
+        return f"<h2>❌ DB 디버깅 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
+
+@app.route('/insert-test-data')
+def insert_test_data():
+    """테스트용 직원과 고객 데이터 직접 삽입"""
+    try:
+        conn = sqlite3.connect('/data/integrated.db')
+        cursor = conn.cursor()
+        
+        # 1. 테스트 직원 삽입
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        try:
+            cursor.execute('''
+                INSERT OR IGNORE INTO employees (employee_id, employee_name, team, password, created_date, is_active)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ('admin', '관리자', '관리팀', 'admin123', current_date, 1))
+            print("✅ 테스트 직원 삽입 완료")
+        except Exception as e:
+            print(f"직원 삽입 오류: {e}")
+        
+        # 2. 테스트 고객 삽입  
+        import uuid
+        test_management_id = str(uuid.uuid4())[:8]  # 8자리 ID 생성
+        
+        try:
+            cursor.execute('''
+                INSERT INTO employee_customers 
+                (employee_id, management_site_id, customer_name, phone, inquiry_date, move_in_date, 
+                 amount, room_count, location, progress_status, memo, created_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', ('admin', test_management_id, '테스트 고객', '010-1234-5678', current_date, 
+                  '2024-12-31', '5억원', '3룸', '서울시 강남구', '진행중', '테스트용 고객입니다', current_date))
+            print(f"✅ 테스트 고객 삽입 완료 - ID: {test_management_id}")
+        except Exception as e:
+            print(f"고객 삽입 오류: {e}")
+        
+        conn.commit()
+        conn.close()
+        
+        return f"""
+        <html><head><title>테스트 데이터 삽입</title></head><body>
+        <h2>✅ 테스트 데이터 삽입 완료!</h2>
+        <p><strong>생성된 Management Site ID:</strong> <code>{test_management_id}</code></p>
+        <hr>
+        <h3>🔗 테스트 링크</h3>
+        <ul>
+        <li><a href="https://web-production-d2f49.up.railway.app/customer/{test_management_id}" target="_blank">주거용 고객 사이트</a></li>
+        <li><a href="https://web-production-8db05.up.railway.app/customer/{test_management_id}" target="_blank">업무용 고객 사이트</a></li>
+        </ul>
+        <hr>
+        <p><a href="/debug-db-status">DB 상태 확인</a> | <a href="/">관리자 페이지</a></p>
+        </body></html>
+        """
+        
+    except Exception as e:
+        return f"<h2>❌ 테스트 데이터 삽입 실패: {e}</h2><p><a href='/'>돌아가기</a></p>"
+
 @app.route('/api/guarantee-list', methods=['GET'])
 def get_guarantee_list():
     """보증보험이 가능한 매물 리스트 반환 (관리자+직원용, 숨김 처리 반영)"""
