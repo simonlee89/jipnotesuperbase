@@ -230,13 +230,36 @@ def customer_info():
         conn.close()
         return jsonify({'success': True})
     else:
-        cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-        info = cursor.fetchone()
-        conn.close()
-        return jsonify({
-            'customer_name': info[0] if info else '제일좋은집 찾아드릴분',
-            'move_in_date': info[1] if info else ''
-        })
+        try:
+            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+            info = cursor.fetchone()
+            conn.close()
+            
+            # PostgreSQL RealDictCursor와 SQLite 호환성 처리
+            if info:
+                if db_type == 'postgresql':
+                    # PostgreSQL은 딕셔너리 형태로 반환
+                    customer_name = info.get('customer_name', '제일좋은집 찾아드릴분')
+                    move_in_date = info.get('move_in_date', '')
+                else:
+                    # SQLite는 튜플 형태로 반환
+                    customer_name = info[0] if info[0] else '제일좋은집 찾아드릴분'
+                    move_in_date = info[1] if info[1] else ''
+            else:
+                customer_name = '제일좋은집 찾아드릴분'
+                move_in_date = ''
+            
+            return jsonify({
+                'customer_name': customer_name,
+                'move_in_date': move_in_date
+            })
+        except Exception as e:
+            print(f"[주거용] customer_info 조회 오류: {e}")
+            conn.close()
+            return jsonify({
+                'customer_name': '제일좋은집 찾아드릴분',
+                'move_in_date': ''
+            })
 
 @app.route('/api/links', methods=['GET', 'POST'])
 def links():
@@ -251,6 +274,8 @@ def links():
         added_by = session.get('employee_id', '중개사')
         memo = data.get('memo', '')
         guarantee_insurance = data.get('guarantee_insurance', False)
+        # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+        guarantee_int = 1 if guarantee_insurance else 0
         residence_extra = data.get('residence_extra', '')
         if not url or not platform or not added_by:
             return jsonify({'success': False, 'error': '필수 정보가 누락되었습니다.'})
@@ -264,13 +289,15 @@ def links():
             cursor.execute('''
                 INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra))
-            link_id = cursor.fetchone()[0]
+            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
+            # PostgreSQL RealDictCursor 호환성 처리
+            result = cursor.fetchone()
+            link_id = result['id'] if db_type == 'postgresql' else result[0]
         else:
             cursor.execute('''
                 INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra))
+            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
             link_id = cursor.lastrowid
         
         conn.commit()
@@ -311,15 +338,11 @@ def links():
             params.append(user_filter)
         
         if like_filter == 'liked':
-            if db_type == 'postgresql':
-                query += ' AND liked = TRUE'
-            else:
-                query += ' AND liked = 1'
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            query += ' AND liked = 1'
         elif like_filter == 'disliked':
-            if db_type == 'postgresql':
-                query += ' AND disliked = TRUE'
-            else:
-                query += ' AND disliked = 1'
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            query += ' AND disliked = 1'
         
         if date_filter:
             if db_type == 'postgresql':
@@ -329,15 +352,11 @@ def links():
             params.append(date_filter)
         
         if guarantee_filter == 'available':
-            if db_type == 'postgresql':
-                query += ' AND guarantee_insurance = TRUE'
-            else:
-                query += ' AND guarantee_insurance = 1'
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            query += ' AND guarantee_insurance = 1'
         elif guarantee_filter == 'unavailable':
-            if db_type == 'postgresql':
-                query += ' AND guarantee_insurance = FALSE'
-            else:
-                query += ' AND guarantee_insurance = 0'
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            query += ' AND guarantee_insurance = 0'
         
         query += ' ORDER BY id DESC'
         cursor.execute(query, params)
@@ -347,19 +366,40 @@ def links():
         links_list = []
         for index, link in enumerate(links_data):
             link_number = total_count - index
-            links_list.append({
-                'id': link[0],
-                'number': link_number,
-                'url': link[1],
-                'platform': link[2],
-                'added_by': link[3],
-                'date_added': link[4],
-                'rating': link[5],
-                'liked': bool(link[6]),
-                'disliked': bool(link[7]),
-                'memo': link[8] if len(link) > 8 else '',
-                'guarantee_insurance': bool(link[12]) if len(link) > 12 else False
-            })
+            
+            # PostgreSQL RealDictCursor와 SQLite 호환성 처리
+            if db_type == 'postgresql':
+                # PostgreSQL은 딕셔너리 형태로 반환
+                link_dict = {
+                    'id': link.get('id'),
+                    'number': link_number,
+                    'url': link.get('url'),
+                    'platform': link.get('platform'),
+                    'added_by': link.get('added_by'),
+                    'date_added': link.get('date_added'),
+                    'rating': link.get('rating', 0),
+                    'liked': bool(link.get('liked', 0)),
+                    'disliked': bool(link.get('disliked', 0)),
+                    'memo': link.get('memo', ''),
+                    'guarantee_insurance': bool(link.get('guarantee_insurance', 0))
+                }
+            else:
+                # SQLite는 튜플 형태로 반환
+                link_dict = {
+                    'id': link[0],
+                    'number': link_number,
+                    'url': link[1],
+                    'platform': link[2],
+                    'added_by': link[3],
+                    'date_added': link[4],
+                    'rating': link[5],
+                    'liked': bool(link[6]),
+                    'disliked': bool(link[7]),
+                    'memo': link[8] if len(link) > 8 else '',
+                    'guarantee_insurance': bool(link[12]) if len(link) > 12 else False
+                }
+            
+            links_list.append(link_dict)
         print(f"링크 조회 완료 - 총 {len(links_list)}개, 고객: {management_site_id or '기본'}")
         return jsonify(links_list)
 
@@ -374,12 +414,18 @@ def update_link(link_id):
         cursor.execute('SELECT management_site_id FROM links WHERE id = ?', (link_id,))
     
     link_result = cursor.fetchone()
-    if link_result and link_result[0]:
-        management_site_id = link_result[0]
-        customer_info = get_customer_info(management_site_id)
-        if not customer_info:
-            conn.close()
-            return jsonify({'success': False, 'error': '삭제된 고객의 링크입니다. 작업을 수행할 수 없습니다.'}), 404
+    if link_result:
+        # PostgreSQL RealDictCursor와 SQLite 호환성 처리
+        if db_type == 'postgresql':
+            management_site_id = link_result.get('management_site_id')
+        else:
+            management_site_id = link_result[0]
+        
+        if management_site_id:
+            customer_info = get_customer_info(management_site_id)
+            if not customer_info:
+                conn.close()
+                return jsonify({'success': False, 'error': '삭제된 고객의 링크입니다. 작업을 수행할 수 없습니다.'}), 404
     
     if request.method == 'PUT':
         data = request.json
@@ -394,17 +440,21 @@ def update_link(link_id):
         
         elif action == 'like':
             liked = data.get('liked', False)
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            liked_int = 1 if liked else 0
             if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET liked = %s, disliked = FALSE, is_checked = FALSE WHERE id = %s', (liked, link_id))
+                cursor.execute('UPDATE links SET liked = %s, disliked = 0, is_checked = 0 WHERE id = %s', (liked_int, link_id))
             else:
-                cursor.execute('UPDATE links SET liked = ?, disliked = ?, is_checked = 0 WHERE id = ?', (liked, 0 if liked else 0, link_id))
+                cursor.execute('UPDATE links SET liked = ?, disliked = 0, is_checked = 0 WHERE id = ?', (liked_int, link_id))
         
         elif action == 'dislike':
             disliked = data.get('disliked', False)
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            disliked_int = 1 if disliked else 0
             if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET disliked = %s, liked = FALSE WHERE id = %s', (disliked, link_id))
+                cursor.execute('UPDATE links SET disliked = %s, liked = 0 WHERE id = %s', (disliked_int, link_id))
             else:
-                cursor.execute('UPDATE links SET disliked = ?, liked = ? WHERE id = ?', (disliked, 0 if disliked else 0, link_id))
+                cursor.execute('UPDATE links SET disliked = ?, liked = 0 WHERE id = ?', (disliked_int, link_id))
         
         elif action == 'memo':
             memo = data.get('memo', '')
@@ -415,10 +465,12 @@ def update_link(link_id):
         
         elif action == 'guarantee':
             guarantee_insurance = data.get('guarantee_insurance', False)
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            guarantee_int = 1 if guarantee_insurance else 0
             if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
+                cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_int, link_id))
             else:
-                cursor.execute('UPDATE links SET guarantee_insurance = ? WHERE id = ?', (guarantee_insurance, link_id))
+                cursor.execute('UPDATE links SET guarantee_insurance = ? WHERE id = ?', (guarantee_int, link_id))
         
         conn.commit()
         conn.close()
