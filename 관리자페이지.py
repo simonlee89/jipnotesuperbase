@@ -156,10 +156,16 @@ def login():
     employee_id = data.get('employee_id')
     password = data.get('password')
     
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT employee_name FROM employees WHERE employee_id = ? AND password = ? AND is_active = 1', 
-                   (employee_id, password))
+    
+    if db_type == 'postgresql':
+        cursor.execute('SELECT employee_name FROM employees WHERE employee_id = %s AND password = %s AND is_active = TRUE', 
+                       (employee_id, password))
+    else:
+        cursor.execute('SELECT employee_name FROM employees WHERE employee_id = ? AND password = ? AND is_active = 1', 
+                       (employee_id, password))
+    
     employee = cursor.fetchone()
     conn.close()
     
@@ -220,14 +226,24 @@ def admin_panel():
         return redirect(url_for('index'))
 
     # DB에서 보증보험 매물 리스트 조회 (links 테이블 기준)
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-        FROM links l
-        WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
-        ORDER BY l.id DESC
-    ''')
+    
+    if db_type == 'postgresql':
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            FROM links l
+            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
+            ORDER BY l.id DESC
+        ''')
+    else:
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            FROM links l
+            WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
+            ORDER BY l.id DESC
+        ''')
+    
     guarantee_list = cursor.fetchall()
     conn.close()
 
@@ -240,10 +256,16 @@ def admin_panel():
 def guarantee_delete(id):
     if not session.get('is_admin'):
         return redirect(url_for('index'))
-    conn = sqlite3.connect('/data/integrated.db')
+    
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
+    
     # guarantee_insurance 값을 0으로 변경 (삭제 대신)
-    cursor.execute('UPDATE links SET guarantee_insurance = 0 WHERE id = ?', (id,))
+    if db_type == 'postgresql':
+        cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
+    else:
+        cursor.execute('UPDATE links SET guarantee_insurance = 0 WHERE id = ?', (id,))
+    
     conn.commit()
     conn.close()
     return redirect(url_for('admin_panel'))
@@ -252,10 +274,16 @@ def guarantee_delete(id):
 def guarantee_edit(id):
     if not session.get('is_admin'):
         return redirect(url_for('index'))
+    
     memo = request.form.get('memo', '')
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('UPDATE office_links SET memo = ? WHERE id = ?', (memo, id))
+    
+    if db_type == 'postgresql':
+        cursor.execute('UPDATE office_links SET memo = %s WHERE id = %s', (memo, id))
+    else:
+        cursor.execute('UPDATE office_links SET memo = ? WHERE id = ?', (memo, id))
+    
     conn.commit()
     conn.close()
     return redirect(url_for('admin_panel'))
@@ -265,7 +293,7 @@ def guarantee_edit(id):
 def manage_employees():
     if request.method == 'GET':
         # 직원 목록 조회 (팀 정보 포함)
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
             SELECT id, employee_id, employee_name, team, created_date, is_active 
@@ -283,7 +311,7 @@ def manage_employees():
                 'employee_name': emp[2],
                 'team': emp[3] if emp[3] else '',
                 'created_date': emp[4],
-                'is_active': emp[5]
+                'is_active': bool(emp[5]) if db_type == 'postgresql' else emp[5]
             })
         
         return jsonify(employee_list)
@@ -303,35 +331,60 @@ def manage_employees():
             return jsonify({'success': False, 'message': '팀을 입력해주세요.'})
         
         try:
-            conn = sqlite3.connect('/data/integrated.db')
+            conn, db_type = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO employees (employee_id, employee_name, team, password, created_date)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (employee_id, employee_name, team, password, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            
+            if db_type == 'postgresql':
+                cursor.execute('''
+                    INSERT INTO employees (employee_id, employee_name, team, password, created_date)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', (employee_id, employee_name, team, password, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            else:
+                cursor.execute('''
+                    INSERT INTO employees (employee_id, employee_name, team, password, created_date)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (employee_id, employee_name, team, password, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+            
             conn.commit()
             conn.close()
             
             return jsonify({'success': True})
-        except sqlite3.IntegrityError:
-            return jsonify({'success': False, 'message': '이미 존재하는 직원 아이디입니다.'})
+        except Exception as e:  # PostgreSQL과 SQLite 모두 처리
+            error_msg = str(e)
+            if 'duplicate' in error_msg.lower() or 'unique' in error_msg.lower():
+                return jsonify({'success': False, 'message': '이미 존재하는 직원 아이디입니다.'})
+            else:
+                return jsonify({'success': False, 'message': f'오류: {error_msg}'})
 
 @app.route('/api/employees/<int:emp_id>', methods=['DELETE'])
 def delete_employee(emp_id):
     """직원 삭제 (비활성화)"""
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
+    
     # 직원 id로 employee_id 조회
-    cursor.execute('SELECT employee_id FROM employees WHERE id = ?', (emp_id,))
+    if db_type == 'postgresql':
+        cursor.execute('SELECT employee_id FROM employees WHERE id = %s', (emp_id,))
+    else:
+        cursor.execute('SELECT employee_id FROM employees WHERE id = ?', (emp_id,))
+    
     result = cursor.fetchone()
     if not result:
         conn.close()
         return jsonify({'success': False, 'message': '직원을 찾을 수 없습니다.'})
+    
     employee_id_value = result[0]
+    
     # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=1 → 0으로 변경
-    cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = ? AND guarantee_insurance = 1', (employee_id_value,))
-    # 2. 직원 비활성화
-    cursor.execute('UPDATE employees SET is_active = 0 WHERE id = ?', (emp_id,))
+    if db_type == 'postgresql':
+        cursor.execute('UPDATE office_links SET guarantee_insurance = FALSE WHERE added_by = %s AND guarantee_insurance = TRUE', (employee_id_value,))
+        # 2. 직원 비활성화
+        cursor.execute('UPDATE employees SET is_active = FALSE WHERE id = %s', (emp_id,))
+    else:
+        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = ? AND guarantee_insurance = 1', (employee_id_value,))
+        # 2. 직원 비활성화
+        cursor.execute('UPDATE employees SET is_active = 0 WHERE id = ?', (emp_id,))
+    
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -342,10 +395,13 @@ def reset_employee_password(emp_id):
     data = request.get_json()
     new_password = data.get('new_password', '1234')  # 기본 비밀번호
     
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute('UPDATE employees SET password = ? WHERE id = ?', (new_password, emp_id))
+    if db_type == 'postgresql':
+        cursor.execute('UPDATE employees SET password = %s WHERE id = %s', (new_password, emp_id))
+    else:
+        cursor.execute('UPDATE employees SET password = ? WHERE id = ?', (new_password, emp_id))
     
     if cursor.rowcount == 0:
         conn.close()
@@ -359,15 +415,25 @@ def reset_employee_password(emp_id):
 def hide_links_by_employee(employee_id, db_path='/data/integrated.db'):
     """해당 직원이 등록한 보증보험 매물을 모두 숨김 처리 (ID/문자열 모두 포함)"""
     try:
-        conn = sqlite3.connect(db_path)
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        
         # added_by가 employee_id(숫자) 또는 str(employee_id)(문자열)인 경우 모두 포함
-        cursor.execute("""
-            UPDATE office_links
-            SET is_deleted = 1
-            WHERE guarantee_insurance = 1
-            AND (added_by = ? OR added_by = ?)
-        """, (employee_id, str(employee_id)))
+        if db_type == 'postgresql':
+            cursor.execute("""
+                UPDATE office_links
+                SET is_deleted = TRUE
+                WHERE guarantee_insurance = TRUE
+                AND (added_by = %s OR added_by = %s)
+            """, (employee_id, str(employee_id)))
+        else:
+            cursor.execute("""
+                UPDATE office_links
+                SET is_deleted = 1
+                WHERE guarantee_insurance = 1
+                AND (added_by = ? OR added_by = ?)
+            """, (employee_id, str(employee_id)))
+        
         conn.commit()
         conn.close()
         return True
@@ -378,32 +444,53 @@ def hide_links_by_employee(employee_id, db_path='/data/integrated.db'):
 @app.route('/api/employees/<int:emp_id>/permanent-delete', methods=['DELETE'])
 def permanent_delete_employee(emp_id):
     """직원 완전 삭제 (비활성화된 직원만, 모든 매물 숨김 처리 포함)"""
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT is_active, employee_id FROM employees WHERE id = ?', (emp_id,))
+    
+    if db_type == 'postgresql':
+        cursor.execute('SELECT is_active, employee_id FROM employees WHERE id = %s', (emp_id,))
+    else:
+        cursor.execute('SELECT is_active, employee_id FROM employees WHERE id = ?', (emp_id,))
+    
     result = cursor.fetchone()
     if not result:
         conn.close()
         return jsonify({'success': False, 'message': '직원을 찾을 수 없습니다.'})
-    if result[0] == 1:
+    
+    # PostgreSQL의 경우 boolean 타입 처리
+    is_active = result[0] if db_type == 'sqlite' else bool(result[0])
+    if is_active:
         conn.close()
         return jsonify({'success': False, 'message': '활성 상태인 직원은 완전 삭제할 수 없습니다. 먼저 비활성화해주세요.'})
+    
     employee_id_value = result[1]
 
     # 1. 해당 직원이 등록한 보증보험 링크 id 목록 조회
-    cursor.execute('SELECT id FROM office_links WHERE added_by = ?', (employee_id_value,))
+    if db_type == 'postgresql':
+        cursor.execute('SELECT id FROM office_links WHERE added_by = %s', (employee_id_value,))
+    else:
+        cursor.execute('SELECT id FROM office_links WHERE added_by = ?', (employee_id_value,))
     link_ids = [row[0] for row in cursor.fetchall()]
 
     # 2. guarantee_insurance_log에서 해당 링크 로그 삭제
     for link_id in link_ids:
-        cursor.execute('DELETE FROM guarantee_insurance_log WHERE link_id = ?', (link_id,))
+        if db_type == 'postgresql':
+            cursor.execute('DELETE FROM guarantee_insurance_log WHERE link_id = %s', (link_id,))
+        else:
+            cursor.execute('DELETE FROM guarantee_insurance_log WHERE link_id = ?', (link_id,))
 
-    # 3. office_links 테이블에서 해당 직원의 모든 매물 삭제 (guarantee_insurance=0 포함)
-    cursor.execute('DELETE FROM office_links WHERE added_by = ?', (employee_id_value,))
-
-    # 기존 고객/직원 삭제
-    cursor.execute('DELETE FROM employee_customers WHERE employee_id = ?', (employee_id_value,))
-    cursor.execute('DELETE FROM employees WHERE id = ?', (emp_id,))
+    # 3. office_links 테이블에서 해당 직원의 모든 매물 삭제
+    if db_type == 'postgresql':
+        cursor.execute('DELETE FROM office_links WHERE added_by = %s', (employee_id_value,))
+        # 기존 고객/직원 삭제
+        cursor.execute('DELETE FROM employee_customers WHERE employee_id = %s', (employee_id_value,))
+        cursor.execute('DELETE FROM employees WHERE id = %s', (emp_id,))
+    else:
+        cursor.execute('DELETE FROM office_links WHERE added_by = ?', (employee_id_value,))
+        # 기존 고객/직원 삭제
+        cursor.execute('DELETE FROM employee_customers WHERE employee_id = ?', (employee_id_value,))
+        cursor.execute('DELETE FROM employees WHERE id = ?', (emp_id,))
+    
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': '직원이 완전히 삭제(숨김) 처리되었고, 해당 직원의 모든 매물도 삭제되었습니다.'})
@@ -411,10 +498,13 @@ def permanent_delete_employee(emp_id):
 @app.route('/api/employees/<int:emp_id>/activate', methods=['PUT'])
 def activate_employee(emp_id):
     """직원 활성화"""
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute('UPDATE employees SET is_active = 1 WHERE id = ?', (emp_id,))
+    if db_type == 'postgresql':
+        cursor.execute('UPDATE employees SET is_active = TRUE WHERE id = %s', (emp_id,))
+    else:
+        cursor.execute('UPDATE employees SET is_active = 1 WHERE id = ?', (emp_id,))
     
     if cursor.rowcount == 0:
         conn.close()
@@ -440,18 +530,28 @@ def manage_customers():
     
     if request.method == 'GET':
         # 해당 직원의 고객 목록 조회
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
         if employee_id:  # 직원인 경우
-            cursor.execute('''
-                SELECT id, management_site_id, customer_name, phone, inquiry_date, 
-                       move_in_date, amount, room_count, location, loan_info, parking, 
-                       pets, progress_status, memo, employee_id
-                FROM employee_customers 
-                WHERE employee_id = ?
-                ORDER BY inquiry_date DESC
-            ''', (employee_id,))
+            if db_type == 'postgresql':
+                cursor.execute('''
+                    SELECT id, management_site_id, customer_name, phone, inquiry_date, 
+                           move_in_date, amount, room_count, location, loan_info, parking, 
+                           pets, progress_status, memo, employee_id
+                    FROM employee_customers 
+                    WHERE employee_id = %s
+                    ORDER BY inquiry_date DESC
+                ''', (employee_id,))
+            else:
+                cursor.execute('''
+                    SELECT id, management_site_id, customer_name, phone, inquiry_date, 
+                           move_in_date, amount, room_count, location, loan_info, parking, 
+                           pets, progress_status, memo, employee_id
+                    FROM employee_customers 
+                    WHERE employee_id = ?
+                    ORDER BY inquiry_date DESC
+                ''', (employee_id,))
         else:  # 관리자인 경우 모든 고객 조회
             cursor.execute('''
                 SELECT id, management_site_id, customer_name, phone, inquiry_date, 
@@ -507,21 +607,38 @@ def manage_customers():
             add_employee_id = employee_id
         
         try:
-            conn = sqlite3.connect('/data/integrated.db')
+            conn, db_type = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO employee_customers (
-                    employee_id, management_site_id, customer_name, phone, inquiry_date,
-                    move_in_date, amount, room_count, location, loan_info, parking, pets,
-                    progress_status, memo, created_date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
-                data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
-                data.get('room_count'), data.get('location'), data.get('loan_info'),
-                data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
-                data.get('memo'), datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            ))
+            
+            if db_type == 'postgresql':
+                cursor.execute('''
+                    INSERT INTO employee_customers (
+                        employee_id, management_site_id, customer_name, phone, inquiry_date,
+                        move_in_date, amount, room_count, location, loan_info, parking, pets,
+                        progress_status, memo, created_date
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
+                    data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
+                    data.get('room_count'), data.get('location'), data.get('loan_info'),
+                    data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
+                    data.get('memo'), datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                ))
+            else:
+                cursor.execute('''
+                    INSERT INTO employee_customers (
+                        employee_id, management_site_id, customer_name, phone, inquiry_date,
+                        move_in_date, amount, room_count, location, loan_info, parking, pets,
+                        progress_status, memo, created_date
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
+                    data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
+                    data.get('room_count'), data.get('location'), data.get('loan_info'),
+                    data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
+                    data.get('memo'), datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                ))
+            
             conn.commit()
             conn.close()
             
@@ -541,31 +658,51 @@ def update_delete_customer(customer_id):
         # 고객 정보 수정
         data = request.get_json()
         
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
         # 관리자는 모든 고객 수정 가능, 직원은 자신의 고객만
         if is_admin:
-            cursor.execute('SELECT id FROM employee_customers WHERE id = ?', (customer_id,))
+            if db_type == 'postgresql':
+                cursor.execute('SELECT id FROM employee_customers WHERE id = %s', (customer_id,))
+            else:
+                cursor.execute('SELECT id FROM employee_customers WHERE id = ?', (customer_id,))
         else:
-            cursor.execute('SELECT id FROM employee_customers WHERE id = ? AND employee_id = ?', 
-                          (customer_id, employee_id))
+            if db_type == 'postgresql':
+                cursor.execute('SELECT id FROM employee_customers WHERE id = %s AND employee_id = %s', 
+                              (customer_id, employee_id))
+            else:
+                cursor.execute('SELECT id FROM employee_customers WHERE id = ? AND employee_id = ?', 
+                              (customer_id, employee_id))
         if not cursor.fetchone():
             conn.close()
             return jsonify({'success': False, 'message': '권한이 없습니다.'})
         
         # 정보 업데이트
-        cursor.execute('''
-            UPDATE employee_customers SET
-                customer_name = ?, phone = ?, inquiry_date = ?, move_in_date = ?,
-                amount = ?, room_count = ?, location = ?, progress_status = ?, memo = ?
-            WHERE id = ? AND employee_id = ?
-        ''', (
-            data.get('customer_name'), data.get('phone'), data.get('inquiry_date'),
-            data.get('move_in_date'), data.get('amount'), data.get('room_count'),
-            data.get('location'), data.get('progress_status'), data.get('memo'),
-            customer_id, employee_id
-        ))
+        if db_type == 'postgresql':
+            cursor.execute('''
+                UPDATE employee_customers SET
+                    customer_name = %s, phone = %s, inquiry_date = %s, move_in_date = %s,
+                    amount = %s, room_count = %s, location = %s, progress_status = %s, memo = %s
+                WHERE id = %s AND employee_id = %s
+            ''', (
+                data.get('customer_name'), data.get('phone'), data.get('inquiry_date'),
+                data.get('move_in_date'), data.get('amount'), data.get('room_count'),
+                data.get('location'), data.get('progress_status'), data.get('memo'),
+                customer_id, employee_id
+            ))
+        else:
+            cursor.execute('''
+                UPDATE employee_customers SET
+                    customer_name = ?, phone = ?, inquiry_date = ?, move_in_date = ?,
+                    amount = ?, room_count = ?, location = ?, progress_status = ?, memo = ?
+                WHERE id = ? AND employee_id = ?
+            ''', (
+                data.get('customer_name'), data.get('phone'), data.get('inquiry_date'),
+                data.get('move_in_date'), data.get('amount'), data.get('room_count'),
+                data.get('location'), data.get('progress_status'), data.get('memo'),
+                customer_id, employee_id
+            ))
         
         conn.commit()
         conn.close()
@@ -574,12 +711,16 @@ def update_delete_customer(customer_id):
     
     elif request.method == 'DELETE':
         # 고객 삭제
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
         # management_site_id 조회
-        cursor.execute('SELECT management_site_id FROM employee_customers WHERE id = ? AND employee_id = ?', 
-                      (customer_id, employee_id))
+        if db_type == 'postgresql':
+            cursor.execute('SELECT management_site_id FROM employee_customers WHERE id = %s AND employee_id = %s', 
+                          (customer_id, employee_id))
+        else:
+            cursor.execute('SELECT management_site_id FROM employee_customers WHERE id = ? AND employee_id = ?', 
+                          (customer_id, employee_id))
         result = cursor.fetchone()
         
         if not result:
@@ -589,8 +730,12 @@ def update_delete_customer(customer_id):
         management_site_id = result[0]
         
         # 고객 삭제
-        cursor.execute('DELETE FROM employee_customers WHERE id = ? AND employee_id = ?', 
-                      (customer_id, employee_id))
+        if db_type == 'postgresql':
+            cursor.execute('DELETE FROM employee_customers WHERE id = %s AND employee_id = %s', 
+                          (customer_id, employee_id))
+        else:
+            cursor.execute('DELETE FROM employee_customers WHERE id = ? AND employee_id = ?', 
+                          (customer_id, employee_id))
         conn.commit()
         conn.close()
         
@@ -610,14 +755,20 @@ def update_customer_memo(customer_id):
     data = request.get_json()
     memo = data.get('memo', '')
     
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
     # 해당 직원의 고객인지 확인하고 메모 업데이트
-    cursor.execute('''
-        UPDATE employee_customers SET memo = ?
-        WHERE id = ? AND employee_id = ?
-    ''', (memo, customer_id, employee_id))
+    if db_type == 'postgresql':
+        cursor.execute('''
+            UPDATE employee_customers SET memo = %s
+            WHERE id = %s AND employee_id = %s
+        ''', (memo, customer_id, employee_id))
+    else:
+        cursor.execute('''
+            UPDATE employee_customers SET memo = ?
+            WHERE id = ? AND employee_id = ?
+        ''', (memo, customer_id, employee_id))
     
     if cursor.rowcount == 0:
         conn.close()
@@ -638,15 +789,22 @@ def update_customer_field(customer_id):
     employee_id = session.get('employee_id')
     data = request.get_json()
     
-    conn = sqlite3.connect('/data/integrated.db')
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
     # 관리자는 모든 고객 수정 가능, 직원은 자신의 고객만
     if is_admin:
-        cursor.execute('SELECT * FROM employee_customers WHERE id = ?', (customer_id,))
+        if db_type == 'postgresql':
+            cursor.execute('SELECT * FROM employee_customers WHERE id = %s', (customer_id,))
+        else:
+            cursor.execute('SELECT * FROM employee_customers WHERE id = ?', (customer_id,))
     else:
-        cursor.execute('SELECT * FROM employee_customers WHERE id = ? AND employee_id = ?', 
-                      (customer_id, employee_id))
+        if db_type == 'postgresql':
+            cursor.execute('SELECT * FROM employee_customers WHERE id = %s AND employee_id = %s', 
+                          (customer_id, employee_id))
+        else:
+            cursor.execute('SELECT * FROM employee_customers WHERE id = ? AND employee_id = ?', 
+                          (customer_id, employee_id))
     customer = cursor.fetchone()
     
     if not customer:
@@ -673,11 +831,23 @@ def update_customer_field(customer_id):
     
     # 업데이트 쿼리 실행
     update_values.extend([customer_id, employee_id])
-    query = f'''
-        UPDATE employee_customers 
-        SET {', '.join(update_fields)}
-        WHERE id = ? AND employee_id = ?
-    '''
+    
+    if db_type == 'postgresql':
+        # PostgreSQL용 쿼리 (파라미터를 %s로 변경)
+        postgresql_fields = []
+        for field in update_fields:
+            postgresql_fields.append(field.replace('?', '%s'))
+        query = f'''
+            UPDATE employee_customers 
+            SET {', '.join(postgresql_fields)}
+            WHERE id = %s AND employee_id = %s
+        '''
+    else:
+        query = f'''
+            UPDATE employee_customers 
+            SET {', '.join(update_fields)}
+            WHERE id = ? AND employee_id = ?
+        '''
     
     cursor.execute(query, update_values)
     conn.commit()
@@ -747,15 +917,22 @@ def delete_customer_links_from_property_db(management_site_id):
         return False
 
 def get_unchecked_likes_count(management_site_id, db_path, mode='residence'):
-    conn = sqlite3.connect(db_path)
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
+    
     if mode == 'residence':
         # 주거용: links 테이블만 카운트
-        cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
+        if db_type == 'postgresql':
+            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
+        else:
+            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
         count = cursor.fetchone()[0]
     elif mode == 'work':
         # 업무용: office_links의 unchecked_likes_work만 카운트
-        cursor.execute('SELECT SUM(unchecked_likes_work) FROM office_links WHERE management_site_id = ?', (management_site_id,))
+        if db_type == 'postgresql':
+            cursor.execute('SELECT SUM(unchecked_likes_work) FROM office_links WHERE management_site_id = %s', (management_site_id,))
+        else:
+            cursor.execute('SELECT SUM(unchecked_likes_work) FROM office_links WHERE management_site_id = ?', (management_site_id,))
         result = cursor.fetchone()[0]
         count = result if result is not None else 0
     else:
@@ -820,14 +997,19 @@ def force_init_db():
         init_admin_db()
         
         # 테이블 존재 확인
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        
+        if db_type == 'postgresql':
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+        else:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        
         tables = cursor.fetchall()
         conn.close()
         
         return f"""
-        <h2>✅ DB 초기화 성공!</h2>
+        <h2>✅ DB 초기화 성공! (DB 타입: {db_type})</h2>
         <h3>생성된 테이블:</h3>
         <ul>
         {''.join([f'<li>{table[0]}</li>' for table in tables])}
@@ -841,14 +1023,18 @@ def force_init_db():
 def debug_db_status():
     """DB 상태 상세 확인용 디버깅 엔드포인트"""
     try:
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
         debug_info = "<html><head><title>DB 상태 디버깅</title></head><body>"
-        debug_info += "<h1>🔍 DB 상태 디버깅 정보</h1>"
+        debug_info += f"<h1>🔍 DB 상태 디버깅 정보 (DB 타입: {db_type})</h1>"
         
         # 1. 테이블 목록
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        if db_type == 'postgresql':
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+        else:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        
         tables = cursor.fetchall()
         debug_info += f"<h2>📊 테이블 목록</h2><ul>"
         for table in tables:
@@ -910,7 +1096,7 @@ def debug_db_status():
 def insert_test_data():
     """테스트용 직원과 고객 데이터 직접 삽입"""
     try:
-        conn = sqlite3.connect('/data/integrated.db')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
         # 1. 테스트 직원 삽입
@@ -918,10 +1104,17 @@ def insert_test_data():
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         try:
-            cursor.execute('''
-                INSERT OR IGNORE INTO employees (employee_id, employee_name, team, password, created_date, is_active)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', ('admin', '관리자', '관리팀', 'admin123', current_date, 1))
+            if db_type == 'postgresql':
+                cursor.execute('''
+                    INSERT INTO employees (employee_id, employee_name, team, password, created_date, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (employee_id) DO NOTHING
+                ''', ('admin', '관리자', '관리팀', 'admin123', current_date, True))
+            else:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO employees (employee_id, employee_name, team, password, created_date, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', ('admin', '관리자', '관리팀', 'admin123', current_date, 1))
             print("✅ 테스트 직원 삽입 완료")
         except Exception as e:
             print(f"직원 삽입 오류: {e}")
@@ -931,13 +1124,22 @@ def insert_test_data():
         test_management_id = str(uuid.uuid4())[:8]  # 8자리 ID 생성
         
         try:
-            cursor.execute('''
-                INSERT INTO employee_customers 
-                (employee_id, management_site_id, customer_name, phone, inquiry_date, move_in_date, 
-                 amount, room_count, location, progress_status, memo, created_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('admin', test_management_id, '테스트 고객', '010-1234-5678', current_date, 
-                  '2024-12-31', '5억원', '3룸', '서울시 강남구', '진행중', '테스트용 고객입니다', current_date))
+            if db_type == 'postgresql':
+                cursor.execute('''
+                    INSERT INTO employee_customers 
+                    (employee_id, management_site_id, customer_name, phone, inquiry_date, move_in_date, 
+                     amount, room_count, location, progress_status, memo, created_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', ('admin', test_management_id, '테스트 고객', '010-1234-5678', current_date, 
+                      '2024-12-31', '5억원', '3룸', '서울시 강남구', '진행중', '테스트용 고객입니다', current_date))
+            else:
+                cursor.execute('''
+                    INSERT INTO employee_customers 
+                    (employee_id, management_site_id, customer_name, phone, inquiry_date, move_in_date, 
+                     amount, room_count, location, progress_status, memo, created_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', ('admin', test_management_id, '테스트 고객', '010-1234-5678', current_date, 
+                      '2024-12-31', '5억원', '3룸', '서울시 강남구', '진행중', '테스트용 고객입니다', current_date))
             print(f"✅ 테스트 고객 삽입 완료 - ID: {test_management_id}")
         except Exception as e:
             print(f"고객 삽입 오류: {e}")
@@ -968,18 +1170,29 @@ def get_guarantee_list():
     """보증보험이 가능한 매물 리스트 반환 (관리자+직원용, 숨김 처리 반영)"""
     if not (session.get('is_admin') or session.get('employee_id')):
         return jsonify({'error': 'Unauthorized'}), 401
-    conn = sqlite3.connect('/data/integrated.db')
-    print('실제 연결된 DB 경로:', '/data/integrated.db')
+    
+    conn, db_type = get_db_connection()
     cursor = conn.cursor()
+    
     # links 테이블에서 guarantee_insurance=1, is_deleted=0인 링크만 조회, 최신순
-    cursor.execute('''
-        SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.rating, l.liked, l.disliked, l.memo, l.management_site_id
-        FROM links l
-        WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
-        ORDER BY l.id DESC
-    ''')
+    if db_type == 'postgresql':
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.rating, l.liked, l.disliked, l.memo, l.management_site_id
+            FROM links l
+            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
+            ORDER BY l.id DESC
+        ''')
+    else:
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.rating, l.liked, l.disliked, l.memo, l.management_site_id
+            FROM links l
+            WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
+            ORDER BY l.id DESC
+        ''')
+    
     rows = cursor.fetchall()
     conn.close()
+    
     # 번호는 최신순으로 1부터
     result = []
     for idx, row in enumerate(rows):

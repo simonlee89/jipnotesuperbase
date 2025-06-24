@@ -44,62 +44,183 @@ def get_db_connection():
 def init_database():
     """
     데이터베이스 테이블을 초기화합니다.
+    관리자페이지와 동일한 구조로 생성합니다.
     """
     try:
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
         if db_type == 'postgresql':
-            # PostgreSQL용 테이블 생성
+            # PostgreSQL용 테이블 생성 (관리자페이지 구조와 동일)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id SERIAL PRIMARY KEY,
-                    name VARCHAR(100) NOT NULL,
-                    email VARCHAR(100) UNIQUE NOT NULL,
-                    department VARCHAR(100),
-                    position VARCHAR(100),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    employee_id VARCHAR(100) UNIQUE NOT NULL,
+                    employee_name VARCHAR(100) NOT NULL,
+                    team VARCHAR(100) NOT NULL,
+                    password VARCHAR(100) NOT NULL,
+                    created_date TIMESTAMP NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE
                 )
             ''')
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employee_customers (
                     id SERIAL PRIMARY KEY,
-                    employee_id INTEGER REFERENCES employees(id),
+                    employee_id VARCHAR(100) NOT NULL,
                     management_site_id VARCHAR(50) UNIQUE NOT NULL,
-                    customer_name VARCHAR(200) NOT NULL,
-                    customer_type VARCHAR(50) DEFAULT 'general',
-                    site_url VARCHAR(500),
-                    residence_extra TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    customer_name VARCHAR(200),
+                    phone VARCHAR(50),
+                    inquiry_date VARCHAR(50),
+                    move_in_date VARCHAR(50),
+                    amount VARCHAR(100),
+                    room_count VARCHAR(50),
+                    location VARCHAR(200),
+                    loan_info TEXT,
+                    parking VARCHAR(50),
+                    pets VARCHAR(50),
+                    progress_status VARCHAR(50) DEFAULT '진행중',
+                    memo TEXT,
+                    created_date TIMESTAMP NOT NULL
                 )
             ''')
+            
+            # 추가 테이블들
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS links (
+                    id SERIAL PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    platform VARCHAR(50),
+                    added_by VARCHAR(100),
+                    date_added VARCHAR(50),
+                    rating INTEGER DEFAULT 0,
+                    liked BOOLEAN DEFAULT FALSE,
+                    disliked BOOLEAN DEFAULT FALSE,
+                    memo TEXT,
+                    management_site_id VARCHAR(50),
+                    guarantee_insurance BOOLEAN DEFAULT FALSE,
+                    is_deleted BOOLEAN DEFAULT FALSE,
+                    is_checked BOOLEAN DEFAULT FALSE
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS office_links (
+                    id SERIAL PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    platform VARCHAR(50) NOT NULL,
+                    added_by VARCHAR(100) NOT NULL,
+                    date_added VARCHAR(50) NOT NULL,
+                    rating INTEGER DEFAULT 5,
+                    liked BOOLEAN DEFAULT FALSE,
+                    disliked BOOLEAN DEFAULT FALSE,
+                    memo TEXT DEFAULT '',
+                    customer_name VARCHAR(100) DEFAULT '000',
+                    move_in_date VARCHAR(50) DEFAULT '',
+                    management_site_id VARCHAR(50) DEFAULT NULL,
+                    guarantee_insurance BOOLEAN DEFAULT FALSE,
+                    is_checked BOOLEAN DEFAULT FALSE,
+                    unchecked_likes_work INTEGER DEFAULT 0,
+                    is_deleted BOOLEAN DEFAULT FALSE
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
+                    id SERIAL PRIMARY KEY,
+                    link_id INTEGER,
+                    management_site_id VARCHAR(50),
+                    employee_id VARCHAR(50),
+                    action VARCHAR(100),
+                    timestamp TIMESTAMP
+                )
+            ''')
+            
         else:
-            # SQLite용 테이블 생성 (기존 코드)
+            # SQLite용 테이블 생성 (관리자페이지 구조와 동일)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    department TEXT,
-                    position TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    employee_id TEXT UNIQUE NOT NULL,
+                    employee_name TEXT NOT NULL,
+                    team TEXT NOT NULL,
+                    password TEXT NOT NULL,
+                    created_date TEXT NOT NULL,
+                    is_active INTEGER DEFAULT 1
                 )
             ''')
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employee_customers (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    employee_id INTEGER,
+                    employee_id TEXT NOT NULL,
                     management_site_id TEXT UNIQUE NOT NULL,
-                    customer_name TEXT NOT NULL,
-                    customer_type TEXT DEFAULT 'general',
-                    site_url TEXT,
-                    residence_extra TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (employee_id) REFERENCES employees (id)
+                    customer_name TEXT,
+                    phone TEXT,
+                    inquiry_date TEXT,
+                    move_in_date TEXT,
+                    amount TEXT,
+                    room_count TEXT,
+                    location TEXT,
+                    loan_info TEXT,
+                    parking TEXT,
+                    pets TEXT,
+                    progress_status TEXT DEFAULT '진행중',
+                    memo TEXT,
+                    created_date TEXT NOT NULL,
+                    FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
+                )
+            ''')
+            
+            # 추가 테이블들
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,
+                    platform TEXT,
+                    added_by TEXT,
+                    date_added TEXT,
+                    rating INTEGER DEFAULT 0,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT,
+                    management_site_id TEXT,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS office_links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    added_by TEXT NOT NULL,
+                    date_added TEXT NOT NULL,
+                    rating INTEGER DEFAULT 5,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT DEFAULT '',
+                    customer_name TEXT DEFAULT '000',
+                    move_in_date TEXT DEFAULT '',
+                    management_site_id TEXT DEFAULT NULL,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0,
+                    unchecked_likes_work INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    link_id INTEGER,
+                    management_site_id TEXT,
+                    employee_id TEXT,
+                    action TEXT,
+                    timestamp TEXT,
+                    FOREIGN KEY (link_id) REFERENCES office_links (id)
                 )
             ''')
         
@@ -164,16 +285,16 @@ def get_customer_info(management_site_id):
         
         if db_type == 'postgresql':
             query = '''
-                SELECT ec.*, e.name as employee_name, e.email as employee_email
+                SELECT ec.*, e.employee_name, e.team
                 FROM employee_customers ec
-                LEFT JOIN employees e ON ec.employee_id = e.id
+                LEFT JOIN employees e ON ec.employee_id = e.employee_id
                 WHERE ec.management_site_id = %s
             '''
         else:
             query = '''
-                SELECT ec.*, e.name as employee_name, e.email as employee_email
+                SELECT ec.*, e.employee_name, e.team
                 FROM employee_customers ec
-                LEFT JOIN employees e ON ec.employee_id = e.id
+                LEFT JOIN employees e ON ec.employee_id = e.employee_id
                 WHERE ec.management_site_id = ?
             '''
         
