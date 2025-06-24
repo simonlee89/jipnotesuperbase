@@ -12,7 +12,108 @@ try:
 except ImportError:
     PSYCOPG2_AVAILABLE = False
 
-app = Flask(__name__)
+# 데이터베이스 초기화
+def init_db():
+    print("=== 업무용 DB 초기화 시작 ===")
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        print(f"업무용 DB 연결 성공 - 타입: {db_type}")
+        
+        # 기존 테이블에 보증보험 칼럼이 없으면 추가
+        try:
+            if db_type == 'postgresql':
+                cursor.execute("ALTER TABLE office_links ADD COLUMN IF NOT EXISTS guarantee_insurance BOOLEAN DEFAULT FALSE")
+                cursor.execute("ALTER TABLE office_links ADD COLUMN IF NOT EXISTS is_checked BOOLEAN DEFAULT FALSE")
+            else:
+                cursor.execute("PRAGMA table_info(office_links)")
+                columns = [row[1] for row in cursor.fetchall()]
+                if 'guarantee_insurance' not in columns:
+                    cursor.execute("ALTER TABLE office_links ADD COLUMN guarantee_insurance BOOLEAN DEFAULT 0")
+                if 'is_checked' not in columns:
+                    cursor.execute("ALTER TABLE office_links ADD COLUMN is_checked INTEGER DEFAULT 0")
+            conn.commit()
+        except Exception as e:
+            print(f"칼럼 추가 중 오류 (무시 가능): {e}")
+            conn.rollback()
+        
+        if db_type == 'postgresql':
+            # PostgreSQL용 테이블 생성
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS office_links (
+                    id SERIAL PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    added_by TEXT NOT NULL,
+                    date_added TEXT NOT NULL,
+                    rating INTEGER DEFAULT 5,
+                    liked BOOLEAN DEFAULT FALSE,
+                    disliked BOOLEAN DEFAULT FALSE,
+                    memo TEXT DEFAULT '',
+                    customer_name TEXT DEFAULT '000',
+                    move_in_date TEXT DEFAULT '',
+                    management_site_id TEXT DEFAULT NULL,
+                    guarantee_insurance BOOLEAN DEFAULT FALSE,
+                    is_checked BOOLEAN DEFAULT FALSE
+                )
+            ''')
+            print("PostgreSQL office_links 테이블 생성 완료")
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS customer_info (
+                    id INTEGER PRIMARY KEY,
+                    customer_name TEXT DEFAULT '000',
+                    move_in_date TEXT DEFAULT ''
+                )
+            ''')
+            print("PostgreSQL customer_info 테이블 생성 완료")
+            
+            # 기본 고객 정보 삽입 (ON CONFLICT로 중복 방지)
+            cursor.execute('''
+                INSERT INTO customer_info (id, customer_name, move_in_date) 
+                VALUES (1, '프리미엄 업무공간 파트너', '') 
+                ON CONFLICT (id) DO NOTHING
+            ''')
+        else:
+            # SQLite용 테이블 생성 (기존 코드)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS office_links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,
+                    platform TEXT NOT NULL,
+                    added_by TEXT NOT NULL,
+                    date_added TEXT NOT NULL,
+                    rating INTEGER DEFAULT 5,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT DEFAULT '',
+                    customer_name TEXT DEFAULT '000',
+                    move_in_date TEXT DEFAULT '',
+                    management_site_id TEXT DEFAULT NULL,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0
+                )
+            ''')
+            print("SQLite office_links 테이블 생성 완료")
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS customer_info (
+                    id INTEGER PRIMARY KEY,
+                    customer_name TEXT DEFAULT '000',
+                    move_in_date TEXT DEFAULT ''
+                )
+            ''')
+            print("SQLite customer_info 테이블 생성 완료")
+            
+            cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "프리미엄 업무공간 파트너", "")')
+        
+        conn.commit()
+        conn.close()
+        print("=== 업무용 DB 초기화 완료 ===")
+        
+    except Exception as e:
+        print(f"=== 업무용 DB 초기화 실패: {e} ===")
+        raise
 
 # 데이터베이스 연결 함수
 def get_db_connection():
@@ -25,6 +126,11 @@ def get_db_connection():
         # SQLite 연결 (업무용 전용)
         conn = sqlite3.connect('/data/integrated.db')
         return conn, 'sqlite'
+
+app = Flask(__name__)
+
+# Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
+init_db()
 
 # 고객 정보 조회 함수 (새로 추가)
 def get_customer_info(management_site_id):
@@ -57,97 +163,6 @@ def get_customer_info(management_site_id):
 
     print(f"[DEBUG] 고객 정보를 찾을 수 없음: {management_site_id}")
     return None, '', False
-
-# 데이터베이스 초기화
-def init_db():
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
-    # 기존 테이블에 보증보험 칼럼이 없으면 추가
-    try:
-        if db_type == 'postgresql':
-            cursor.execute("ALTER TABLE office_links ADD COLUMN IF NOT EXISTS guarantee_insurance BOOLEAN DEFAULT FALSE")
-            cursor.execute("ALTER TABLE office_links ADD COLUMN IF NOT EXISTS is_checked BOOLEAN DEFAULT FALSE")
-        else:
-            cursor.execute("PRAGMA table_info(office_links)")
-            columns = [row[1] for row in cursor.fetchall()]
-            if 'guarantee_insurance' not in columns:
-                cursor.execute("ALTER TABLE office_links ADD COLUMN guarantee_insurance BOOLEAN DEFAULT 0")
-            if 'is_checked' not in columns:
-                cursor.execute("ALTER TABLE office_links ADD COLUMN is_checked INTEGER DEFAULT 0")
-        conn.commit()
-    except Exception as e:
-        print(f"칼럼 추가 중 오류 (무시 가능): {e}")
-        conn.rollback()
-    
-    if db_type == 'postgresql':
-        # PostgreSQL용 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS office_links (
-                id SERIAL PRIMARY KEY,
-                url TEXT NOT NULL,
-                platform TEXT NOT NULL,
-                added_by TEXT NOT NULL,
-                date_added TEXT NOT NULL,
-                rating INTEGER DEFAULT 5,
-                liked BOOLEAN DEFAULT FALSE,
-                disliked BOOLEAN DEFAULT FALSE,
-                memo TEXT DEFAULT '',
-                customer_name TEXT DEFAULT '000',
-                move_in_date TEXT DEFAULT '',
-                management_site_id TEXT DEFAULT NULL,
-                guarantee_insurance BOOLEAN DEFAULT FALSE,
-                is_checked BOOLEAN DEFAULT FALSE
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS customer_info (
-                id INTEGER PRIMARY KEY,
-                customer_name TEXT DEFAULT '000',
-                move_in_date TEXT DEFAULT ''
-            )
-        ''')
-        
-        # 기본 고객 정보 삽입 (ON CONFLICT로 중복 방지)
-        cursor.execute('''
-            INSERT INTO customer_info (id, customer_name, move_in_date) 
-            VALUES (1, '프리미엄 업무공간 파트너', '') 
-            ON CONFLICT (id) DO NOTHING
-        ''')
-    else:
-        # SQLite용 테이블 생성 (기존 코드)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS office_links (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT NOT NULL,
-                platform TEXT NOT NULL,
-                added_by TEXT NOT NULL,
-                date_added TEXT NOT NULL,
-                rating INTEGER DEFAULT 5,
-                liked INTEGER DEFAULT 0,
-                disliked INTEGER DEFAULT 0,
-                memo TEXT DEFAULT '',
-                customer_name TEXT DEFAULT '000',
-                move_in_date TEXT DEFAULT '',
-                management_site_id TEXT DEFAULT NULL,
-                guarantee_insurance INTEGER DEFAULT 0,
-                is_checked INTEGER DEFAULT 0
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS customer_info (
-                id INTEGER PRIMARY KEY,
-                customer_name TEXT DEFAULT '000',
-                move_in_date TEXT DEFAULT ''
-            )
-        ''')
-        
-        cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "프리미엄 업무공간 파트너", "")')
-    
-    conn.commit()
-    conn.close()
 
 @app.route('/')
 def index():
@@ -644,6 +659,5 @@ def guarantee_insurance_reset():
         return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
-    init_db()
     port = int(os.environ.get('PORT', 5001))
     app.run(debug=False, host='0.0.0.0', port=port) 

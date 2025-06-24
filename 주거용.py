@@ -4,12 +4,78 @@ from datetime import datetime
 import os
 import json
 
-app = Flask(__name__)
+# 데이터베이스 초기화 (integrated.db만)
+def init_db():
+    print("=== 주거용 DB 초기화 시작 ===")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        print("주거용 DB 연결 성공: /data/integrated.db")
+        
+        # links 테이블 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url TEXT NOT NULL,
+                platform TEXT NOT NULL,
+                added_by TEXT NOT NULL,
+                date_added TEXT NOT NULL,
+                rating INTEGER DEFAULT 5,
+                liked INTEGER DEFAULT 0,
+                disliked INTEGER DEFAULT 0,
+                memo TEXT DEFAULT '',
+                customer_name TEXT DEFAULT '000',
+                move_in_date TEXT DEFAULT '',
+                management_site_id TEXT DEFAULT NULL,
+                guarantee_insurance INTEGER DEFAULT 0,
+                is_checked INTEGER DEFAULT 0,
+                is_deleted INTEGER DEFAULT 0,
+                residence_extra TEXT DEFAULT ''
+            )
+        ''')
+        print("links 테이블 생성 완료")
+        
+        # customer_info 테이블 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS customer_info (
+                id INTEGER PRIMARY KEY,
+                customer_name TEXT DEFAULT '000',
+                move_in_date TEXT DEFAULT ''
+            )
+        ''')
+        print("customer_info 테이블 생성 완료")
+        
+        # guarantee_insurance_log 테이블 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                management_site_id TEXT,
+                link_id INTEGER,
+                click_time TEXT,
+                user_ip TEXT
+            )
+        ''')
+        print("guarantee_insurance_log 테이블 생성 완료")
+        
+        # 기본 고객 정보 삽입
+        cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "제일좋은집 찾아드릴분", "")')
+        conn.commit()
+        conn.close()
+        print("=== 주거용 DB 초기화 완료 ===")
+        
+    except Exception as e:
+        print(f"=== 주거용 DB 초기화 실패: {e} ===")
+        raise
 
 # 데이터베이스 연결 함수 (integrated.db만 사용)
 def get_db_connection():
     conn = sqlite3.connect('/data/integrated.db')
     return conn
+
+app = Flask(__name__)
+
+# Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
+init_db()
 
 # 고객 정보 조회 함수 (integrated.db만 사용)
 def get_customer_info(management_site_id):
@@ -36,54 +102,6 @@ def get_customer_info(management_site_id):
         print(f"integrated.db 조회 실패: {e}")
     print(f"[DEBUG] 고객 정보를 찾을 수 없음: {management_site_id}")
     return None, '', False
-
-# 데이터베이스 초기화 (integrated.db만)
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    # links 테이블 생성
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url TEXT NOT NULL,
-            platform TEXT NOT NULL,
-            added_by TEXT NOT NULL,
-            date_added TEXT NOT NULL,
-            rating INTEGER DEFAULT 5,
-            liked INTEGER DEFAULT 0,
-            disliked INTEGER DEFAULT 0,
-            memo TEXT DEFAULT '',
-            customer_name TEXT DEFAULT '000',
-            move_in_date TEXT DEFAULT '',
-            management_site_id TEXT DEFAULT NULL,
-            guarantee_insurance INTEGER DEFAULT 0,
-            is_checked INTEGER DEFAULT 0,
-            is_deleted INTEGER DEFAULT 0,
-            residence_extra TEXT DEFAULT ''
-        )
-    ''')
-    # customer_info 테이블 생성
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS customer_info (
-            id INTEGER PRIMARY KEY,
-            customer_name TEXT DEFAULT '000',
-            move_in_date TEXT DEFAULT ''
-        )
-    ''')
-    # guarantee_insurance_log 테이블 생성
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            management_site_id TEXT,
-            link_id INTEGER,
-            click_time TEXT,
-            user_ip TEXT
-        )
-    ''')
-    # 기본 고객 정보 삽입
-    cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "제일좋은집 찾아드릴분", "")')
-    conn.commit()
-    conn.close()
 
 @app.route('/')
 def index():
@@ -415,7 +433,6 @@ def auto_expire_guarantee_insurance():
         print(f"만료된 보증보험 {affected}건 자동 해제 완료")
 
 if __name__ == '__main__':
-    init_db()
     auto_expire_guarantee_insurance()
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port) 
