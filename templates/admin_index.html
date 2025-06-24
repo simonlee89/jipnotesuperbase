@@ -590,7 +590,7 @@
                 <td class="editable-cell" data-field="pets" data-type="text" onclick="editCell(this)">${customer.pets || '-'}</td>
                 <td class="memo-cell" onclick="openMemoModal(${customer.id}, '${(customer.memo || '').replace(/'/g, "\\'")}')" title="${customer.memo || ''}">${memoDisplay}</td>
                 <td class="editable-cell" data-field="progress_status" data-type="select" onclick="editCell(this)"><span class="status-badge ${statusClass}">${customer.progress_status}</span></td>
-                                            <td><a href="http://localhost:5000/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a></td>
+                                            <td><a href="https://web-production-d2f49.up.railway.app/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a></td>
                             <td><a href="http://localhost:5001/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a></td>
                 <td>
                     <div class="actions">
@@ -942,7 +942,7 @@
         function updatePropertySiteLink(element) {
             const row = element.closest('tr');
             const customerId = row.dataset.customerId;
-            const link = `http://localhost:5000/customer/${customerId}`;
+            const link = `https://web-production-d2f49.up.railway.app/customer/${customerId}`;
             element.href = link;
             element.textContent = '주거사이트';
         }
