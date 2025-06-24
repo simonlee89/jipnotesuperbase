@@ -471,6 +471,80 @@ def guarantee_log():
         conn.close()
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/force-init-residence-db')
+def force_init_residence_db():
+    """주거용 사이트에서 DB 강제 초기화 및 테이블 생성"""
+    try:
+        # 관리자페이지와 동일한 DB 초기화 로직
+        conn = sqlite3.connect('/data/integrated.db')
+        cursor = conn.cursor()
+        
+        # employee_customers 테이블 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS employee_customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                management_site_id TEXT UNIQUE NOT NULL,
+                customer_name TEXT,
+                phone TEXT,
+                inquiry_date TEXT,
+                move_in_date TEXT,
+                amount TEXT,
+                room_count TEXT,
+                location TEXT,
+                loan_info TEXT,
+                parking TEXT,
+                pets TEXT,
+                progress_status TEXT DEFAULT '진행중',
+                memo TEXT,
+                created_date TEXT NOT NULL,
+                FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
+            )
+        ''')
+        print("✅ employee_customers 테이블 생성 완료")
+        
+        # employees 테이블 생성
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS employees (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT UNIQUE NOT NULL,
+                employee_name TEXT NOT NULL,
+                team TEXT NOT NULL,
+                password TEXT NOT NULL,
+                created_date TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1
+            )
+        ''')
+        print("✅ employees 테이블 생성 완료")
+        
+        conn.commit()
+        
+        # 현재 테이블 목록 확인
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        conn.close()
+        
+        return f"""
+        <html><head><title>주거용 DB 초기화</title></head><body>
+        <h2>🏠 주거용 DB 초기화 성공!</h2>
+        <h3>현재 테이블 목록:</h3>
+        <ul>
+        {''.join([f'<li>{table[0]}</li>' for table in tables])}
+        </ul>
+        <hr>
+        <p><strong>✅ employee_customers 테이블이 생성되었습니다!</strong></p>
+        <p><a href="/">주거용 사이트로 돌아가기</a></p>
+        </body></html>
+        """
+    except Exception as e:
+        return f"""
+        <html><head><title>주거용 DB 초기화 실패</title></head><body>
+        <h2>❌ DB 초기화 실패</h2>
+        <p>오류: {e}</p>
+        <p><a href="/">돌아가기</a></p>
+        </body></html>
+        """
+
 @app.route('/api/guarantee-insurance-reset', methods=['POST'])
 def guarantee_insurance_reset():
     data = request.get_json()
