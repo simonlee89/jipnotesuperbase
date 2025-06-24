@@ -127,10 +127,23 @@ init_db()
 def index():
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-    customer_info = cursor.fetchone()
-    customer_name = customer_info[0] if customer_info else '제일좋은집 찾아드릴분'
-    move_in_date = customer_info[1] if customer_info else ''
+    
+    # 고객 정보 가져오기
+    try:
+        cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+        customer_info_raw = cursor.fetchone()
+        
+        if customer_info_raw:
+            customer_name = customer_info_raw[0] if customer_info_raw[0] else '제일좋은집 찾아드릴분'
+            move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
+        else:
+            customer_name = '제일좋은집 찾아드릴분'
+            move_in_date = ''
+    except Exception as e:
+        print(f"[주거용] customer_info 조회 오류: {e}")
+        customer_name = '제일좋은집 찾아드릴분'
+        move_in_date = ''
+    
     conn.close()
     # 로그인된 직원의 employee_id를 템플릿 변수로 전달
     from flask import session

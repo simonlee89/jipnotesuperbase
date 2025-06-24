@@ -131,15 +131,24 @@ def index():
     cursor = conn.cursor()
     
     # 고객 정보 가져오기
-    cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-    customer_info = cursor.fetchone()
-    
-    if db_type == 'postgresql':
-        customer_name = customer_info[0] if customer_info else '프리미엄등록'
-        move_in_date = customer_info[1] if customer_info else ''
-    else:
-        customer_name = customer_info[0] if customer_info else '프리미엄등록'
-        move_in_date = customer_info[1] if customer_info else ''
+    try:
+        cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+        customer_info_raw = cursor.fetchone()
+        
+        if customer_info_raw:
+            if db_type == 'postgresql':
+                customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
+                move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
+            else:
+                customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
+                move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
+        else:
+            customer_name = '프리미엄등록'
+            move_in_date = ''
+    except Exception as e:
+        print(f"[업무용] customer_info 조회 오류: {e}")
+        customer_name = '프리미엄등록'
+        move_in_date = ''
     
     conn.close()
     
