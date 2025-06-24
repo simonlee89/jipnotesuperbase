@@ -139,27 +139,43 @@ def get_customer_info(management_site_id):
     customer_name = None
     move_in_date = ''
     
-    # integrated.db에서만 조회
-    try:
-        system_conn = sqlite3.connect('/data/integrated.db')
-        system_cursor = system_conn.cursor()
-        system_cursor.execute('''
-            SELECT customer_name, move_in_date 
-            FROM employee_customers 
-            WHERE management_site_id = ?
-        ''', (management_site_id,))
-        customer_data = system_cursor.fetchone()
-        print(f"[DEBUG] integrated.db 조회 결과: {customer_data}")
-        system_conn.close()
-        
-        if customer_data:
-            customer_name = customer_data[0] if customer_data[0] else '고객'
-            move_in_date = customer_data[1] if customer_data[1] else ''
-            print(f"[DEBUG] 고객 정보 찾음 - 이름: {customer_name}, 입주일: {move_in_date}")
-            return customer_name, move_in_date, True
-            
-    except sqlite3.Error as e:
-        print(f"integrated.db 조회 실패: {e}")
+    # 여러 경로에서 DB 파일 찾기
+    db_paths = ['/data/integrated.db', 'integrated.db', './integrated.db']
+    
+    for db_path in db_paths:
+        if os.path.exists(db_path):
+            print(f"[DEBUG] DB 파일 찾음: {db_path}")
+            try:
+                system_conn = sqlite3.connect(db_path)
+                system_cursor = system_conn.cursor()
+                
+                # 먼저 테이블 존재 확인
+                system_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employee_customers'")
+                if not system_cursor.fetchone():
+                    print(f"[DEBUG] employee_customers 테이블이 없음: {db_path}")
+                    system_conn.close()
+                    continue
+                
+                system_cursor.execute('''
+                    SELECT customer_name, move_in_date 
+                    FROM employee_customers 
+                    WHERE management_site_id = ?
+                ''', (management_site_id,))
+                customer_data = system_cursor.fetchone()
+                print(f"[DEBUG] {db_path} 조회 결과: {customer_data}")
+                system_conn.close()
+                
+                if customer_data:
+                    customer_name = customer_data[0] if customer_data[0] else '고객'
+                    move_in_date = customer_data[1] if customer_data[1] else ''
+                    print(f"[DEBUG] 고객 정보 찾음 - 이름: {customer_name}, 입주일: {move_in_date}")
+                    return customer_name, move_in_date, True
+                    
+            except sqlite3.Error as e:
+                print(f"[DEBUG] {db_path} 조회 실패: {e}")
+                continue
+        else:
+            print(f"[DEBUG] DB 파일 없음: {db_path}")
 
     print(f"[DEBUG] 고객 정보를 찾을 수 없음: {management_site_id}")
     return None, '', False
@@ -187,17 +203,19 @@ def index():
 @app.route('/customer/<management_site_id>')
 def customer_site(management_site_id):
     """고객별 매물 사이트 페이지"""
-    print(f"고객 사이트 접근 - management_site_id: {management_site_id}")
+    print(f"[ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
+    print(f"[ROUTE] 현재 작업 디렉토리: {os.getcwd()}")
+    print(f"[ROUTE] /data 디렉토리 존재: {os.path.exists('/data')}")
     
     # 고객 정보 조회
     customer_name, move_in_date, found = get_customer_info(management_site_id)
     
     if not found:
-        print(f"고객 정보를 찾을 수 없음: {management_site_id}")
+        print(f"[ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
         # 삭제된 고객 전용 에러 페이지 표시
         return render_template('customer_site.html'), 404
     else:
-        print(f"고객 정보 조회 성공 - 이름: {customer_name}, 입주일: {move_in_date}")
+        print(f"[ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}, 입주일: {move_in_date}")
     
     # 미확인 좋아요 is_checked=0 → 1로 일괄 갱신
     conn, db_type = get_db_connection()
@@ -209,6 +227,7 @@ def customer_site(management_site_id):
     conn.commit()
     conn.close()
     
+    print(f"[ROUTE] 템플릿 렌더링 시작")
     return render_template('업무용_index.html', 
                          customer_name=customer_name, 
                          move_in_date=move_in_date,
