@@ -71,7 +71,7 @@ def init_db():
             # 기본 고객 정보 삽입 (ON CONFLICT로 중복 방지)
             cursor.execute('''
                 INSERT INTO customer_info (id, customer_name, move_in_date) 
-                VALUES (1, '프리미엄 업무공간 파트너', '') 
+                VALUES (1, '프리미엄등록', '') 
                 ON CONFLICT (id) DO NOTHING
             ''')
         else:
@@ -105,7 +105,7 @@ def init_db():
             ''')
             print("SQLite customer_info 테이블 생성 완료")
             
-            cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "프리미엄 업무공간 파트너", "")')
+            cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "프리미엄등록", "")')
         
         conn.commit()
         conn.close()
@@ -174,10 +174,10 @@ def index():
     customer_info = cursor.fetchone()
     
     if db_type == 'postgresql':
-        customer_name = customer_info[0] if customer_info else '프리미엄 업무공간 파트너'
+        customer_name = customer_info[0] if customer_info else '프리미엄등록'
         move_in_date = customer_info[1] if customer_info else ''
     else:
-        customer_name = customer_info[0] if customer_info else '프리미엄 업무공간 파트너'
+        customer_name = customer_info[0] if customer_info else '프리미엄등록'
         move_in_date = customer_info[1] if customer_info else ''
     
     conn.close()
@@ -231,7 +231,7 @@ def customer_info():
     
     if request.method == 'POST':
         data = request.json
-        customer_name = data.get('customer_name', '프리미엄 업무공간 파트너')
+        customer_name = data.get('customer_name', '프리미엄등록')
         move_in_date = data.get('move_in_date', '')
         
         if db_type == 'postgresql':
@@ -251,7 +251,7 @@ def customer_info():
         conn.close()
         
         return jsonify({
-            'customer_name': info[0] if info else '프리미엄 업무공간 파트너',
+            'customer_name': info[0] if info else '프리미엄등록',
             'move_in_date': info[1] if info else ''
         })
 
