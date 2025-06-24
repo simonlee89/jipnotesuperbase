@@ -1902,16 +1902,64 @@
                  background: linear-gradient(135deg, #FFB84D 0%, #CC7000 100%);
              }
              
+             /* 모바일 필터 컨트롤 개선 */
              .filter-controls {
                  flex-direction: column;
-                 gap: var(--spacing-md);
+                 gap: 12px;
                  align-items: stretch;
+                 padding: 16px;
+                 margin-bottom: 16px;
+                 border-radius: 12px;
              }
              
+             .filter-group {
+                 flex-direction: row;
+                 justify-content: space-between;
+                 align-items: center;
+                 gap: 8px;
+                 width: 100%;
+             }
+             
+             .filter-group label {
+                 font-size: 14px;
+                 font-weight: 600;
+                 min-width: 50px;
+                 color: var(--text-primary);
+             }
+             
+             .filter-group select {
+                 flex: 1;
+                 padding: 10px 12px;
+                 font-size: 14px;
+                 min-width: auto;
+                 border-radius: 8px;
+                 border: 2px solid rgba(255, 140, 0, 0.3);
+                 background: white;
+                 font-weight: 500;
+             }
+             
+             /* 모바일 통계 정보 개선 */
              .filter-stats {
                  margin-left: 0;
-                 justify-content: center;
-                 flex-wrap: wrap;
+                 justify-content: space-between;
+                 flex-wrap: nowrap;
+                 gap: 8px;
+                 padding: 12px 0;
+                 border-top: 1px solid rgba(255, 140, 0, 0.2);
+                 width: 100%;
+             }
+             
+             .filter-stats span {
+                 font-size: 12px;
+                 font-weight: 600;
+                 padding: 6px 10px;
+                 border-radius: 10px;
+                 background: var(--gradient-surface);
+                 color: var(--text-primary);
+                 flex: 1;
+                 text-align: center;
+                 border: 1px solid rgba(255, 140, 0, 0.2);
+                 box-shadow: 0 2px 4px rgba(255, 140, 0, 0.1);
              }
             
             .modal-buttons {
