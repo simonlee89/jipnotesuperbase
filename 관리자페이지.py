@@ -73,6 +73,84 @@ def init_admin_db():
     except sqlite3.OperationalError:
         pass
     
+    # 주거용 매물 링크 테이블 생성 (links)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT NOT NULL,
+            platform TEXT,
+            added_by TEXT,
+            date_added TEXT,
+            rating INTEGER DEFAULT 0,
+            liked INTEGER DEFAULT 0,
+            disliked INTEGER DEFAULT 0,
+            memo TEXT,
+            management_site_id TEXT,
+            guarantee_insurance INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            is_checked INTEGER DEFAULT 0
+        )
+    ''')
+    
+    # 업무용 매물 링크 테이블 생성 (office_links)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS office_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT NOT NULL,
+            platform TEXT,
+            added_by TEXT,
+            date_added TEXT,
+            rating INTEGER DEFAULT 0,
+            liked INTEGER DEFAULT 0,
+            disliked INTEGER DEFAULT 0,
+            memo TEXT,
+            management_site_id TEXT,
+            guarantee_insurance INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            unchecked_likes_work INTEGER DEFAULT 0
+        )
+    ''')
+    
+    # 보증보험 로그 테이블 생성
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            link_id INTEGER,
+            management_site_id TEXT,
+            employee_id TEXT,
+            action TEXT,
+            timestamp TEXT,
+            FOREIGN KEY (link_id) REFERENCES office_links (id)
+        )
+    ''')
+    
+    # links 테이블에 누락된 컬럼들 추가
+    try:
+        cursor.execute('ALTER TABLE links ADD COLUMN guarantee_insurance INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cursor.execute('ALTER TABLE links ADD COLUMN is_deleted INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cursor.execute('ALTER TABLE links ADD COLUMN is_checked INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
+    # office_links 테이블에 누락된 컬럼들 추가
+    try:
+        cursor.execute('ALTER TABLE office_links ADD COLUMN is_deleted INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cursor.execute('ALTER TABLE office_links ADD COLUMN unchecked_likes_work INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
     conn.commit()
     conn.close()
 
