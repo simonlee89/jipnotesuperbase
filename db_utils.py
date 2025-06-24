@@ -11,42 +11,44 @@ logger = logging.getLogger(__name__)
 def get_db_connection():
     """
     환경변수에 따라 PostgreSQL 또는 SQLite 연결을 반환합니다.
+    PostgreSQL 연결 실패 시 SQLite로 폴백합니다.
     """
     database_url = os.environ.get('DATABASE_URL')
     
     if database_url:
-        # PostgreSQL 연결
+        # PostgreSQL 연결 시도
         try:
             conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
             logger.info("PostgreSQL 연결 성공")
             return conn, 'postgresql'
         except Exception as e:
             logger.error(f"PostgreSQL 연결 실패: {e}")
-            raise
-    else:
-        # SQLite 연결 (로컬 개발용)
-        db_paths = ['/data/integrated.db', 'integrated.db', './integrated.db']
-        for db_path in db_paths:
-            if os.path.exists(db_path):
-                conn = sqlite3.connect(db_path)
-                conn.row_factory = sqlite3.Row
-                logger.info(f"SQLite 연결 성공: {db_path}")
-                return conn, 'sqlite'
-        
-        # 기본 SQLite 파일 생성
-        conn = sqlite3.connect('integrated.db')
-        conn.row_factory = sqlite3.Row
-        logger.info("새 SQLite DB 생성: integrated.db")
-        return conn, 'sqlite'
+            logger.info("SQLite로 폴백합니다.")
+            # PostgreSQL 실패 시 SQLite로 폴백
+    
+    # SQLite 연결 (로컬 개발용 또는 PostgreSQL 실패 시 폴백)
+    db_paths = ['/data/integrated.db', 'integrated.db', './integrated.db']
+    for db_path in db_paths:
+        if os.path.exists(db_path):
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            logger.info(f"SQLite 연결 성공: {db_path}")
+            return conn, 'sqlite'
+    
+    # 기본 SQLite 파일 생성
+    conn = sqlite3.connect('integrated.db')
+    conn.row_factory = sqlite3.Row
+    logger.info("새 SQLite DB 생성: integrated.db")
+    return conn, 'sqlite'
 
 def init_database():
     """
     데이터베이스 테이블을 초기화합니다.
     """
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
     try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
         if db_type == 'postgresql':
             # PostgreSQL용 테이블 생성
             cursor.execute('''
@@ -113,15 +115,13 @@ def init_database():
         tables = [row[0] for row in cursor.fetchall()]
         logger.info(f"생성된 테이블: {tables}")
         
+        cursor.close()
+        conn.close()
         return True
         
     except Exception as e:
         logger.error(f"데이터베이스 초기화 실패: {e}")
-        conn.rollback()
         return False
-    finally:
-        cursor.close()
-        conn.close()
 
 def execute_query(query, params=None, fetch=False):
     """
@@ -158,20 +158,35 @@ def get_customer_info(management_site_id):
     """
     관리 사이트 ID로 고객 정보를 조회합니다.
     """
-    query = '''
-        SELECT ec.*, e.name as employee_name, e.email as employee_email
-        FROM employee_customers ec
-        LEFT JOIN employees e ON ec.employee_id = e.id
-        WHERE ec.management_site_id = %s
-    '''
-    
-    conn, db_type = get_db_connection()
-    if db_type == 'sqlite':
-        query = query.replace('%s', '?')
-    
     try:
-        result = execute_query(query, (management_site_id,), fetch=True)
-        return result[0] if result else None
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
+        if db_type == 'postgresql':
+            query = '''
+                SELECT ec.*, e.name as employee_name, e.email as employee_email
+                FROM employee_customers ec
+                LEFT JOIN employees e ON ec.employee_id = e.id
+                WHERE ec.management_site_id = %s
+            '''
+        else:
+            query = '''
+                SELECT ec.*, e.name as employee_name, e.email as employee_email
+                FROM employee_customers ec
+                LEFT JOIN employees e ON ec.employee_id = e.id
+                WHERE ec.management_site_id = ?
+            '''
+        
+        cursor.execute(query, (management_site_id,))
+        result = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if result:
+            return dict(result)
+        return None
+        
     except Exception as e:
         logger.error(f"고객 정보 조회 실패: {e}")
         return None 
