@@ -160,8 +160,8 @@ def login():
     cursor = conn.cursor()
     
     if db_type == 'postgresql':
-        cursor.execute('SELECT employee_name FROM employees WHERE employee_id = %s AND password = %s AND is_active = TRUE', 
-                       (employee_id, password))
+                cursor.execute('SELECT employee_name FROM employees WHERE employee_id = %s AND password = %s AND is_active = 1',
+                      (employee_id, password))
     else:
         cursor.execute('SELECT employee_name FROM employees WHERE employee_id = ? AND password = ? AND is_active = 1', 
                        (employee_id, password))
@@ -229,20 +229,13 @@ def admin_panel():
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    if db_type == 'postgresql':
-        cursor.execute('''
-            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-            FROM links l
-            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
-            ORDER BY l.id DESC
-        ''')
-    else:
-        cursor.execute('''
-            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-            FROM links l
-            WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
-            ORDER BY l.id DESC
-        ''')
+    # PostgreSQL과 SQLite 모두 INTEGER 비교 사용 (타입 통일)
+    cursor.execute('''
+        SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+        FROM links l
+        WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
+        ORDER BY l.id DESC
+    ''')
     
     guarantee_list = cursor.fetchall()
     conn.close()
@@ -260,9 +253,9 @@ def guarantee_delete(id):
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    # guarantee_insurance 값을 0으로 변경 (삭제 대신)
+    # guarantee_insurance 값을 0으로 변경 (삭제 대신) - PostgreSQL과 SQLite 모두 INTEGER 사용
     if db_type == 'postgresql':
-        cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
+        cursor.execute('UPDATE links SET guarantee_insurance = 0 WHERE id = %s', (id,))
     else:
         cursor.execute('UPDATE links SET guarantee_insurance = 0 WHERE id = ?', (id,))
     
@@ -375,11 +368,11 @@ def delete_employee(emp_id):
     
     employee_id_value = result[0]
     
-    # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=1 → 0으로 변경
+    # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=1 → 0으로 변경 - PostgreSQL과 SQLite 모두 INTEGER 사용
     if db_type == 'postgresql':
-        cursor.execute('UPDATE office_links SET guarantee_insurance = FALSE WHERE added_by = %s AND guarantee_insurance = TRUE', (employee_id_value,))
+        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = %s AND guarantee_insurance = 1', (employee_id_value,))
         # 2. 직원 비활성화
-        cursor.execute('UPDATE employees SET is_active = FALSE WHERE id = %s', (emp_id,))
+        cursor.execute('UPDATE employees SET is_active = 0 WHERE id = %s', (emp_id,))
     else:
         cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = ? AND guarantee_insurance = 1', (employee_id_value,))
         # 2. 직원 비활성화
@@ -422,8 +415,8 @@ def hide_links_by_employee(employee_id, db_path='/data/integrated.db'):
         if db_type == 'postgresql':
             cursor.execute("""
                 UPDATE office_links
-                SET is_deleted = TRUE
-                WHERE guarantee_insurance = TRUE
+                SET is_deleted = 1
+                WHERE guarantee_insurance = 1
                 AND (added_by = %s OR added_by = %s)
             """, (employee_id, str(employee_id)))
         else:
@@ -501,8 +494,9 @@ def activate_employee(emp_id):
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
+    # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
     if db_type == 'postgresql':
-        cursor.execute('UPDATE employees SET is_active = TRUE WHERE id = %s', (emp_id,))
+        cursor.execute('UPDATE employees SET is_active = 1 WHERE id = %s', (emp_id,))
     else:
         cursor.execute('UPDATE employees SET is_active = 1 WHERE id = ?', (emp_id,))
     
@@ -923,7 +917,7 @@ def get_unchecked_likes_count(management_site_id, db_path, mode='residence'):
     if mode == 'residence':
         # 주거용: links 테이블만 카운트
         if db_type == 'postgresql':
-            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
+            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = 1 AND is_checked = 0', (management_site_id,))
         else:
             cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
         count = cursor.fetchone()[0]
@@ -1279,7 +1273,7 @@ def insert_test_data():
                     INSERT INTO employees (employee_id, employee_name, team, password, created_date, is_active)
                     VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (employee_id) DO NOTHING
-                ''', ('admin', '관리자', '관리팀', 'admin123', current_date, True))
+                ''', ('admin', '관리자', '관리팀', 'admin123', current_date, 1))
             else:
                 cursor.execute('''
                     INSERT OR IGNORE INTO employees (employee_id, employee_name, team, password, created_date, is_active)
@@ -1349,7 +1343,7 @@ def get_guarantee_list():
         cursor.execute('''
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.rating, l.liked, l.disliked, l.memo, l.management_site_id
             FROM links l
-            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
+            WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
             ORDER BY l.id DESC
         ''')
     else:

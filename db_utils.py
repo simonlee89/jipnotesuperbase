@@ -152,13 +152,13 @@ def init_database():
                     added_by VARCHAR(100),
                     date_added VARCHAR(50),
                     rating INTEGER DEFAULT 0,
-                    liked BOOLEAN DEFAULT FALSE,
-                    disliked BOOLEAN DEFAULT FALSE,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
                     memo TEXT,
                     management_site_id VARCHAR(50),
-                    guarantee_insurance BOOLEAN DEFAULT FALSE,
-                    is_deleted BOOLEAN DEFAULT FALSE,
-                    is_checked BOOLEAN DEFAULT FALSE,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0,
                     residence_extra TEXT DEFAULT ''
                 )
             ''')
@@ -172,16 +172,16 @@ def init_database():
                     added_by VARCHAR(100) NOT NULL,
                     date_added VARCHAR(50) NOT NULL,
                     rating INTEGER DEFAULT 5,
-                    liked BOOLEAN DEFAULT FALSE,
-                    disliked BOOLEAN DEFAULT FALSE,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
                     memo TEXT DEFAULT '',
                     customer_name VARCHAR(100) DEFAULT '000',
                     move_in_date VARCHAR(50) DEFAULT '',
                     management_site_id VARCHAR(50) DEFAULT NULL,
-                    guarantee_insurance BOOLEAN DEFAULT FALSE,
-                    is_checked BOOLEAN DEFAULT FALSE,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0,
                     unchecked_likes_work INTEGER DEFAULT 0,
-                    is_deleted BOOLEAN DEFAULT FALSE
+                    is_deleted INTEGER DEFAULT 0
                 )
             ''')
             logger.info("✅ office_links 테이블 생성")
