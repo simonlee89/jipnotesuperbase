@@ -161,38 +161,69 @@ def customer_site(management_site_id):
         # DB 상태 상세 확인
         debug_db_info = ""
         try:
-            import sqlite3
-            conn = sqlite3.connect('/data/integrated.db')
+            conn, db_type = get_db_connection()
             cursor = conn.cursor()
+            debug_db_info += f"<strong>DB 타입:</strong> {db_type}<br><br>"
             
             # 테이블 목록 확인
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = cursor.fetchall()
-            debug_db_info += f"<strong>DB 테이블 목록:</strong><br>"
-            debug_db_info += "<br>".join([f"- {t[0]}" for t in tables]) + "<br><br>"
-            
-            # employee_customers 테이블 스키마 확인
-            try:
-                cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='employee_customers';")
-                schema = cursor.fetchone()
-                if schema:
-                    debug_db_info += f"<strong>employee_customers 테이블 스키마:</strong><br><code>{schema[0]}</code><br><br>"
-                else:
-                    debug_db_info += "<strong>❌ employee_customers 테이블이 존재하지 않습니다!</strong><br><br>"
-            except Exception as e:
-                debug_db_info += f"스키마 조회 오류: {e}<br><br>"
-            
-            # 고객 목록 조회
-            try:
-                cursor.execute('SELECT management_site_id, customer_name FROM employee_customers LIMIT 10')
-                all_customers = cursor.fetchall()
-                debug_db_info += f"<strong>고객 목록:</strong><br>"
-                if all_customers:
-                    debug_db_info += "<br>".join([f"ID: {c[0]}, 이름: {c[1]}" for c in all_customers])
-                else:
-                    debug_db_info += "고객 데이터가 없습니다."
-            except Exception as e:
-                debug_db_info += f"고객 조회 오류: {e}"
+            if db_type == 'postgresql':
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+                tables = cursor.fetchall()
+                debug_db_info += f"<strong>PostgreSQL 테이블 목록:</strong><br>"
+                debug_db_info += "<br>".join([f"- {t[0]}" for t in tables]) + "<br><br>"
+                
+                # employee_customers 테이블 스키마 확인
+                try:
+                    cursor.execute("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'employee_customers' ORDER BY ordinal_position;")
+                    columns = cursor.fetchall()
+                    if columns:
+                        debug_db_info += f"<strong>employee_customers 테이블 컬럼:</strong><br>"
+                        debug_db_info += "<br>".join([f"- {col[0]} ({col[1]})" for col in columns]) + "<br><br>"
+                    else:
+                        debug_db_info += "<strong>❌ employee_customers 테이블이 존재하지 않습니다!</strong><br><br>"
+                except Exception as e:
+                    debug_db_info += f"스키마 조회 오류: {e}<br><br>"
+                
+                # 고객 목록 조회
+                try:
+                    cursor.execute('SELECT management_site_id, customer_name FROM employee_customers LIMIT 10')
+                    all_customers = cursor.fetchall()
+                    debug_db_info += f"<strong>고객 목록:</strong><br>"
+                    if all_customers:
+                        debug_db_info += "<br>".join([f"ID: {c[0]}, 이름: {c[1]}" for c in all_customers])
+                    else:
+                        debug_db_info += "고객 데이터가 없습니다."
+                except Exception as e:
+                    debug_db_info += f"고객 조회 오류: {e}"
+            else:
+                # SQLite 처리
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables = cursor.fetchall()
+                debug_db_info += f"<strong>SQLite 테이블 목록:</strong><br>"
+                debug_db_info += "<br>".join([f"- {t[0]}" for t in tables]) + "<br><br>"
+                
+                # employee_customers 테이블 스키마 확인
+                try:
+                    cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='employee_customers';")
+                    schema = cursor.fetchone()
+                    if schema:
+                        debug_db_info += f"<strong>employee_customers 테이블 스키마:</strong><br><code>{schema[0]}</code><br><br>"
+                    else:
+                        debug_db_info += "<strong>❌ employee_customers 테이블이 존재하지 않습니다!</strong><br><br>"
+                except Exception as e:
+                    debug_db_info += f"스키마 조회 오류: {e}<br><br>"
+                
+                # 고객 목록 조회
+                try:
+                    cursor.execute('SELECT management_site_id, customer_name FROM employee_customers LIMIT 10')
+                    all_customers = cursor.fetchall()
+                    debug_db_info += f"<strong>고객 목록:</strong><br>"
+                    if all_customers:
+                        debug_db_info += "<br>".join([f"ID: {c[0]}, 이름: {c[1]}" for c in all_customers])
+                    else:
+                        debug_db_info += "고객 데이터가 없습니다."
+                except Exception as e:
+                    debug_db_info += f"고객 조회 오류: {e}"
             
             conn.close()
         except Exception as e:
