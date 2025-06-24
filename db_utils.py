@@ -19,14 +19,14 @@ except ImportError:
 def get_db_connection():
     """
     환경변수에 따라 PostgreSQL 또는 SQLite 연결을 반환합니다.
-    PostgreSQL 연결 실패 시 SQLite로 폴백합니다.
+    Railway 환경에서는 PostgreSQL만 사용하고, 로컬에서는 SQLite 사용합니다.
     """
     database_url = os.environ.get('DATABASE_URL')
     
-    # PostgreSQL 연결 시도 (모듈이 있고 DATABASE_URL이 설정된 경우)
+    # PostgreSQL 연결 시도 (Railway 환경)
     if database_url and PSYCOPG2_AVAILABLE:
         try:
-            logger.info(f"PostgreSQL 연결 시도: {database_url[:30]}...")
+            logger.info("PostgreSQL 연결 시도 (Railway 환경)")
             conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
             
             # 연결 테스트
@@ -40,17 +40,17 @@ def get_db_connection():
             
         except Exception as e:
             logger.error(f"❌ PostgreSQL 연결 실패: {e}")
-            logger.info("SQLite로 폴백합니다...")
+            # Railway 환경에서 PostgreSQL 실패 시 예외 발생 (폴백 없음)
+            raise Exception(f"PostgreSQL 연결 실패: {e}")
     
-    # SQLite 연결 (로컬 개발용 또는 PostgreSQL 실패 시 폴백)
-    logger.info("SQLite 연결 시도...")
+    # 로컬 개발 환경 - SQLite 사용
+    logger.info("SQLite 연결 시도 (로컬 환경)")
     
     # 여러 경로에서 DB 파일 찾기
     db_paths = [
-        '/data/integrated.db',  # Railway persistent volume
+        '/data/integrated.db',  # Railway persistent volume (사용 안함)
         'integrated.db',        # 현재 디렉토리
         './integrated.db',      # 명시적 현재 디렉토리
-        '/app/integrated.db'    # Railway 앱 디렉토리
     ]
     
     for db_path in db_paths:
@@ -72,9 +72,9 @@ def get_db_connection():
             logger.error(f"SQLite 연결 실패 ({db_path}): {e}")
             continue
     
-    # 모든 경로에서 실패하면 새 DB 생성
+    # 모든 경로에서 실패하면 새 DB 생성 (로컬 환경용)
     try:
-        db_path = '/data/integrated.db' if os.path.exists('/data') else 'integrated.db'
+        db_path = 'integrated.db'  # 로컬에서만 새 DB 생성
         logger.info(f"새 SQLite DB 생성: {db_path}")
         
         conn = sqlite3.connect(db_path, timeout=30)
@@ -158,7 +158,8 @@ def init_database():
                     management_site_id VARCHAR(50),
                     guarantee_insurance BOOLEAN DEFAULT FALSE,
                     is_deleted BOOLEAN DEFAULT FALSE,
-                    is_checked BOOLEAN DEFAULT FALSE
+                    is_checked BOOLEAN DEFAULT FALSE,
+                    residence_extra TEXT DEFAULT ''
                 )
             ''')
             logger.info("✅ links 테이블 생성")
@@ -196,6 +197,23 @@ def init_database():
                 )
             ''')
             logger.info("✅ guarantee_insurance_log 테이블 생성")
+            
+            # PostgreSQL용 customer_info 테이블 추가
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS customer_info (
+                    id INTEGER PRIMARY KEY,
+                    customer_name VARCHAR(200) DEFAULT '제일좋은집 찾아드릴분',
+                    move_in_date VARCHAR(50) DEFAULT ''
+                )
+            ''')
+            logger.info("✅ customer_info 테이블 생성")
+            
+            # 기본 고객 정보 삽입
+            cursor.execute('''
+                INSERT INTO customer_info (id, customer_name, move_in_date) 
+                VALUES (1, '제일좋은집 찾아드릴분', '') 
+                ON CONFLICT (id) DO NOTHING
+            ''')
             
         else:
             # SQLite용 테이블 생성 (관리자페이지 구조와 동일)
@@ -252,7 +270,8 @@ def init_database():
                     management_site_id TEXT,
                     guarantee_insurance INTEGER DEFAULT 0,
                     is_deleted INTEGER DEFAULT 0,
-                    is_checked INTEGER DEFAULT 0
+                    is_checked INTEGER DEFAULT 0,
+                    residence_extra TEXT DEFAULT ''
                 )
             ''')
             logger.info("✅ links 테이블 생성")
@@ -291,6 +310,19 @@ def init_database():
                 )
             ''')
             logger.info("✅ guarantee_insurance_log 테이블 생성")
+            
+            # SQLite용 customer_info 테이블 추가
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS customer_info (
+                    id INTEGER PRIMARY KEY,
+                    customer_name TEXT DEFAULT '제일좋은집 찾아드릴분',
+                    move_in_date TEXT DEFAULT ''
+                )
+            ''')
+            logger.info("✅ customer_info 테이블 생성")
+            
+            # 기본 고객 정보 삽입
+            cursor.execute('INSERT OR IGNORE INTO customer_info (id, customer_name, move_in_date) VALUES (1, "제일좋은집 찾아드릴분", "")')
         
         conn.commit()
         logger.info(f"✅ {db_type} 데이터베이스 테이블 초기화 완료")
