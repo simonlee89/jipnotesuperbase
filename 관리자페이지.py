@@ -5,162 +5,123 @@ from datetime import datetime
 import os
 import requests
 import time
+from db_utils import get_db_connection, init_database, execute_query, get_customer_info
 
 # 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
 RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
 BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'http://localhost:5001')
 
 def init_admin_db():
-    """관리자 데이터베이스 초기화"""
+    """관리자 데이터베이스 초기화 - 공통 DB 유틸리티 사용"""
     print("=== DB 초기화 시작 ===")
     try:
-        conn = sqlite3.connect('/data/integrated.db')
+        # 기본 테이블 초기화
+        init_database()
+        
+        # 추가 테이블들 생성
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
-        print("DB 연결 성공: /data/integrated.db")
         
-        # 직원 테이블 생성 (팀 컬럼 추가)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employees (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT UNIQUE NOT NULL,
-                employee_name TEXT NOT NULL,
-                team TEXT NOT NULL,
-                password TEXT NOT NULL,
-                created_date TEXT NOT NULL,
-                is_active INTEGER DEFAULT 1
-            )
-        ''')
-        print("employees 테이블 생성 완료")
-        
-        # 기존 테이블에 team 컬럼이 없다면 추가
-        try:
-            cursor.execute('ALTER TABLE employees ADD COLUMN team TEXT DEFAULT ""')
-        except sqlite3.OperationalError:
-            # 컬럼이 이미 존재하면 무시
-            pass
-        
-        # 직원별 고객 관리 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employee_customers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
-                management_site_id TEXT UNIQUE NOT NULL,
-                customer_name TEXT,
-                phone TEXT,
-                inquiry_date TEXT,
-                move_in_date TEXT,
-                amount TEXT,
-                room_count TEXT,
-                location TEXT,
-                loan_info TEXT,
-                parking TEXT,
-                pets TEXT,
-                progress_status TEXT DEFAULT '진행중',
-                memo TEXT,
-                created_date TEXT NOT NULL,
-                FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
-            )
-        ''')
-        print("employee_customers 테이블 생성 완료")
-        
-        # 기존 테이블에 누락된 컬럼 추가
-        try:
-            cursor.execute('ALTER TABLE employee_customers ADD COLUMN loan_info TEXT')
-        except sqlite3.OperationalError:
-            pass
-        
-        try:
-            cursor.execute('ALTER TABLE employee_customers ADD COLUMN parking TEXT')
-        except sqlite3.OperationalError:
-            pass
-        
-        try:
-            cursor.execute('ALTER TABLE employee_customers ADD COLUMN pets TEXT')
-        except sqlite3.OperationalError:
-            pass
-        
-        # 주거용 매물 링크 테이블 생성 (links)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS links (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT NOT NULL,
-                platform TEXT,
-                added_by TEXT,
-                date_added TEXT,
-                rating INTEGER DEFAULT 0,
-                liked INTEGER DEFAULT 0,
-                disliked INTEGER DEFAULT 0,
-                memo TEXT,
-                management_site_id TEXT,
-                guarantee_insurance INTEGER DEFAULT 0,
-                is_deleted INTEGER DEFAULT 0,
-                is_checked INTEGER DEFAULT 0
-            )
-        ''')
-        print("links 테이블 생성 완료")
-        
-        # 업무용 매물 링크 테이블 생성 (office_links)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS office_links (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT NOT NULL,
-                platform TEXT,
-                added_by TEXT,
-                date_added TEXT,
-                rating INTEGER DEFAULT 0,
-                liked INTEGER DEFAULT 0,
-                disliked INTEGER DEFAULT 0,
-                memo TEXT,
-                management_site_id TEXT,
-                guarantee_insurance INTEGER DEFAULT 0,
-                is_deleted INTEGER DEFAULT 0,
-                unchecked_likes_work INTEGER DEFAULT 0
-            )
-        ''')
-        print("office_links 테이블 생성 완료")
-        
-        # 보증보험 로그 테이블 생성
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                link_id INTEGER,
-                management_site_id TEXT,
-                employee_id TEXT,
-                action TEXT,
-                timestamp TEXT,
-                FOREIGN KEY (link_id) REFERENCES office_links (id)
-            )
-        ''')
-        print("guarantee_insurance_log 테이블 생성 완료")
-        
-        # links 테이블에 누락된 컬럼들 추가
-        try:
-            cursor.execute('ALTER TABLE links ADD COLUMN guarantee_insurance INTEGER DEFAULT 0')
-        except sqlite3.OperationalError:
-            pass
-        
-        try:
-            cursor.execute('ALTER TABLE links ADD COLUMN is_deleted INTEGER DEFAULT 0')
-        except sqlite3.OperationalError:
-            pass
-        
-        try:
-            cursor.execute('ALTER TABLE links ADD COLUMN is_checked INTEGER DEFAULT 0')
-        except sqlite3.OperationalError:
-            pass
-        
-        # office_links 테이블에 누락된 컬럼들 추가
-        try:
-            cursor.execute('ALTER TABLE office_links ADD COLUMN is_deleted INTEGER DEFAULT 0')
-        except sqlite3.OperationalError:
-            pass
-        
-        try:
-            cursor.execute('ALTER TABLE office_links ADD COLUMN unchecked_likes_work INTEGER DEFAULT 0')
-        except sqlite3.OperationalError:
-            pass
+        if db_type == 'postgresql':
+            # PostgreSQL용 추가 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS links (
+                    id SERIAL PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    platform VARCHAR(50),
+                    added_by VARCHAR(100),
+                    date_added TIMESTAMP,
+                    rating INTEGER DEFAULT 0,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT,
+                    management_site_id VARCHAR(50),
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS office_links (
+                    id SERIAL PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    platform VARCHAR(50),
+                    added_by VARCHAR(100),
+                    date_added TIMESTAMP,
+                    rating INTEGER DEFAULT 0,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT,
+                    management_site_id VARCHAR(50),
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    unchecked_likes_work INTEGER DEFAULT 0
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
+                    id SERIAL PRIMARY KEY,
+                    link_id INTEGER,
+                    management_site_id VARCHAR(50),
+                    employee_id VARCHAR(50),
+                    action VARCHAR(100),
+                    timestamp TIMESTAMP
+                )
+            ''')
+        else:
+            # SQLite용 추가 테이블 (기존 코드)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,
+                    platform TEXT,
+                    added_by TEXT,
+                    date_added TEXT,
+                    rating INTEGER DEFAULT 0,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT,
+                    management_site_id TEXT,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    is_checked INTEGER DEFAULT 0
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS office_links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,
+                    platform TEXT,
+                    added_by TEXT,
+                    date_added TEXT,
+                    rating INTEGER DEFAULT 0,
+                    liked INTEGER DEFAULT 0,
+                    disliked INTEGER DEFAULT 0,
+                    memo TEXT,
+                    management_site_id TEXT,
+                    guarantee_insurance INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    unchecked_likes_work INTEGER DEFAULT 0
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    link_id INTEGER,
+                    management_site_id TEXT,
+                    employee_id TEXT,
+                    action TEXT,
+                    timestamp TEXT,
+                    FOREIGN KEY (link_id) REFERENCES office_links (id)
+                )
+            ''')
         
         conn.commit()
+        cursor.close()
         conn.close()
         print("=== DB 초기화 완료 ===")
         

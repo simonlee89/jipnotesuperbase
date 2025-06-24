@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime
 import os
 import json
+from db_utils import get_db_connection, init_database, execute_query, get_customer_info
 
 # PostgreSQL 관련 모듈은 배포 환경에서만 import
 try:
@@ -115,70 +116,14 @@ def init_db():
         print(f"=== 업무용 DB 초기화 실패: {e} ===")
         raise
 
-# 데이터베이스 연결 함수
-def get_db_connection():
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and PSYCOPG2_AVAILABLE:
-        # PostgreSQL 연결
-        conn = psycopg2.connect(database_url)
-        return conn, 'postgresql'
-    else:
-        # SQLite 연결 (업무용 전용)
-        conn = sqlite3.connect('/data/integrated.db')
-        return conn, 'sqlite'
+# 기존 get_db_connection 함수는 db_utils에서 import하므로 제거
 
 app = Flask(__name__)
 
 # Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
 init_db()
 
-# 고객 정보 조회 함수 (새로 추가)
-def get_customer_info(management_site_id):
-    """management_site_id로 고객 정보를 조회하는 함수"""
-    print(f"[DEBUG] get_customer_info 호출됨 - management_site_id: {management_site_id}")
-    customer_name = None
-    move_in_date = ''
-    
-    # 여러 경로에서 DB 파일 찾기
-    db_paths = ['/data/integrated.db', 'integrated.db', './integrated.db']
-    
-    for db_path in db_paths:
-        if os.path.exists(db_path):
-            print(f"[DEBUG] DB 파일 찾음: {db_path}")
-            try:
-                system_conn = sqlite3.connect(db_path)
-                system_cursor = system_conn.cursor()
-                
-                # 먼저 테이블 존재 확인
-                system_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employee_customers'")
-                if not system_cursor.fetchone():
-                    print(f"[DEBUG] employee_customers 테이블이 없음: {db_path}")
-                    system_conn.close()
-                    continue
-                
-                system_cursor.execute('''
-                    SELECT customer_name, move_in_date 
-                    FROM employee_customers 
-                    WHERE management_site_id = ?
-                ''', (management_site_id,))
-                customer_data = system_cursor.fetchone()
-                print(f"[DEBUG] {db_path} 조회 결과: {customer_data}")
-                system_conn.close()
-                
-                if customer_data:
-                    customer_name = customer_data[0] if customer_data[0] else '고객'
-                    move_in_date = customer_data[1] if customer_data[1] else ''
-                    print(f"[DEBUG] 고객 정보 찾음 - 이름: {customer_name}, 입주일: {move_in_date}")
-                    return customer_name, move_in_date, True
-                    
-            except sqlite3.Error as e:
-                print(f"[DEBUG] {db_path} 조회 실패: {e}")
-                continue
-        else:
-            print(f"[DEBUG] DB 파일 없음: {db_path}")
-
-    print(f"[DEBUG] 고객 정보를 찾을 수 없음: {management_site_id}")
-    return None, '', False
+# 기존 get_customer_info 함수는 db_utils에서 import하므로 제거
 
 @app.route('/')
 def index():
@@ -217,10 +162,10 @@ def customer_site(management_site_id):
     except Exception as e:
         print(f"[ROUTE] /data 디렉토리 읽기 오류: {e}")
     
-    # 고객 정보 조회
-    customer_name, move_in_date, found = get_customer_info(management_site_id)
+    # 공통 get_customer_info 함수 사용
+    customer_info = get_customer_info(management_site_id)
     
-    if not found:
+    if not customer_info:
         print(f"[ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
         
         # DB 상태 상세 확인
@@ -284,8 +229,9 @@ def customer_site(management_site_id):
         </ol>
         </body></html>
         """, 404
-    else:
-        print(f"[ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}, 입주일: {move_in_date}")
+    
+    customer_name = customer_info.get('customer_name', '고객')
+    print(f"[ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
     
     # 미확인 좋아요 is_checked=0 → 1로 일괄 갱신
     conn, db_type = get_db_connection()
@@ -300,7 +246,7 @@ def customer_site(management_site_id):
     print(f"[ROUTE] 템플릿 렌더링 시작")
     return render_template('업무용_index.html', 
                          customer_name=customer_name, 
-                         move_in_date=move_in_date,
+                         move_in_date=customer_info.get('residence_extra', ''),
                          management_site_id=management_site_id)
 
 @app.route('/api/customer_info', methods=['GET', 'POST'])
@@ -313,8 +259,8 @@ def customer_info():
     
     # 고객별 사이트인 경우 고객 존재 여부 확인
     if management_site_id:
-        _, _, found = get_customer_info(management_site_id)
-        if not found:
+        customer_info = get_customer_info(management_site_id)
+        if not customer_info:
             conn.close()
             return jsonify({'success': False, 'error': '고객 정보를 찾을 수 없습니다. 삭제되었거나 존재하지 않는 고객입니다.'}), 404
     
@@ -370,8 +316,8 @@ def links():
         
         # management_site_id가 있는 경우 고객 존재 여부 확인
         if management_site_id:
-            _, _, found = get_customer_info(management_site_id)
-            if not found:
+            customer_info = get_customer_info(management_site_id)
+            if not customer_info:
                 return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'})
         
         if db_type == 'postgresql':
