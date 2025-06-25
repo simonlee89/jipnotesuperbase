@@ -132,13 +132,21 @@ def admin_panel():
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    # PostgreSQL과 SQLite 모두 INTEGER 비교 사용 (타입 통일)
-    cursor.execute('''
-        SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-        FROM links l
-        WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
-        ORDER BY l.id DESC
-    ''')
+    if db_type == 'postgresql':
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            FROM links l
+            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
+            ORDER BY l.id DESC
+        ''')
+    else:
+        # SQLite는 INTEGER로 처리
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            FROM links l
+            WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
+            ORDER BY l.id DESC
+        ''')
     
     guarantee_list = cursor.fetchall()
     conn.close()
@@ -156,9 +164,9 @@ def guarantee_delete(id):
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    # guarantee_insurance 값을 0으로 변경 (삭제 대신) - PostgreSQL과 SQLite 모두 INTEGER 사용
+    # guarantee_insurance 값을 FALSE로 변경 (삭제 대신)
     if db_type == 'postgresql':
-        cursor.execute('UPDATE links SET guarantee_insurance = 0 WHERE id = %s', (id,))
+        cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
     else:
         cursor.execute('UPDATE links SET guarantee_insurance = 0 WHERE id = ?', (id,))
     
@@ -309,9 +317,9 @@ def delete_employee(emp_id):
     
     employee_name_value = result[0]
     
-    # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=1 → 0으로 변경
+    # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=TRUE → FALSE로 변경
     if db_type == 'postgresql':
-        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = %s AND guarantee_insurance = 1', (employee_name_value,))
+        cursor.execute('UPDATE office_links SET guarantee_insurance = FALSE WHERE added_by = %s AND guarantee_insurance = TRUE', (employee_name_value,))
     else:
         cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = ? AND guarantee_insurance = 1', (employee_name_value,))
     
@@ -341,8 +349,8 @@ def hide_links_by_employee(employee_id, db_path='/data/integrated.db'):
         if db_type == 'postgresql':
             cursor.execute("""
                 UPDATE office_links
-                SET is_deleted = 1
-                WHERE guarantee_insurance = 1
+                SET is_deleted = TRUE
+                WHERE guarantee_insurance = TRUE
                 AND (added_by = %s OR added_by = %s)
             """, (employee_id, str(employee_id)))
         else:
@@ -823,7 +831,7 @@ def get_unchecked_likes_count(management_site_id, db_path, mode='residence'):
     if mode == 'residence':
         # 주거용: links 테이블만 카운트
         if db_type == 'postgresql':
-            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = 1 AND is_checked = 0', (management_site_id,))
+            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
         else:
             cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
         count = cursor.fetchone()[0]
@@ -1227,12 +1235,12 @@ def get_guarantee_list():
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    # links 테이블에서 guarantee_insurance=1, is_deleted=0인 링크만 조회, 최신순
+    # links 테이블에서 guarantee_insurance=TRUE, is_deleted=FALSE인 링크만 조회, 최신순
     if db_type == 'postgresql':
         cursor.execute('''
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.rating, l.liked, l.disliked, l.memo, l.management_site_id
             FROM links l
-            WHERE l.guarantee_insurance = 1 AND (l.is_deleted = 0 OR l.is_deleted IS NULL)
+            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
             ORDER BY l.id DESC
         ''')
     else:
