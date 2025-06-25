@@ -535,45 +535,62 @@ def manage_customers():
             add_employee_id = 'admin'  # 관리자가 직접 추가
         else:
             add_employee_id = employee_id
+
+        print(f"🕵️ [고객추가] 새 고객 추가 시도. 담당자: '{add_employee_id}', 생성 ID: '{management_site_id}'")
+        print(f"ℹ️ [고객추가] 전달된 데이터: {data}")
         
         try:
             conn, db_type = get_db_connection()
             cursor = conn.cursor()
             
+            sql = ""
+            params = ()
+
             if db_type == 'postgresql':
-                cursor.execute('''
+                sql = '''
                     INSERT INTO employee_customers (
                         employee_id, management_site_id, customer_name, phone, inquiry_date,
                         move_in_date, amount, room_count, location, loan_info, parking, pets,
                         progress_status, memo, created_date
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ''', (
+                '''
+                params = (
                     add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
                     data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
                     data.get('room_count'), data.get('location'), data.get('loan_info'),
                     data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
-                    data.get('memo'), datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                ))
-            else:
-                cursor.execute('''
+                    data.get('memo'), datetime.now() # PostreSQL은 timestamp 타입
+                )
+            else: # SQLite
+                sql = '''
                     INSERT INTO employee_customers (
                         employee_id, management_site_id, customer_name, phone, inquiry_date,
                         move_in_date, amount, room_count, location, loan_info, parking, pets,
                         progress_status, memo, created_date
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
+                '''
+                params = (
                     add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
                     data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
                     data.get('room_count'), data.get('location'), data.get('loan_info'),
                     data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
                     data.get('memo'), datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                ))
+                )
             
+            print(f"执行 [고객추가] 쿼리 실행...")
+            cursor.execute(sql, params)
+            print(f"✅ [고객추가] 쿼리 실행 완료 (영향 받은 행: {cursor.rowcount})")
+
             conn.commit()
+            print("✅ [고객추가] DB Commit 완료. 데이터가 최종 저장되었습니다.")
+
             conn.close()
             
             return jsonify({'success': True, 'management_site_id': management_site_id})
         except Exception as e:
+            print(f"🚨 [고객추가] DB 작업 중 심각한 오류 발생: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/customers/<int:customer_id>', methods=['PUT', 'DELETE'])
