@@ -1554,10 +1554,14 @@ def fix_postgresql_structure():
         result_html += "</ul>"
         
         # 3. 테스트 직원 추가
-        cursor.execute("SELECT COUNT(*) FROM employees")
-        emp_count = cursor.fetchone()[0]
-        
-        result_html += f"<h2>👥 현재 직원 수: {emp_count}명</h2>"
+        try:
+            cursor.execute("SELECT COUNT(*) FROM employees")
+            count_result = cursor.fetchone()
+            emp_count = count_result[0] if isinstance(count_result, (list, tuple)) else count_result['count']
+            result_html += f"<h2>👥 현재 직원 수: {emp_count}명</h2>"
+        except Exception as e:
+            result_html += f"<h2>⚠️ 직원 수 확인 중 오류: {e}</h2>"
+            emp_count = 0
         
         if emp_count < 5:  # 5명 미만이면 테스트 직원 추가
             test_employees = [
@@ -1582,19 +1586,31 @@ def fix_postgresql_structure():
             result_html += "</ul>"
         
         # 4. 최종 확인
-        cursor.execute("SELECT id, name, role FROM employees")
-        employees = cursor.fetchall()
-        result_html += f"<h2>📋 최종 employees 테이블: {len(employees)}명</h2><ul>"
-        for emp in employees:
-            if isinstance(emp, (list, tuple)):
-                result_html += f"<li>ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}</li>"
-            else:
-                result_html += f"<li>ID:{emp['id']} | 이름:'{emp['name']}' | 역할:{emp['role']}</li>"
-        result_html += "</ul>"
+        try:
+            cursor.execute("SELECT COUNT(*) FROM employees")
+            count_result = cursor.fetchone()
+            emp_count = count_result[0] if isinstance(count_result, (list, tuple)) else count_result['count']
+            
+            cursor.execute("SELECT id, name, role FROM employees LIMIT 5")
+            employees = cursor.fetchall()
+            
+            result_html += f"<h2>📋 최종 employees 테이블: {emp_count}명</h2><ul>"
+            for emp in employees:
+                if isinstance(emp, (list, tuple)):
+                    result_html += f"<li>ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}</li>"
+                else:
+                    result_html += f"<li>ID:{emp.get('id', 'N/A')} | 이름:'{emp.get('name', 'N/A')}' | 역할:{emp.get('role', 'N/A')}</li>"
+            result_html += "</ul>"
+        except Exception as e:
+            result_html += f"<h2>⚠️ 최종 확인 중 오류: {e}</h2>"
         
-        cursor.execute("SELECT COUNT(*) FROM employee_customers")
-        customer_count = cursor.fetchone()[0]
-        result_html += f"<h2>📋 employee_customers 테이블: {customer_count}명</h2>"
+        try:
+            cursor.execute("SELECT COUNT(*) FROM employee_customers")
+            count_result = cursor.fetchone()
+            customer_count = count_result[0] if isinstance(count_result, (list, tuple)) else count_result['count']
+            result_html += f"<h2>📋 employee_customers 테이블: {customer_count}명</h2>"
+        except Exception as e:
+            result_html += f"<h2>⚠️ customer_count 확인 중 오류: {e}</h2>"
         
         conn.commit()
         conn.close()
