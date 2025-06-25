@@ -6,6 +6,7 @@ import os
 import requests
 import time
 from db_utils import get_db_connection, init_database, execute_query, get_customer_info
+from psycopg2.extras import RealDictCursor
 
 # 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
 RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
@@ -1761,6 +1762,141 @@ def fix_postgresql_structure():
     except Exception as e:
         import traceback
         return f"<h2>❌ 오류 발생: {e}</h2><pre>{traceback.format_exc()}</pre><p><a href='/'>돌아가기</a></p>"
+
+@app.route('/railway-db-status')
+def railway_db_status():
+    """Railway PostgreSQL 상태 확인"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 테이블 목록 확인
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name;
+        """)
+        tables = [row['table_name'] for row in cursor.fetchall()]
+        
+        # employees 테이블 구조 확인
+        cursor.execute("""
+            SELECT column_name, data_type, is_nullable 
+            FROM information_schema.columns 
+            WHERE table_name = 'employees' 
+            ORDER BY ordinal_position;
+        """)
+        columns = cursor.fetchall()
+        
+        # 직원 수 확인
+        cursor.execute("SELECT COUNT(*) as count FROM employees;")
+        employee_count = cursor.fetchone()['count']
+        
+        # 직원 목록 조회
+        cursor.execute("SELECT * FROM employees LIMIT 10;")
+        employees = cursor.fetchall()
+        
+        # 다른 테이블 상태 확인
+        table_stats = {}
+        for table in ['links', 'office_links', 'customer_info', 'guarantee_insurance_log', 'employee_customers']:
+            try:
+                cursor.execute(f"SELECT COUNT(*) as count FROM {table};")
+                table_stats[table] = cursor.fetchone()['count']
+            except Exception as e:
+                table_stats[table] = f"오류: {str(e)}"
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'tables': tables,
+            'employee_columns': [dict(col) for col in columns],
+            'employee_count': employee_count,
+            'employees': [dict(emp) for emp in employees],
+            'table_stats': table_stats
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/railway-add-employees')
+def railway_add_employees():
+    """Railway PostgreSQL에 테스트 직원들 추가"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        test_employees = [
+            ('admin', 'admin@company.com', '관리부', '관리자', 'admin'),
+            ('관리자', 'manager@company.com', '관리부', '부장', 'manager'),
+            ('직원1', 'emp1@company.com', '영업부', '대리', 'employee'),
+            ('직원2', 'emp2@company.com', '마케팅부', '주임', 'employee'),
+            ('테스트직원', 'test@company.com', '개발부', '사원', 'employee'),
+            ('김철수', 'kim@company.com', '영업부', '과장', 'employee'),
+            ('이영희', 'lee@company.com', '인사부', '대리', 'employee'),
+            ('박민수', 'park@company.com', '재무부', '주임', 'employee')
+        ]
+        
+        current_time = datetime.now()
+        added_employees = []
+        
+        for name, email, department, position, role in test_employees:
+            try:
+                cursor.execute("""
+                    INSERT INTO employees (name, email, department, position, created_at, last_login, role)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (name) DO UPDATE SET
+                        email = EXCLUDED.email,
+                        department = EXCLUDED.department,
+                        position = EXCLUDED.position,
+                        role = EXCLUDED.role;
+                """, (name, email, department, position, current_time, current_time, role))
+                added_employees.append(name)
+            except Exception as e:
+                added_employees.append(f"{name} 실패: {str(e)}")
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '테스트 직원들 추가 완료',
+            'added_employees': added_employees
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/railway-test-login')
+def railway_test_login():
+    """Railway PostgreSQL에서 직원 로그인 테스트"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        test_names = ['admin', '관리자', '직원1', '테스트직원']
+        login_results = {}
+        
+        for name in test_names:
+            cursor.execute("SELECT name, email, department, role FROM employees WHERE name = %s;", (name,))
+            result = cursor.fetchone()
+            if result:
+                login_results[name] = dict(result)
+            else:
+                login_results[name] = "찾을 수 없음"
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'login_results': login_results
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080) 
