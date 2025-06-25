@@ -133,6 +133,7 @@ def admin_panel():
     cursor = conn.cursor()
     
     if db_type == 'postgresql':
+        print(">>> [DEBUG] Executing PostgreSQL query in admin_panel (boolean mode)")
         cursor.execute('''
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
             FROM links l
@@ -140,6 +141,7 @@ def admin_panel():
             ORDER BY l.id DESC
         ''')
     else:
+        print(">>> [DEBUG] Executing SQLite query in admin_panel (integer mode)")
         cursor.execute('''
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
             FROM links l
