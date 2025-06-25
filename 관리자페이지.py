@@ -1420,7 +1420,8 @@ def fix_postgresql_structure():
             SELECT column_name FROM information_schema.columns 
             WHERE table_name = 'employees'
         """)
-        employee_columns = [row[0] for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        employee_columns = [row[0] if isinstance(row, (list, tuple)) else row['column_name'] for row in rows]
         result_html += f"<h2>📊 현재 employees 컬럼</h2><p>{employee_columns}</p>"
         
         # 구 구조인지 확인
@@ -1481,7 +1482,8 @@ def fix_postgresql_structure():
             SELECT column_name FROM information_schema.columns 
             WHERE table_name = 'employee_customers'
         """)
-        customer_columns = [row[0] for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        customer_columns = [row[0] if isinstance(row, (list, tuple)) else row['column_name'] for row in rows]
         
         result_html += f"<h2>📊 현재 employee_customers 컬럼</h2><p>{customer_columns}</p>"
         
@@ -1546,7 +1548,10 @@ def fix_postgresql_structure():
         employees = cursor.fetchall()
         result_html += f"<h2>📋 최종 employees 테이블: {len(employees)}명</h2><ul>"
         for emp in employees:
-            result_html += f"<li>ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}</li>"
+            if isinstance(emp, (list, tuple)):
+                result_html += f"<li>ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}</li>"
+            else:
+                result_html += f"<li>ID:{emp['id']} | 이름:'{emp['name']}' | 역할:{emp['role']}</li>"
         result_html += "</ul>"
         
         cursor.execute("SELECT COUNT(*) FROM employee_customers")
