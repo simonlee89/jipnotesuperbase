@@ -1167,9 +1167,11 @@
         
         // 고객 목록 불러오기
         async function loadCustomers() {
+            console.log('--- loadCustomers() 시작 ---');
             try {
                 const response = await fetch('/api/customers');
                 customers = await response.json();
+                console.log('서버에서 받아온 전체 고객 목록:', customers);
                 filteredCustomers = [...customers];
                 
                 displayCustomers(customers);
@@ -1182,6 +1184,7 @@
                 document.querySelector('[data-filter="all"]').classList.add('active');
                 document.getElementById('date-filter').value = 'all';
             } catch (error) {
+                console.error('loadCustomers()에서 오류 발생:', error);
                 showAlert('고객 목록을 불러오는데 실패했습니다.', 'error');
             }
         }
@@ -1354,15 +1357,15 @@
                 
                 if (result.success) {
                     showAlert('고객이 성공적으로 추가되었습니다.', 'success');
-                    // 수동으로 행을 업데이트하는 대신, 전체 목록을 다시 로드하여
-                    // 서버로부터 받은 최신 데이터로 화면을 다시 그립니다.
-                    // 이렇게 하면 모든 정보(새로 생성된 ID 포함)가 정확하게 반영됩니다.
+                    console.log('[saveNewCustomer] 성공! 서버가 반환한 정보:', result, '이제 loadCustomers()를 호출합니다.');
                     loadCustomers();
                 } else {
                     showAlert(result.message || '고객 추가에 실패했습니다.', 'error');
+                    console.error('[saveNewCustomer] 실패:', result.message);
                 }
             } catch (error) {
                 showAlert('서버 오류가 발생했습니다.', 'error');
+                console.error('[saveNewCustomer] 예외 발생:', error);
             }
         }
         
