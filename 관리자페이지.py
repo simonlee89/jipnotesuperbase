@@ -1401,6 +1401,44 @@ def get_guarantee_list():
         })
     return jsonify(result)
 
+@app.route('/direct-postgresql-fix')
+def direct_postgresql_fix():
+    """직접 PostgreSQL 구조 수정"""
+    try:
+        import subprocess
+        import sys
+        
+        # direct_postgresql_fix.py 실행
+        result = subprocess.run([sys.executable, 'direct_postgresql_fix.py'], 
+                              capture_output=True, text=True, cwd='/app')
+        
+        html = f"""
+        <h1>🚀 PostgreSQL 직접 수정 결과</h1>
+        <h2>✅ 실행 완료</h2>
+        <h3>📋 출력 로그:</h3>
+        <pre style="background: #f0f0f0; padding: 10px; border-radius: 5px;">{result.stdout}</pre>
+        """
+        
+        if result.stderr:
+            html += f"""
+            <h3>⚠️ 오류 로그:</h3>
+            <pre style="background: #ffe6e6; padding: 10px; border-radius: 5px;">{result.stderr}</pre>
+            """
+        
+        html += f"""
+        <h3>📊 종료 코드: {result.returncode}</h3>
+        <p><a href="/">돌아가기</a></p>
+        """
+        
+        return html
+        
+    except Exception as e:
+        return f"""
+        <h1>❌ 오류 발생</h1>
+        <p>{str(e)}</p>
+        <p><a href="/">돌아가기</a></p>
+        """
+
 @app.route('/fix-postgresql-structure')
 def fix_postgresql_structure():
     """PostgreSQL 테이블 구조 수정 웹 엔드포인트"""
