@@ -849,25 +849,35 @@ def delete_customer_links_from_property_db(management_site_id):
 def get_unchecked_likes_count(management_site_id, db_path, mode='residence'):
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
+    count = 0
     
-    if mode == 'residence':
-        # 주거용: links 테이블만 카운트
-        if db_type == 'postgresql':
-            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
-        else:
-            cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
-        count = cursor.fetchone()[0]
-    elif mode == 'work':
-        # 업무용: office_links의 unchecked_likes_work만 카운트
-        if db_type == 'postgresql':
-            cursor.execute('SELECT SUM(unchecked_likes_work) FROM office_links WHERE management_site_id = %s', (management_site_id,))
-        else:
-            cursor.execute('SELECT SUM(unchecked_likes_work) FROM office_links WHERE management_site_id = ?', (management_site_id,))
-        result = cursor.fetchone()[0]
-        count = result if result is not None else 0
-    else:
-        count = 0
-    conn.close()
+    try:
+        if mode == 'residence':
+            # 주거용: links 테이블만 카운트
+            if db_type == 'postgresql':
+                # PostgreSQL은 RealDictCursor를 사용하므로, 키로 접근
+                cursor.execute('SELECT COUNT(*) as count FROM links WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
+                result = cursor.fetchone()
+                count = result['count'] if result else 0
+            else: # SQLite는 튜플을 반환하므로, 인덱스로 접근
+                cursor.execute('SELECT COUNT(*) FROM links WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
+                result = cursor.fetchone()
+                count = result[0] if result else 0
+
+        elif mode == 'work':
+            # 업무용: office_links의 unchecked_likes_work만 카운트
+            if db_type == 'postgresql':
+                cursor.execute('SELECT SUM(unchecked_likes_work) as total_sum FROM office_links WHERE management_site_id = %s', (management_site_id,))
+                result = cursor.fetchone()
+                # SUM 결과가 NULL일 수 있음
+                count = result['total_sum'] if result and result['total_sum'] is not None else 0
+            else: # SQLite
+                cursor.execute('SELECT SUM(unchecked_likes_work) FROM office_links WHERE management_site_id = ?', (management_site_id,))
+                result = cursor.fetchone()
+                count = result[0] if result and result[0] is not None else 0
+    finally:
+        conn.close()
+        
     return count
 
 # 서버 시작 시 컬럼 보장 - db_utils로 이동
