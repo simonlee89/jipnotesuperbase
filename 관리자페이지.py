@@ -1401,6 +1401,50 @@ def get_guarantee_list():
         })
     return jsonify(result)
 
+@app.route('/complete-db-reset')
+def complete_db_reset():
+    """PostgreSQL 완전 리셋 및 재구축"""
+    try:
+        import subprocess
+        import sys
+        
+        # complete_db_reset.py 실행
+        result = subprocess.run([sys.executable, 'complete_db_reset.py'], 
+                              capture_output=True, text=True, cwd='/app')
+        
+        html = f"""
+        <h1>💥 PostgreSQL 완전 리셋 결과</h1>
+        <h2>🚀 실행 완료 (종료 코드: {result.returncode})</h2>
+        <h3>📋 출력 로그:</h3>
+        <pre style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">{result.stdout}</pre>
+        """
+        
+        if result.stderr:
+            html += f"""
+            <h3>⚠️ 오류 로그:</h3>
+            <pre style="background: #ffe6e6; padding: 15px; border-radius: 8px; border-left: 4px solid #dc3545;">{result.stderr}</pre>
+            """
+        
+        html += f"""
+        <h3>✅ 다음 단계:</h3>
+        <ul>
+            <li>🔄 <a href="/api/employees">직원 목록 확인</a></li>
+            <li>🔐 <a href="/">관리자 로그인 테스트</a></li>
+            <li>📊 <a href="/admin">관리자 페이지 접속</a></li>
+        </ul>
+        <p><strong>💡 성공 시:</strong> 모든 구 데이터가 삭제되고 새 구조로 완전히 재생성됩니다!</p>
+        </body></html>
+        """
+        
+        return html
+        
+    except Exception as e:
+        return f"""
+        <h1>❌ PostgreSQL 완전 리셋 실패</h1>
+        <h2>오류: {str(e)}</h2>
+        <p><a href="/">메인 페이지로 돌아가기</a></p>
+        """
+
 @app.route('/direct-postgresql-fix')
 def direct_postgresql_fix():
     """직접 PostgreSQL 구조 수정"""
