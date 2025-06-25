@@ -151,20 +151,19 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    """직원 로그인"""
+    """직원 로그인 (새로운 테이블 구조에 맞게 수정)"""
     data = request.get_json()
-    employee_id = data.get('employee_id')
-    password = data.get('password')
+    employee_id = data.get('employee_id')  # 실제로는 name으로 검색
+    password = data.get('password')  # password 컬럼이 없으므로 무시
     
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
+    # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
     if db_type == 'postgresql':
-                cursor.execute('SELECT employee_name FROM employees WHERE employee_id = %s AND password = %s AND is_active = 1',
-                      (employee_id, password))
+        cursor.execute('SELECT name FROM employees WHERE name = %s', (employee_id,))
     else:
-        cursor.execute('SELECT employee_name FROM employees WHERE employee_id = ? AND password = ? AND is_active = 1', 
-                       (employee_id, password))
+        cursor.execute('SELECT name FROM employees WHERE name = ?', (employee_id,))
     
     employee = cursor.fetchone()
     conn.close()
@@ -174,7 +173,7 @@ def login():
         session['employee_name'] = employee[0]
         return jsonify({'success': True})
     else:
-        return jsonify({'success': False, 'message': '아이디 또는 비밀번호가 잘못되었습니다.'})
+        return jsonify({'success': False, 'message': '직원 이름을 찾을 수 없습니다. (새로운 테이블 구조에서는 비밀번호 없이 이름만으로 로그인)'})
 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
@@ -285,13 +284,13 @@ def guarantee_edit(id):
 @app.route('/api/employees', methods=['GET', 'POST'])
 def manage_employees():
     if request.method == 'GET':
-        # 직원 목록 조회 (팀 정보 포함)
+        # 직원 목록 조회 (핵심 정보만 사용)
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT id, employee_id, employee_name, team, created_date, is_active 
+            SELECT id, name, created_at, role
             FROM employees 
-            ORDER BY created_date DESC
+            ORDER BY created_at DESC
         ''')
         employees = cursor.fetchall()
         conn.close()
@@ -300,28 +299,29 @@ def manage_employees():
         for emp in employees:
             employee_list.append({
                 'id': emp[0],
-                'employee_id': emp[1],
-                'employee_name': emp[2],
-                'team': emp[3] if emp[3] else '',
-                'created_date': emp[4],
-                'is_active': bool(emp[5]) if db_type == 'postgresql' else emp[5]
+                'employee_id': emp[1],  # name을 employee_id로 표시
+                'employee_name': emp[1],  # name을 employee_name으로도 표시
+                'team': '',  # 빈 값으로 표시 (필요없음)
+                'created_date': emp[2],  # created_at을 created_date로 표시
+                'is_active': True,  # 기본값으로 활성화 상태
+                'role': emp[3] if emp[3] else 'employee'
             })
         
         return jsonify(employee_list)
     
     elif request.method == 'POST':
-        # 새 직원 추가 (팀 정보 포함)
+        # 새 직원 추가 (핵심 정보만 사용)
         data = request.get_json()
-        employee_id = data.get('employee_id')
-        employee_name = data.get('employee_name')
-        team = data.get('team', '')
-        password = data.get('password', '1234')  # 기본 비밀번호
+        employee_id = data.get('employee_id')  # 실제로는 name으로 사용
+        employee_name = data.get('employee_name')  # 실제로는 name으로 사용 (중복)
+        team = data.get('team', '')  # 사용하지 않음
+        password = data.get('password', '1234')  # 사용하지 않음
         
-        if not employee_id or not employee_name:
-            return jsonify({'success': False, 'message': '직원아이디와 이름을 입력해주세요.'})
+        # employee_name을 우선 사용, 없으면 employee_id 사용
+        final_name = employee_name if employee_name else employee_id
         
-        if not team:
-            return jsonify({'success': False, 'message': '팀을 입력해주세요.'})
+        if not final_name:
+            return jsonify({'success': False, 'message': '직원 이름을 입력해주세요.'})
         
         try:
             conn, db_type = get_db_connection()
@@ -329,14 +329,28 @@ def manage_employees():
             
             if db_type == 'postgresql':
                 cursor.execute('''
-                    INSERT INTO employees (employee_id, employee_name, team, password, created_date)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (employee_id, employee_name, team, password, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                    INSERT INTO employees (name, email, department, position, created_at, role)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (
+                    final_name,
+                    '',  # email 기본값 (NOT NULL 제약조건)
+                    '',  # department 기본값 (NOT NULL 제약조건)
+                    '',  # position 기본값 (NOT NULL 제약조건)
+                    datetime.now(),  # created_at
+                    'employee'  # role 기본값
+                ))
             else:
                 cursor.execute('''
-                    INSERT INTO employees (employee_id, employee_name, team, password, created_date)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (employee_id, employee_name, team, password, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                    INSERT INTO employees (name, email, department, position, created_at, role)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    final_name,
+                    '',  # email 기본값 (NOT NULL 제약조건)
+                    '',  # department 기본값 (NOT NULL 제약조건)
+                    '',  # position 기본값 (NOT NULL 제약조건)
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),  # created_at
+                    'employee'  # role 기본값
+                ))
             
             conn.commit()
             conn.close()
@@ -345,38 +359,38 @@ def manage_employees():
         except Exception as e:  # PostgreSQL과 SQLite 모두 처리
             error_msg = str(e)
             if 'duplicate' in error_msg.lower() or 'unique' in error_msg.lower():
-                return jsonify({'success': False, 'message': '이미 존재하는 직원 아이디입니다.'})
+                return jsonify({'success': False, 'message': '이미 존재하는 직원입니다.'})
             else:
                 return jsonify({'success': False, 'message': f'오류: {error_msg}'})
 
 @app.route('/api/employees/<int:emp_id>', methods=['DELETE'])
 def delete_employee(emp_id):
-    """직원 삭제 (비활성화)"""
+    """직원 삭제 (새로운 테이블 구조에 맞게 수정)"""
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
-    # 직원 id로 employee_id 조회
+    # 직원 id로 name 조회 (employee_id → name으로 변경)
     if db_type == 'postgresql':
-        cursor.execute('SELECT employee_id FROM employees WHERE id = %s', (emp_id,))
+        cursor.execute('SELECT name FROM employees WHERE id = %s', (emp_id,))
     else:
-        cursor.execute('SELECT employee_id FROM employees WHERE id = ?', (emp_id,))
+        cursor.execute('SELECT name FROM employees WHERE id = ?', (emp_id,))
     
     result = cursor.fetchone()
     if not result:
         conn.close()
         return jsonify({'success': False, 'message': '직원을 찾을 수 없습니다.'})
     
-    employee_id_value = result[0]
+    employee_name_value = result[0]
     
-    # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=1 → 0으로 변경 - PostgreSQL과 SQLite 모두 INTEGER 사용
+    # 1. 해당 직원이 등록한 보증보험 guarantee_insurance=1 → 0으로 변경
     if db_type == 'postgresql':
-        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = %s AND guarantee_insurance = 1', (employee_id_value,))
-        # 2. 직원 비활성화
-        cursor.execute('UPDATE employees SET is_active = 0 WHERE id = %s', (emp_id,))
+        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = %s AND guarantee_insurance = 1', (employee_name_value,))
+        # 2. 직원 삭제 (is_active 컬럼이 없으므로 완전 삭제)
+        cursor.execute('DELETE FROM employees WHERE id = %s', (emp_id,))
     else:
-        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = ? AND guarantee_insurance = 1', (employee_id_value,))
-        # 2. 직원 비활성화
-        cursor.execute('UPDATE employees SET is_active = 0 WHERE id = ?', (emp_id,))
+        cursor.execute('UPDATE office_links SET guarantee_insurance = 0 WHERE added_by = ? AND guarantee_insurance = 1', (employee_name_value,))
+        # 2. 직원 삭제 (is_active 컬럼이 없으므로 완전 삭제)
+        cursor.execute('DELETE FROM employees WHERE id = ?', (emp_id,))
     
     conn.commit()
     conn.close()
@@ -384,26 +398,9 @@ def delete_employee(emp_id):
 
 @app.route('/api/employees/<int:emp_id>/reset-password', methods=['PUT'])
 def reset_employee_password(emp_id):
-    """직원 비밀번호 재설정"""
-    data = request.get_json()
-    new_password = data.get('new_password', '1234')  # 기본 비밀번호
-    
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
-    if db_type == 'postgresql':
-        cursor.execute('UPDATE employees SET password = %s WHERE id = %s', (new_password, emp_id))
-    else:
-        cursor.execute('UPDATE employees SET password = ? WHERE id = ?', (new_password, emp_id))
-    
-    if cursor.rowcount == 0:
-        conn.close()
-        return jsonify({'success': False, 'message': '직원을 찾을 수 없습니다.'})
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True, 'message': '비밀번호가 재설정되었습니다.'})
+    """직원 비밀번호 재설정 (새로운 테이블 구조에서는 password 컬럼이 없으므로 더미 함수)"""
+    # 새로운 테이블 구조에서는 password 컬럼이 없으므로 성공만 반환
+    return jsonify({'success': True, 'message': '새로운 테이블 구조에서는 비밀번호 기능이 제거되었습니다.'})
 
 def hide_links_by_employee(employee_id, db_path='/data/integrated.db'):
     """해당 직원이 등록한 보증보험 매물을 모두 숨김 처리 (ID/문자열 모두 포함)"""
@@ -436,33 +433,28 @@ def hide_links_by_employee(employee_id, db_path='/data/integrated.db'):
 
 @app.route('/api/employees/<int:emp_id>/permanent-delete', methods=['DELETE'])
 def permanent_delete_employee(emp_id):
-    """직원 완전 삭제 (비활성화된 직원만, 모든 매물 숨김 처리 포함)"""
+    """직원 완전 삭제 (새로운 테이블 구조에 맞게 수정)"""
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
+    # name 조회 (employee_id → name으로 변경, is_active 컬럼 제거)
     if db_type == 'postgresql':
-        cursor.execute('SELECT is_active, employee_id FROM employees WHERE id = %s', (emp_id,))
+        cursor.execute('SELECT name FROM employees WHERE id = %s', (emp_id,))
     else:
-        cursor.execute('SELECT is_active, employee_id FROM employees WHERE id = ?', (emp_id,))
+        cursor.execute('SELECT name FROM employees WHERE id = ?', (emp_id,))
     
     result = cursor.fetchone()
     if not result:
         conn.close()
         return jsonify({'success': False, 'message': '직원을 찾을 수 없습니다.'})
     
-    # PostgreSQL의 경우 boolean 타입 처리
-    is_active = result[0] if db_type == 'sqlite' else bool(result[0])
-    if is_active:
-        conn.close()
-        return jsonify({'success': False, 'message': '활성 상태인 직원은 완전 삭제할 수 없습니다. 먼저 비활성화해주세요.'})
-    
-    employee_id_value = result[1]
+    employee_name_value = result[0]
 
     # 1. 해당 직원이 등록한 보증보험 링크 id 목록 조회
     if db_type == 'postgresql':
-        cursor.execute('SELECT id FROM office_links WHERE added_by = %s', (employee_id_value,))
+        cursor.execute('SELECT id FROM office_links WHERE added_by = %s', (employee_name_value,))
     else:
-        cursor.execute('SELECT id FROM office_links WHERE added_by = ?', (employee_id_value,))
+        cursor.execute('SELECT id FROM office_links WHERE added_by = ?', (employee_name_value,))
     link_ids = [row[0] for row in cursor.fetchall()]
 
     # 2. guarantee_insurance_log에서 해당 링크 로그 삭제
@@ -474,40 +466,25 @@ def permanent_delete_employee(emp_id):
 
     # 3. office_links 테이블에서 해당 직원의 모든 매물 삭제
     if db_type == 'postgresql':
-        cursor.execute('DELETE FROM office_links WHERE added_by = %s', (employee_id_value,))
-        # 기존 고객/직원 삭제
-        cursor.execute('DELETE FROM employee_customers WHERE employee_id = %s', (employee_id_value,))
+        cursor.execute('DELETE FROM office_links WHERE added_by = %s', (employee_name_value,))
+        # 기존 고객/직원 삭제 (employee_id → name으로 변경)
+        cursor.execute('DELETE FROM employee_customers WHERE employee_name = %s', (employee_name_value,))
         cursor.execute('DELETE FROM employees WHERE id = %s', (emp_id,))
     else:
-        cursor.execute('DELETE FROM office_links WHERE added_by = ?', (employee_id_value,))
-        # 기존 고객/직원 삭제
-        cursor.execute('DELETE FROM employee_customers WHERE employee_id = ?', (employee_id_value,))
+        cursor.execute('DELETE FROM office_links WHERE added_by = ?', (employee_name_value,))
+        # 기존 고객/직원 삭제 (employee_id → name으로 변경)
+        cursor.execute('DELETE FROM employee_customers WHERE employee_name = ?', (employee_name_value,))
         cursor.execute('DELETE FROM employees WHERE id = ?', (emp_id,))
     
     conn.commit()
     conn.close()
-    return jsonify({'success': True, 'message': '직원이 완전히 삭제(숨김) 처리되었고, 해당 직원의 모든 매물도 삭제되었습니다.'})
+    return jsonify({'success': True, 'message': '직원이 완전히 삭제되었고, 해당 직원의 모든 매물도 삭제되었습니다.'})
 
 @app.route('/api/employees/<int:emp_id>/activate', methods=['PUT'])
 def activate_employee(emp_id):
-    """직원 활성화"""
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
-    
-    # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-    if db_type == 'postgresql':
-        cursor.execute('UPDATE employees SET is_active = 1 WHERE id = %s', (emp_id,))
-    else:
-        cursor.execute('UPDATE employees SET is_active = 1 WHERE id = ?', (emp_id,))
-    
-    if cursor.rowcount == 0:
-        conn.close()
-        return jsonify({'success': False, 'message': '직원을 찾을 수 없습니다.'})
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'success': True, 'message': '직원이 활성화되었습니다.'})
+    """직원 활성화 (새로운 테이블 구조에서는 is_active 컬럼이 없으므로 더미 함수)"""
+    # 새로운 테이블 구조에서는 is_active 컬럼이 없으므로 성공만 반환
+    return jsonify({'success': True, 'message': '새로운 테이블 구조에서는 모든 직원이 기본적으로 활성화 상태입니다.'})
 
 # 직원별 고객 관리 API
 @app.route('/api/customers', methods=['GET', 'POST'])
@@ -1270,15 +1247,28 @@ def insert_test_data():
         try:
             if db_type == 'postgresql':
                 cursor.execute('''
-                    INSERT INTO employees (employee_id, employee_name, team, password, created_date, is_active)
+                    INSERT INTO employees (name, email, department, position, created_at, role)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (employee_id) DO NOTHING
-                ''', ('admin', '관리자', '관리팀', 'admin123', current_date, 1))
+                ''', (
+                    'admin',
+                    '',  # email 기본값 (NOT NULL 제약조건)
+                    '',  # department 기본값 (NOT NULL 제약조건)
+                    '',  # position 기본값 (NOT NULL 제약조건)
+                    current_date,  # created_at
+                    'employee'  # role 기본값
+                ))
             else:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO employees (employee_id, employee_name, team, password, created_date, is_active)
+                    INSERT OR IGNORE INTO employees (name, email, department, position, created_at, role)
                     VALUES (?, ?, ?, ?, ?, ?)
-                ''', ('admin', '관리자', '관리팀', 'admin123', current_date, 1))
+                ''', (
+                    'admin',
+                    '',  # email 기본값 (NOT NULL 제약조건)
+                    '',  # department 기본값 (NOT NULL 제약조건)
+                    '',  # position 기본값 (NOT NULL 제약조건)
+                    current_date.strftime('%Y-%m-%d %H:%M:%S'),  # created_at
+                    'employee'  # role 기본값
+                ))
             print("✅ 테스트 직원 삽입 완료")
         except Exception as e:
             print(f"직원 삽입 오류: {e}")

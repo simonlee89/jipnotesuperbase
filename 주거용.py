@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 from datetime import datetime
 import os
@@ -56,7 +56,6 @@ def index():
         
         conn.close()
         # 로그인된 직원의 employee_id를 템플릿 변수로 전달
-        from flask import session
         employee_id = session.get('employee_id', '')
         return render_template('index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
         
@@ -263,145 +262,184 @@ def customer_info():
 
 @app.route('/api/links', methods=['GET', 'POST'])
 def links():
-    conn, db_type = get_db_connection()
-    cursor = conn.cursor()
     management_site_id = request.args.get('management_site_id')
+    
     if request.method == 'POST':
-        data = request.json
-        url = data.get('url')
-        platform = data.get('platform')
-        from flask import session
-        added_by = session.get('employee_id', '중개사')
-        memo = data.get('memo', '')
-        guarantee_insurance = data.get('guarantee_insurance', False)
-        # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-        guarantee_int = 1 if guarantee_insurance else 0
-        residence_extra = data.get('residence_extra', '')
-        if not url or not platform or not added_by:
-            return jsonify({'success': False, 'error': '필수 정보가 누락되었습니다.'})
-        date_added = datetime.now().strftime('%Y-%m-%d')
-        if management_site_id:
-            customer_info = get_customer_info(management_site_id)
-            if not customer_info:
-                return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'})
-        
-        if db_type == 'postgresql':
-            cursor.execute('''
-                INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
-            # PostgreSQL RealDictCursor 호환성 처리
-            result = cursor.fetchone()
-            link_id = result['id'] if db_type == 'postgresql' else result[0]
-        else:
-            cursor.execute('''
-                INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
-            link_id = cursor.lastrowid
-        
-        conn.commit()
-        conn.close()
-        print(f"새 링크 추가됨 - ID: {link_id}, 고객: {management_site_id or '기본'}")
-        return jsonify({'success': True, 'id': link_id})
-    else:
-        platform_filter = request.args.get('platform', 'all')
-        user_filter = request.args.get('user', 'all')
-        like_filter = request.args.get('like', 'all')
-        date_filter = request.args.get('date', '')
-        guarantee_filter = request.args.get('guarantee', 'all')
-        query = 'SELECT * FROM links WHERE 1=1'
-        params = []
-        
-        if management_site_id:
-            print(f"고객별 링크 조회 - management_site_id: {management_site_id}")
-            if db_type == 'postgresql':
-                query += ' AND management_site_id = %s'
-            else:
-                query += ' AND management_site_id = ?'
-            params.append(management_site_id)
-        else:
-            query += ' AND management_site_id IS NULL'
-        
-        if platform_filter != 'all':
-            if db_type == 'postgresql':
-                query += ' AND platform = %s'
-            else:
-                query += ' AND platform = ?'
-            params.append(platform_filter)
-        
-        if user_filter != 'all':
-            if db_type == 'postgresql':
-                query += ' AND added_by = %s'
-            else:
-                query += ' AND added_by = ?'
-            params.append(user_filter)
-        
-        if like_filter == 'liked':
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            query += ' AND liked = 1'
-        elif like_filter == 'disliked':
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            query += ' AND disliked = 1'
-        
-        if date_filter:
-            if db_type == 'postgresql':
-                query += ' AND date_added = %s'
-            else:
-                query += ' AND date_added = ?'
-            params.append(date_filter)
-        
-        if guarantee_filter == 'available':
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            query += ' AND guarantee_insurance = 1'
-        elif guarantee_filter == 'unavailable':
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            query += ' AND guarantee_insurance = 0'
-        
-        query += ' ORDER BY id DESC'
-        cursor.execute(query, params)
-        links_data = cursor.fetchall()
-        total_count = len(links_data)
-        conn.close()
-        links_list = []
-        for index, link in enumerate(links_data):
-            link_number = total_count - index
+        try:
+            conn, db_type = get_db_connection()
+            cursor = conn.cursor()
             
-            # PostgreSQL RealDictCursor와 SQLite 호환성 처리
-            if db_type == 'postgresql':
-                # PostgreSQL은 딕셔너리 형태로 반환
-                link_dict = {
-                    'id': link.get('id'),
-                    'number': link_number,
-                    'url': link.get('url'),
-                    'platform': link.get('platform'),
-                    'added_by': link.get('added_by'),
-                    'date_added': link.get('date_added'),
-                    'rating': link.get('rating', 0),
-                    'liked': bool(link.get('liked', 0)),
-                    'disliked': bool(link.get('disliked', 0)),
-                    'memo': link.get('memo', ''),
-                    'guarantee_insurance': bool(link.get('guarantee_insurance', 0))
-                }
-            else:
-                # SQLite는 튜플 형태로 반환
-                link_dict = {
-                    'id': link[0],
-                    'number': link_number,
-                    'url': link[1],
-                    'platform': link[2],
-                    'added_by': link[3],
-                    'date_added': link[4],
-                    'rating': link[5],
-                    'liked': bool(link[6]),
-                    'disliked': bool(link[7]),
-                    'memo': link[8] if len(link) > 8 else '',
-                    'guarantee_insurance': bool(link[12]) if len(link) > 12 else False
-                }
+            data = request.json
+            if not data:
+                return jsonify({'success': False, 'error': 'JSON 데이터가 필요합니다.'}), 400
             
-            links_list.append(link_dict)
-        print(f"링크 조회 완료 - 총 {len(links_list)}개, 고객: {management_site_id or '기본'}")
-        return jsonify(links_list)
+            url = data.get('url')
+            platform = data.get('platform')
+            added_by = session.get('employee_id', '중개사')  # 세션에서 가져오되 기본값 설정
+            memo = data.get('memo', '')
+            guarantee_insurance = data.get('guarantee_insurance', False)
+            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+            guarantee_int = 1 if guarantee_insurance else 0
+            residence_extra = data.get('residence_extra', '')
+            
+            # 필수 필드 검증 (added_by는 기본값이 있으므로 제외)
+            if not url or not platform:
+                conn.close()
+                return jsonify({'success': False, 'error': 'URL과 플랫폼은 필수 입력 항목입니다.'}), 400
+            
+            date_added = datetime.now().strftime('%Y-%m-%d')
+            
+            # 고객 정보 검증 (management_site_id가 있는 경우)
+            if management_site_id:
+                customer_info = get_customer_info(management_site_id)
+                if not customer_info:
+                    conn.close()
+                    return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'}), 404
+            
+            # DB에 링크 추가
+            if db_type == 'postgresql':
+                cursor.execute('''
+                    INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
+                # PostgreSQL RealDictCursor 호환성 처리
+                result = cursor.fetchone()
+                link_id = result['id'] if isinstance(result, dict) else result[0]
+            else:
+                cursor.execute('''
+                    INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
+                link_id = cursor.lastrowid
+            
+            conn.commit()
+            conn.close()
+            print(f"✅ 새 링크 추가 성공 - ID: {link_id}, URL: {url[:50]}..., 고객: {management_site_id or '기본'}, 추가자: {added_by}")
+            return jsonify({'success': True, 'id': link_id, 'message': '링크가 성공적으로 추가되었습니다.'})
+            
+        except Exception as e:
+            # 에러 발생 시 DB 연결 안전하게 종료
+            try:
+                if 'conn' in locals():
+                    conn.close()
+            except:
+                pass
+            print(f"❌ 링크 추가 실패: {e}")
+            return jsonify({'success': False, 'error': f'링크 추가 중 오류가 발생했습니다: {str(e)}'}), 500
+    
+    else:  # GET 요청
+        try:
+            conn, db_type = get_db_connection()
+            cursor = conn.cursor()
+            
+            platform_filter = request.args.get('platform', 'all')
+            user_filter = request.args.get('user', 'all')
+            like_filter = request.args.get('like', 'all')
+            date_filter = request.args.get('date', '')
+            guarantee_filter = request.args.get('guarantee', 'all')
+            query = 'SELECT * FROM links WHERE 1=1'
+            params = []
+            
+            if management_site_id:
+                print(f"고객별 링크 조회 - management_site_id: {management_site_id}")
+                if db_type == 'postgresql':
+                    query += ' AND management_site_id = %s'
+                else:
+                    query += ' AND management_site_id = ?'
+                params.append(management_site_id)
+            else:
+                query += ' AND management_site_id IS NULL'
+            
+            if platform_filter != 'all':
+                if db_type == 'postgresql':
+                    query += ' AND platform = %s'
+                else:
+                    query += ' AND platform = ?'
+                params.append(platform_filter)
+            
+            if user_filter != 'all':
+                if db_type == 'postgresql':
+                    query += ' AND added_by = %s'
+                else:
+                    query += ' AND added_by = ?'
+                params.append(user_filter)
+            
+            if like_filter == 'liked':
+                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+                query += ' AND liked = 1'
+            elif like_filter == 'disliked':
+                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+                query += ' AND disliked = 1'
+            
+            if date_filter:
+                if db_type == 'postgresql':
+                    query += ' AND date_added = %s'
+                else:
+                    query += ' AND date_added = ?'
+                params.append(date_filter)
+            
+            if guarantee_filter == 'available':
+                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+                query += ' AND guarantee_insurance = 1'
+            elif guarantee_filter == 'unavailable':
+                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
+                query += ' AND guarantee_insurance = 0'
+            
+            query += ' ORDER BY id DESC'
+            cursor.execute(query, params)
+            links_data = cursor.fetchall()
+            total_count = len(links_data)
+            conn.close()
+            
+            links_list = []
+            for index, link in enumerate(links_data):
+                link_number = total_count - index
+                
+                # PostgreSQL RealDictCursor와 SQLite 호환성 처리
+                if db_type == 'postgresql':
+                    # PostgreSQL은 딕셔너리 형태로 반환
+                    link_dict = {
+                        'id': link.get('id'),
+                        'number': link_number,
+                        'url': link.get('url'),
+                        'platform': link.get('platform'),
+                        'added_by': link.get('added_by'),
+                        'date_added': link.get('date_added'),
+                        'rating': link.get('rating', 0),
+                        'liked': bool(link.get('liked', 0)),
+                        'disliked': bool(link.get('disliked', 0)),
+                        'memo': link.get('memo', ''),
+                        'guarantee_insurance': bool(link.get('guarantee_insurance', 0))
+                    }
+                else:
+                    # SQLite는 튜플 형태로 반환
+                    link_dict = {
+                        'id': link[0],
+                        'number': link_number,
+                        'url': link[1],
+                        'platform': link[2],
+                        'added_by': link[3],
+                        'date_added': link[4],
+                        'rating': link[5],
+                        'liked': bool(link[6]),
+                        'disliked': bool(link[7]),
+                        'memo': link[8] if len(link) > 8 else '',
+                        'guarantee_insurance': bool(link[12]) if len(link) > 12 else False
+                    }
+                
+                links_list.append(link_dict)
+            print(f"링크 조회 완료 - 총 {len(links_list)}개, 고객: {management_site_id or '기본'}")
+            return jsonify(links_list)
+            
+        except Exception as e:
+            # 에러 발생 시 DB 연결 안전하게 종료
+            try:
+                if 'conn' in locals():
+                    conn.close()
+            except:
+                pass
+            print(f"❌ 링크 조회 실패: {e}")
+            return jsonify({'success': False, 'error': f'링크 조회 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @app.route('/api/links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_link(link_id):
@@ -736,6 +774,121 @@ def auto_expire_guarantee_insurance():
     conn.close()
     if affected:
         print(f"만료된 보증보험 {affected}건 자동 해제 완료")
+
+@app.route('/api/test-link-add', methods=['POST'])
+def test_link_add():
+    """링크 추가 기능 테스트 및 디버깅용 엔드포인트"""
+    try:
+        print("=== 링크 추가 테스트 시작 ===")
+        
+        # 요청 데이터 확인
+        data = request.json
+        print(f"받은 데이터: {data}")
+        
+        # DB 연결 테스트
+        conn, db_type = get_db_connection()
+        print(f"DB 연결 성공 - 타입: {db_type}")
+        
+        # 테이블 존재 확인
+        cursor = conn.cursor()
+        if db_type == 'postgresql':
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_name = 'links';")
+        else:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='links';")
+        
+        table_exists = cursor.fetchone()
+        print(f"links 테이블 존재: {bool(table_exists)}")
+        
+        if not table_exists:
+            conn.close()
+            return jsonify({
+                'success': False, 
+                'error': 'links 테이블이 존재하지 않습니다.',
+                'debug': {
+                    'db_type': db_type,
+                    'table_exists': False
+                }
+            })
+        
+        # 테이블 스키마 확인
+        if db_type == 'postgresql':
+            cursor.execute("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'links' ORDER BY ordinal_position;")
+        else:
+            cursor.execute("PRAGMA table_info(links);")
+        
+        schema = cursor.fetchall()
+        print(f"links 테이블 스키마: {schema}")
+        
+        # 세션 정보 확인
+        employee_id = session.get('employee_id', '중개사')
+        print(f"세션에서 가져온 employee_id: {employee_id}")
+        
+        # 간단한 테스트 데이터로 INSERT 시도
+        test_url = "https://test.example.com"
+        test_platform = "test"
+        test_added_by = "테스트용"
+        test_date = datetime.now().strftime('%Y-%m-%d')
+        
+        if db_type == 'postgresql':
+            cursor.execute('''
+                INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            ''', (test_url, test_platform, test_added_by, test_date, '테스트 메모', None, 0, ''))
+            result = cursor.fetchone()
+            link_id = result['id'] if isinstance(result, dict) else result[0]
+        else:
+            cursor.execute('''
+                INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (test_url, test_platform, test_added_by, test_date, '테스트 메모', None, 0, ''))
+            link_id = cursor.lastrowid
+        
+        conn.commit()
+        print(f"테스트 링크 추가 성공 - ID: {link_id}")
+        
+        # 추가된 데이터 확인
+        if db_type == 'postgresql':
+            cursor.execute('SELECT * FROM links WHERE id = %s', (link_id,))
+        else:
+            cursor.execute('SELECT * FROM links WHERE id = ?', (link_id,))
+        
+        inserted_data = cursor.fetchone()
+        print(f"추가된 데이터: {inserted_data}")
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': '테스트 링크 추가 성공',
+            'debug': {
+                'db_type': db_type,
+                'table_exists': True,
+                'schema': schema,
+                'employee_id': employee_id,
+                'link_id': link_id,
+                'inserted_data': str(inserted_data)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ 테스트 링크 추가 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        try:
+            if 'conn' in locals():
+                conn.close()
+        except:
+            pass
+            
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'debug': {
+                'error_type': type(e).__name__,
+                'traceback': traceback.format_exc()
+            }
+        }), 500
 
 if __name__ == '__main__':
     auto_expire_guarantee_insurance()

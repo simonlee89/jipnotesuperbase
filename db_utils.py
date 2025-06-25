@@ -96,7 +96,7 @@ def get_db_connection():
 def init_database():
     """
     데이터베이스 테이블을 초기화합니다.
-    관리자페이지와 동일한 구조로 생성합니다.
+    PostgreSQL과 SQLite 모두 완벽하게 지원하는 구조로 생성합니다.
     """
     try:
         logger.info("=== 데이터베이스 초기화 시작 ===")
@@ -105,22 +105,28 @@ def init_database():
         logger.info(f"DB 타입: {db_type}")
         
         if db_type == 'postgresql':
-            # PostgreSQL용 테이블 생성 (관리자페이지 구조와 동일)
+            # PostgreSQL용 테이블 생성 - 완벽한 구조
             logger.info("PostgreSQL 테이블 생성 중...")
             
+            # 1. employees 테이블 - 직원 정보
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id SERIAL PRIMARY KEY,
                     employee_id VARCHAR(100) UNIQUE NOT NULL,
                     employee_name VARCHAR(100) NOT NULL,
                     team VARCHAR(100) NOT NULL,
-                    password VARCHAR(100) NOT NULL,
-                    created_date TIMESTAMP NOT NULL,
-                    is_active BOOLEAN DEFAULT TRUE
+                    password VARCHAR(100) NOT NULL DEFAULT '1234',
+                    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    last_login TIMESTAMP,
+                    phone VARCHAR(50),
+                    email VARCHAR(200),
+                    role VARCHAR(50) DEFAULT '직원'
                 )
             ''')
             logger.info("✅ employees 테이블 생성")
             
+            # 2. employee_customers 테이블 - 고객 정보 (완벽한 구조)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employee_customers (
                     id SERIAL PRIMARY KEY,
@@ -138,12 +144,18 @@ def init_database():
                     pets VARCHAR(50),
                     progress_status VARCHAR(50) DEFAULT '진행중',
                     memo TEXT,
-                    created_date TIMESTAMP NOT NULL
+                    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    budget_min VARCHAR(100),
+                    budget_max VARCHAR(100),
+                    preferred_area TEXT,
+                    special_requirements TEXT,
+                    contact_preference VARCHAR(50) DEFAULT 'phone'
                 )
             ''')
             logger.info("✅ employee_customers 테이블 생성")
             
-            # 추가 테이블들
+            # 3. links 테이블 - 주거용 매물 링크 (완벽한 구조)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS links (
                     id SERIAL PRIMARY KEY,
@@ -159,11 +171,21 @@ def init_database():
                     guarantee_insurance INTEGER DEFAULT 0,
                     is_deleted INTEGER DEFAULT 0,
                     is_checked INTEGER DEFAULT 0,
-                    residence_extra TEXT DEFAULT ''
+                    residence_extra TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    view_count INTEGER DEFAULT 0,
+                    price VARCHAR(100),
+                    area VARCHAR(50),
+                    room_type VARCHAR(50),
+                    floor_info VARCHAR(50),
+                    deposit VARCHAR(100),
+                    monthly_rent VARCHAR(100)
                 )
             ''')
             logger.info("✅ links 테이블 생성")
             
+            # 4. office_links 테이블 - 업무용 매물 링크 (완벽한 구조)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS office_links (
                     id SERIAL PRIMARY KEY,
@@ -181,11 +203,22 @@ def init_database():
                     guarantee_insurance INTEGER DEFAULT 0,
                     is_checked INTEGER DEFAULT 0,
                     unchecked_likes_work INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0
+                    is_deleted INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    view_count INTEGER DEFAULT 0,
+                    office_type VARCHAR(50),
+                    office_size VARCHAR(50),
+                    monthly_fee VARCHAR(100),
+                    deposit_amount VARCHAR(100),
+                    utilities_included BOOLEAN DEFAULT FALSE,
+                    parking_available BOOLEAN DEFAULT FALSE,
+                    elevator_available BOOLEAN DEFAULT FALSE
                 )
             ''')
             logger.info("✅ office_links 테이블 생성")
             
+            # 5. guarantee_insurance_log 테이블 - 보증보험 로그 (완벽한 구조)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
                     id SERIAL PRIMARY KEY,
@@ -193,17 +226,26 @@ def init_database():
                     management_site_id VARCHAR(50),
                     employee_id VARCHAR(50),
                     action VARCHAR(100),
-                    timestamp TIMESTAMP
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    table_type VARCHAR(20) DEFAULT 'office_links',
+                    details TEXT,
+                    ip_address VARCHAR(45),
+                    user_agent TEXT
                 )
             ''')
             logger.info("✅ guarantee_insurance_log 테이블 생성")
             
-            # PostgreSQL용 customer_info 테이블 추가
+            # 6. customer_info 테이블 - 기본 고객 정보 (완벽한 구조)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS customer_info (
                     id INTEGER PRIMARY KEY,
                     customer_name VARCHAR(200) DEFAULT '제일좋은집 찾아드릴분',
-                    move_in_date VARCHAR(50) DEFAULT ''
+                    move_in_date VARCHAR(50) DEFAULT '',
+                    phone VARCHAR(50),
+                    email VARCHAR(200),
+                    preferred_contact VARCHAR(20) DEFAULT 'phone',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             logger.info("✅ customer_info 테이블 생성")
@@ -215,23 +257,48 @@ def init_database():
                 ON CONFLICT (id) DO NOTHING
             ''')
             
+            # 인덱스 생성
+            indexes = [
+                "CREATE INDEX IF NOT EXISTS idx_employees_employee_id ON employees(employee_id);",
+                "CREATE INDEX IF NOT EXISTS idx_employees_team ON employees(team);",
+                "CREATE INDEX IF NOT EXISTS idx_employee_customers_employee_id ON employee_customers(employee_id);",
+                "CREATE INDEX IF NOT EXISTS idx_employee_customers_management_site_id ON employee_customers(management_site_id);",
+                "CREATE INDEX IF NOT EXISTS idx_links_management_site_id ON links(management_site_id);",
+                "CREATE INDEX IF NOT EXISTS idx_links_added_by ON links(added_by);",
+                "CREATE INDEX IF NOT EXISTS idx_links_guarantee_insurance ON links(guarantee_insurance);",
+                "CREATE INDEX IF NOT EXISTS idx_office_links_management_site_id ON office_links(management_site_id);",
+                "CREATE INDEX IF NOT EXISTS idx_office_links_added_by ON office_links(added_by);",
+                "CREATE INDEX IF NOT EXISTS idx_office_links_guarantee_insurance ON office_links(guarantee_insurance);"
+            ]
+            
+            for index_sql in indexes:
+                cursor.execute(index_sql)
+            
+            logger.info("✅ PostgreSQL 인덱스 생성 완료")
+            
         else:
-            # SQLite용 테이블 생성 (관리자페이지 구조와 동일)
+            # SQLite용 테이블 생성 - 호환 가능한 구조
             logger.info("SQLite 테이블 생성 중...")
             
+            # 1. employees 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     employee_id TEXT UNIQUE NOT NULL,
                     employee_name TEXT NOT NULL,
                     team TEXT NOT NULL,
-                    password TEXT NOT NULL,
+                    password TEXT NOT NULL DEFAULT '1234',
                     created_date TEXT NOT NULL,
-                    is_active INTEGER DEFAULT 1
+                    is_active INTEGER DEFAULT 1,
+                    last_login TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    role TEXT DEFAULT '직원'
                 )
             ''')
             logger.info("✅ employees 테이블 생성")
             
+            # 2. employee_customers 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employee_customers (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,12 +317,17 @@ def init_database():
                     progress_status TEXT DEFAULT '진행중',
                     memo TEXT,
                     created_date TEXT NOT NULL,
-                    FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
+                    last_updated TEXT,
+                    budget_min TEXT,
+                    budget_max TEXT,
+                    preferred_area TEXT,
+                    special_requirements TEXT,
+                    contact_preference TEXT DEFAULT 'phone'
                 )
             ''')
             logger.info("✅ employee_customers 테이블 생성")
             
-            # 추가 테이블들
+            # 3. links 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS links (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -271,11 +343,21 @@ def init_database():
                     guarantee_insurance INTEGER DEFAULT 0,
                     is_deleted INTEGER DEFAULT 0,
                     is_checked INTEGER DEFAULT 0,
-                    residence_extra TEXT DEFAULT ''
+                    residence_extra TEXT DEFAULT '',
+                    created_at TEXT,
+                    updated_at TEXT,
+                    view_count INTEGER DEFAULT 0,
+                    price TEXT,
+                    area TEXT,
+                    room_type TEXT,
+                    floor_info TEXT,
+                    deposit TEXT,
+                    monthly_rent TEXT
                 )
             ''')
             logger.info("✅ links 테이블 생성")
             
+            # 4. office_links 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS office_links (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -293,11 +375,22 @@ def init_database():
                     guarantee_insurance INTEGER DEFAULT 0,
                     is_checked INTEGER DEFAULT 0,
                     unchecked_likes_work INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0
+                    is_deleted INTEGER DEFAULT 0,
+                    created_at TEXT,
+                    updated_at TEXT,
+                    view_count INTEGER DEFAULT 0,
+                    office_type TEXT,
+                    office_size TEXT,
+                    monthly_fee TEXT,
+                    deposit_amount TEXT,
+                    utilities_included INTEGER DEFAULT 0,
+                    parking_available INTEGER DEFAULT 0,
+                    elevator_available INTEGER DEFAULT 0
                 )
             ''')
             logger.info("✅ office_links 테이블 생성")
             
+            # 5. guarantee_insurance_log 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -306,17 +399,25 @@ def init_database():
                     employee_id TEXT,
                     action TEXT,
                     timestamp TEXT,
-                    FOREIGN KEY (link_id) REFERENCES office_links (id)
+                    table_type TEXT DEFAULT 'office_links',
+                    details TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT
                 )
             ''')
             logger.info("✅ guarantee_insurance_log 테이블 생성")
             
-            # SQLite용 customer_info 테이블 추가
+            # 6. customer_info 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS customer_info (
                     id INTEGER PRIMARY KEY,
                     customer_name TEXT DEFAULT '제일좋은집 찾아드릴분',
-                    move_in_date TEXT DEFAULT ''
+                    move_in_date TEXT DEFAULT '',
+                    phone TEXT,
+                    email TEXT,
+                    preferred_contact TEXT DEFAULT 'phone',
+                    created_at TEXT,
+                    updated_at TEXT
                 )
             ''')
             logger.info("✅ customer_info 테이블 생성")

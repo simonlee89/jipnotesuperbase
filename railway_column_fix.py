@@ -38,13 +38,15 @@ except ImportError:
 
 def get_postgres_connection():
     """PostgreSQL 연결"""
-    database_url = os.environ.get('DATABASE_URL')
+    # PostgreSQL 서비스에서는 DATABASE_PUBLIC_URL 사용
+    database_url = os.environ.get('DATABASE_PUBLIC_URL') or os.environ.get('DATABASE_URL')
+    
     if not database_url:
-        raise Exception("DATABASE_URL 환경변수가 없습니다. Railway 환경에서 실행해주세요.")
+        raise Exception("DATABASE_URL 또는 DATABASE_PUBLIC_URL 환경변수가 없습니다. Railway 환경에서 실행해주세요.")
     
     try:
         conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
-        logger.info("✅ PostgreSQL 연결 성공")
+        logger.info(f"✅ PostgreSQL 연결 성공! URL: {database_url[:50]}...")
         return conn
     except Exception as e:
         raise Exception(f"PostgreSQL 연결 실패: {e}")
@@ -109,7 +111,7 @@ def main():
         
         # 현재 테이블 목록 확인
         cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
-        existing_tables = [row[0] for row in cursor.fetchall()]
+        existing_tables = [row['table_name'] for row in cursor.fetchall()]
         logger.info(f"📊 기존 테이블: {existing_tables}")
         
         added_columns = 0
@@ -406,7 +408,7 @@ def main():
                     FROM information_schema.columns 
                     WHERE table_name = %s
                 """, (table_name,))
-                column_count = cursor.fetchone()[0]
+                column_count = cursor.fetchone()['count']
                 print(f"🔹 {table_name}: {column_count}개 컬럼")
             except Exception as e:
                 print(f"❌ {table_name}: 조회 실패 - {e}")
@@ -419,6 +421,26 @@ def main():
     except Exception as e:
         logger.error(f"❌ 치명적 오류: {e}")
         print(f"\n❌ 실패: {e}")
+        
+        # 더 자세한 오류 정보 출력
+        import traceback
+        print(f"\n🔍 상세 오류 정보:")
+        print(traceback.format_exc())
+        
+        # DATABASE_URL 확인
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url:
+            print(f"\n📊 DATABASE_URL 존재: {database_url[:50]}...")
+        else:
+            print(f"\n❌ DATABASE_URL 환경변수가 없습니다!")
+            
+        # 환경변수 목록 확인
+        print(f"\n🔧 사용 가능한 환경변수:")
+        for key in sorted(os.environ.keys()):
+            if 'DATABASE' in key.upper() or 'DB' in key.upper() or 'POSTGRES' in key.upper():
+                value = os.environ[key]
+                print(f"  - {key}: {value[:50]}..." if len(value) > 50 else f"  - {key}: {value}")
+        
         return False
     
     return True
