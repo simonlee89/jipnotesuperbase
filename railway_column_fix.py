@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-🔥 Railway PostgreSQL 컬럼 강제 추가 스크립트
-직원 추가 오류 해결을 위한 긴급 수정!
+🔥 Railway PostgreSQL 컬럼 강제 추가 스크립트 (주거용/업무용 특화)
+직원 추가 오류 해결 + 주거용/업무용 특화 컬럼 추가!
 
 실행 방법:
 python railway_column_fix.py
@@ -9,6 +9,7 @@ python railway_column_fix.py
 특징:
 - PostgreSQL 전용 (Railway 환경)
 - 안전한 IF NOT EXISTS 방식
+- 주거용(links)과 업무용(office_links) 차별화
 - 실시간 진행상황 출력
 - 직원 추가 오류 즉시 해결
 """
@@ -97,10 +98,10 @@ def execute_safe_update(cursor, query, description):
 
 def main():
     """메인 실행 함수"""
-    print("=" * 70)
-    print("🔥 Railway PostgreSQL 컬럼 강제 추가 시작!")
-    print("직원 추가 오류를 해결합니다...")
-    print("=" * 70)
+    print("=" * 80)
+    print("🔥 Railway PostgreSQL 컬럼 강제 추가 시작! (주거용/업무용 특화)")
+    print("직원 추가 오류 해결 + 주거용/업무용 차별화...")
+    print("=" * 80)
     
     try:
         conn = get_postgres_connection()
@@ -149,28 +150,55 @@ def main():
             if safe_add_column(cursor, "employee_customers", col_name, col_def):
                 added_columns += 1
         
-        # STEP 3: links 테이블 컬럼 추가 (주거용 매물)
-        print("\n🏠 links 테이블 컬럼 추가 중...")
+        # 🏠 STEP 3: links 테이블 컬럼 추가 (주거용 특화)
+        print("\n🏠 links 테이블 컬럼 추가 중 (주거용 특화)...")
         links_columns = [
+            # 기본 링크 정보
+            ("memo", "TEXT DEFAULT ''"),
             ("residence_extra", "TEXT DEFAULT ''"),
             ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("view_count", "INTEGER DEFAULT 0"),
+            ("is_checked", "INTEGER DEFAULT 0"),
+            ("is_deleted", "INTEGER DEFAULT 0"),
+            
+            # 주거용 매물 세부 정보
             ("price", "VARCHAR(100)"),
             ("area", "VARCHAR(50)"),
             ("room_type", "VARCHAR(50)"),
             ("floor_info", "VARCHAR(50)"),
             ("deposit", "VARCHAR(100)"),
-            ("monthly_rent", "VARCHAR(100)")
+            ("monthly_rent", "VARCHAR(100)"),
+            
+            # 주거용 플랫폼 분류
+            ("platform_jikbang", "BOOLEAN DEFAULT FALSE"),       # 직방
+            ("platform_naver", "BOOLEAN DEFAULT FALSE"),         # 네이버
+            ("platform_etc", "BOOLEAN DEFAULT FALSE"),           # 기타
+            ("source_broker", "BOOLEAN DEFAULT FALSE"),          # 중개사
+            ("source_customer", "BOOLEAN DEFAULT FALSE"),        # 손님
+            
+            # 주거용 보증보험 상태  
+            ("guarantee_available", "BOOLEAN DEFAULT FALSE"),     # 보증보험가능
+            ("guarantee_unavailable", "BOOLEAN DEFAULT FALSE"),   # 보증보험불가
+            
+            # 주거용 고객 반응
+            ("customer_liked", "BOOLEAN DEFAULT FALSE"),          # 좋아요
+            ("customer_disliked", "BOOLEAN DEFAULT FALSE"),       # 싫어요
+            
+            # 주거용 특화 메모 필드
+            ("residence_memo", "TEXT DEFAULT ''"),                # 주거용 전용 메모
+            ("residence_notes", "TEXT DEFAULT ''")                # 주거용 특이사항
         ]
         
         for col_name, col_def in links_columns:
             if safe_add_column(cursor, "links", col_name, col_def):
                 added_columns += 1
         
-        # STEP 4: office_links 테이블 컬럼 추가 (업무용 매물)
-        print("\n💼 office_links 테이블 컬럼 추가 중...")
+        # 💼 STEP 4: office_links 테이블 컬럼 추가 (업무용 특화)
+        print("\n💼 office_links 테이블 컬럼 추가 중 (업무용 특화)...")
         office_columns = [
+            # 기본 링크 정보 (업무용)
+            ("memo", "TEXT DEFAULT ''"),
             ("customer_name", "VARCHAR(100) DEFAULT '000'"),
             ("move_in_date", "VARCHAR(50) DEFAULT ''"),
             ("management_site_id", "VARCHAR(50)"),
@@ -180,13 +208,36 @@ def main():
             ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("view_count", "INTEGER DEFAULT 0"),
-            ("office_type", "VARCHAR(50)"),
-            ("office_size", "VARCHAR(50)"),
-            ("monthly_fee", "VARCHAR(100)"),
-            ("deposit_amount", "VARCHAR(100)"),
-            ("utilities_included", "BOOLEAN DEFAULT FALSE"),
-            ("parking_available", "BOOLEAN DEFAULT FALSE"),
-            ("elevator_available", "BOOLEAN DEFAULT FALSE")
+            
+            # 업무용 매물 세부 정보
+            ("office_type", "VARCHAR(50)"),                      # 사무실 유형
+            ("office_size", "VARCHAR(50)"),                      # 사무실 크기
+            ("monthly_fee", "VARCHAR(100)"),                     # 월 임대료
+            ("deposit_amount", "VARCHAR(100)"),                  # 보증금
+            ("utilities_included", "BOOLEAN DEFAULT FALSE"),     # 공과금 포함
+            ("parking_available", "BOOLEAN DEFAULT FALSE"),      # 주차 가능
+            ("elevator_available", "BOOLEAN DEFAULT FALSE"),     # 엘리베이터
+            
+            # 업무용 플랫폼 분류
+            ("platform_jikbang", "BOOLEAN DEFAULT FALSE"),       # 직방
+            ("platform_naver", "BOOLEAN DEFAULT FALSE"),         # 네이버  
+            ("platform_etc", "BOOLEAN DEFAULT FALSE"),           # 기타
+            ("source_broker", "BOOLEAN DEFAULT FALSE"),          # 중개사
+            ("source_customer", "BOOLEAN DEFAULT FALSE"),        # 손님
+            
+            # 업무용 보증보험 상태
+            ("guarantee_available", "BOOLEAN DEFAULT FALSE"),     # 보증보험가능
+            ("guarantee_unavailable", "BOOLEAN DEFAULT FALSE"),   # 보증보험불가
+            
+            # 업무용 고객 반응
+            ("customer_liked", "BOOLEAN DEFAULT FALSE"),          # 좋아요
+            ("customer_disliked", "BOOLEAN DEFAULT FALSE"),       # 싫어요
+            
+            # 업무용 특화 메모 필드
+            ("office_memo", "TEXT DEFAULT ''"),                   # 업무용 전용 메모
+            ("business_notes", "TEXT DEFAULT ''"),                # 업무용 특이사항
+            ("location_advantages", "TEXT DEFAULT ''"),           # 입지 장점
+            ("facility_info", "TEXT DEFAULT ''")                  # 시설 정보
         ]
         
         for col_name, col_def in office_columns:
@@ -235,20 +286,36 @@ def main():
         print("\n🚀 성능 최적화 인덱스 생성 중...")
         
         indexes = [
+            # 기본 인덱스
             ("idx_employees_employee_id", "employees", "employee_id"),
             ("idx_employees_team", "employees", "team"),
             ("idx_employees_is_active", "employees", "is_active"),
             ("idx_employee_customers_employee_id", "employee_customers", "employee_id"),
             ("idx_employee_customers_management_site_id", "employee_customers", "management_site_id"),
             ("idx_employee_customers_progress_status", "employee_customers", "progress_status"),
+            
+            # 주거용(links) 특화 인덱스
             ("idx_links_management_site_id", "links", "management_site_id"),
             ("idx_links_added_by", "links", "added_by"),
             ("idx_links_guarantee_insurance", "links", "guarantee_insurance"),
             ("idx_links_is_deleted", "links", "is_deleted"),
+            ("idx_links_platform_jikbang", "links", "platform_jikbang"),
+            ("idx_links_platform_naver", "links", "platform_naver"),
+            ("idx_links_guarantee_available", "links", "guarantee_available"),
+            ("idx_links_customer_liked", "links", "customer_liked"),
+            
+            # 업무용(office_links) 특화 인덱스
             ("idx_office_links_management_site_id", "office_links", "management_site_id"),
             ("idx_office_links_added_by", "office_links", "added_by"),
             ("idx_office_links_guarantee_insurance", "office_links", "guarantee_insurance"),
             ("idx_office_links_is_deleted", "office_links", "is_deleted"),
+            ("idx_office_links_platform_jikbang", "office_links", "platform_jikbang"),
+            ("idx_office_links_platform_naver", "office_links", "platform_naver"),
+            ("idx_office_links_guarantee_available", "office_links", "guarantee_available"),
+            ("idx_office_links_customer_liked", "office_links", "customer_liked"),
+            ("idx_office_links_office_type", "office_links", "office_type"),
+            
+            # 로그 테이블 인덱스
             ("idx_guarantee_log_management_site_id", "guarantee_insurance_log", "management_site_id"),
             ("idx_guarantee_log_employee_id", "guarantee_insurance_log", "employee_id")
         ]
@@ -262,19 +329,29 @@ def main():
         print("\n🧹 데이터 정리 및 기본값 설정 중...")
         
         cleanup_queries = [
+            # employees 테이블 정리
             ("employees 기본값 설정", "UPDATE employees SET role = '직원' WHERE role IS NULL"),
             ("employees 활성화 설정", "UPDATE employees SET is_active = TRUE WHERE is_active IS NULL"),
+            
+            # employee_customers 테이블 정리
             ("고객 진행상태 설정", "UPDATE employee_customers SET progress_status = '진행중' WHERE progress_status IS NULL"),
             ("고객 연락 선호도 설정", "UPDATE employee_customers SET contact_preference = 'phone' WHERE contact_preference IS NULL"),
             ("고객 생성일 설정", "UPDATE employee_customers SET created_date = CURRENT_TIMESTAMP WHERE created_date IS NULL"),
-            ("고객 수정일 설정", "UPDATE employee_customers SET last_updated = CURRENT_TIMESTAMP WHERE last_updated IS NULL"),
+            
+            # 주거용(links) 테이블 정리
             ("주거용 매물 기본값", "UPDATE links SET residence_extra = '' WHERE residence_extra IS NULL"),
             ("주거용 삭제 플래그", "UPDATE links SET is_deleted = 0 WHERE is_deleted IS NULL"),
             ("주거용 확인 플래그", "UPDATE links SET is_checked = 0 WHERE is_checked IS NULL"),
             ("주거용 보증보험", "UPDATE links SET guarantee_insurance = 0 WHERE guarantee_insurance IS NULL"),
             ("주거용 조회수", "UPDATE links SET view_count = 0 WHERE view_count IS NULL"),
+            ("주거용 플랫폼 기본값", "UPDATE links SET platform_jikbang = FALSE, platform_naver = FALSE, platform_etc = FALSE WHERE platform_jikbang IS NULL"),
+            ("주거용 소스 기본값", "UPDATE links SET source_broker = FALSE, source_customer = FALSE WHERE source_broker IS NULL"),
+            ("주거용 보증보험상태", "UPDATE links SET guarantee_available = FALSE, guarantee_unavailable = FALSE WHERE guarantee_available IS NULL"),
+            ("주거용 고객반응", "UPDATE links SET customer_liked = FALSE, customer_disliked = FALSE WHERE customer_liked IS NULL"),
             ("주거용 생성일", "UPDATE links SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"),
             ("주거용 수정일", "UPDATE links SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"),
+            
+            # 업무용(office_links) 테이블 정리
             ("업무용 고객명", "UPDATE office_links SET customer_name = '000' WHERE customer_name IS NULL"),
             ("업무용 입주일", "UPDATE office_links SET move_in_date = '' WHERE move_in_date IS NULL"),
             ("업무용 삭제 플래그", "UPDATE office_links SET is_deleted = 0 WHERE is_deleted IS NULL"),
@@ -282,11 +359,17 @@ def main():
             ("업무용 미확인 좋아요", "UPDATE office_links SET unchecked_likes_work = 0 WHERE unchecked_likes_work IS NULL"),
             ("업무용 보증보험", "UPDATE office_links SET guarantee_insurance = 0 WHERE guarantee_insurance IS NULL"),
             ("업무용 조회수", "UPDATE office_links SET view_count = 0 WHERE view_count IS NULL"),
+            ("업무용 플랫폼 기본값", "UPDATE office_links SET platform_jikbang = FALSE, platform_naver = FALSE, platform_etc = FALSE WHERE platform_jikbang IS NULL"),
+            ("업무용 소스 기본값", "UPDATE office_links SET source_broker = FALSE, source_customer = FALSE WHERE source_broker IS NULL"),
+            ("업무용 보증보험상태", "UPDATE office_links SET guarantee_available = FALSE, guarantee_unavailable = FALSE WHERE guarantee_available IS NULL"),
+            ("업무용 고객반응", "UPDATE office_links SET customer_liked = FALSE, customer_disliked = FALSE WHERE customer_liked IS NULL"),
             ("업무용 공과금 포함", "UPDATE office_links SET utilities_included = FALSE WHERE utilities_included IS NULL"),
             ("업무용 주차 가능", "UPDATE office_links SET parking_available = FALSE WHERE parking_available IS NULL"),
             ("업무용 엘리베이터", "UPDATE office_links SET elevator_available = FALSE WHERE elevator_available IS NULL"),
             ("업무용 생성일", "UPDATE office_links SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL"),
             ("업무용 수정일", "UPDATE office_links SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL"),
+            
+            # 보증보험 로그 정리
             ("보증보험 로그 타입", "UPDATE guarantee_insurance_log SET table_type = 'office_links' WHERE table_type IS NULL"),
             ("보증보험 로그 시간", "UPDATE guarantee_insurance_log SET timestamp = CURRENT_TIMESTAMP WHERE timestamp IS NULL")
         ]
@@ -300,36 +383,38 @@ def main():
         conn.commit()
         
         # 🎉 최종 결과 출력
-        print("\n" + "=" * 70)
-        print("🎉 Railway PostgreSQL 컬럼 강제 추가 완료!")
-        print("=" * 70)
+        print("\n" + "=" * 80)
+        print("🎉 Railway PostgreSQL 컬럼 강제 추가 완료! (주거용/업무용 특화)")
+        print("=" * 80)
         print(f"📊 총 추가된 컬럼: {added_columns}개")
-        print(f"📊 생성된 인덱스: {created_indexes}개")
+        print(f"📊 생성된 인덱스: {created_indexes}개") 
         print(f"🧹 정리된 데이터: {updated_rows}개 행")
-        print("=" * 70)
+        print("=" * 80)
         print("✅ 직원 추가 오류가 해결되었습니다!")
-        print("=" * 70)
+        print("🏠 주거용 특화 컬럼이 추가되었습니다!")
+        print("💼 업무용 특화 컬럼이 추가되었습니다!")
+        print("=" * 80)
         
-        # 최종 테이블 구조 확인 (employees 테이블만)
-        print("\n📋 employees 테이블 최종 구조:")
-        cursor.execute("""
-            SELECT column_name, data_type, is_nullable, column_default
-            FROM information_schema.columns 
-            WHERE table_name = 'employees'
-            ORDER BY ordinal_position
-        """)
+        # 최종 테이블 구조 확인 요약
+        print("\n📋 테이블별 컬럼 개수 요약:")
         
-        columns = cursor.fetchall()
-        print(f"🔹 employees ({len(columns)}개 컬럼):")
-        for col in columns:
-            nullable = "NULL" if col['is_nullable'] == 'YES' else "NOT NULL"
-            default = f" DEFAULT {col['column_default']}" if col['column_default'] else ""
-            print(f"   - {col['column_name']}: {col['data_type']} {nullable}{default}")
+        tables_to_check = ['employees', 'employee_customers', 'links', 'office_links', 'guarantee_insurance_log', 'customer_info']
+        for table_name in tables_to_check:
+            try:
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM information_schema.columns 
+                    WHERE table_name = %s
+                """, (table_name,))
+                column_count = cursor.fetchone()[0]
+                print(f"🔹 {table_name}: {column_count}개 컬럼")
+            except Exception as e:
+                print(f"❌ {table_name}: 조회 실패 - {e}")
         
         cursor.close()
         conn.close()
         
-        print("\n🔥 작업 완료! 이제 직원 추가가 정상 작동합니다.")
+        print("\n🔥 작업 완료! 주거용과 업무용이 각각 특화된 컬럼으로 분리되었습니다!")
         
     except Exception as e:
         logger.error(f"❌ 치명적 오류: {e}")
@@ -343,6 +428,8 @@ if __name__ == "__main__":
     if success:
         print("\n✅ 성공: PostgreSQL 컬럼 구조가 완벽하게 수정되었습니다!")
         print("🚀 직원 추가 기능이 정상 작동할 것입니다!")
+        print("🏠 주거용 특화 기능이 활성화되었습니다!")
+        print("💼 업무용 특화 기능이 활성화되었습니다!")
         exit(0)
     else:
         print("\n❌ 실패: 오류가 발생했습니다.")
