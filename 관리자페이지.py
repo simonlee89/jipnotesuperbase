@@ -156,24 +156,44 @@ def login():
     employee_id = data.get('employee_id')  # 실제로는 name으로 검색
     password = data.get('password')  # password 컬럼이 없으므로 무시
     
+    print(f"🔍 직원 로그인 시도: '{employee_id}'")  # 디버깅 로그
+    
+    if not employee_id or employee_id.strip() == '':
+        return jsonify({'success': False, 'message': '직원 이름을 입력해주세요.'})
+    
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     
     # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
     if db_type == 'postgresql':
-        cursor.execute('SELECT name FROM employees WHERE name = %s', (employee_id,))
+        cursor.execute('SELECT id, name, role FROM employees WHERE name = %s', (employee_id,))
     else:
-        cursor.execute('SELECT name FROM employees WHERE name = ?', (employee_id,))
+        cursor.execute('SELECT id, name, role FROM employees WHERE name = ?', (employee_id,))
     
     employee = cursor.fetchone()
+    
+    # 디버깅: 전체 직원 목록 조회
+    cursor.execute('SELECT id, name, role FROM employees ORDER BY id')
+    all_employees = cursor.fetchall()
+    print(f"📋 전체 직원 목록 ({len(all_employees)}명):")
+    for emp in all_employees:
+        print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
+    
     conn.close()
     
     if employee:
+        print(f"✅ 로그인 성공: {employee[1]} (ID:{employee[0]})")
         session['employee_id'] = employee_id
-        session['employee_name'] = employee[0]
+        session['employee_name'] = employee[1]
+        session['employee_role'] = employee[2]
         return jsonify({'success': True})
     else:
-        return jsonify({'success': False, 'message': '직원 이름을 찾을 수 없습니다. (새로운 테이블 구조에서는 비밀번호 없이 이름만으로 로그인)'})
+        print(f"❌ 로그인 실패: '{employee_id}' 직원을 찾을 수 없음")
+        available_names = [emp[1] for emp in all_employees]
+        return jsonify({
+            'success': False, 
+            'message': f"'{employee_id}' 직원을 찾을 수 없습니다.\n\n사용 가능한 직원 이름:\n" + "\n".join([f"• {name}" for name in available_names[:10]])
+        })
 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
@@ -285,29 +305,46 @@ def guarantee_edit(id):
 def manage_employees():
     if request.method == 'GET':
         # 직원 목록 조회 (핵심 정보만 사용)
-        conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT id, name, created_at, role
-            FROM employees 
-            ORDER BY created_at DESC
-        ''')
-        employees = cursor.fetchall()
-        conn.close()
-        
-        employee_list = []
-        for emp in employees:
-            employee_list.append({
-                'id': emp[0],
-                'employee_id': emp[1],  # name을 employee_id로 표시
-                'employee_name': emp[1],  # name을 employee_name으로도 표시
-                'team': '',  # 빈 값으로 표시 (필요없음)
-                'created_date': emp[2],  # created_at을 created_date로 표시
-                'is_active': True,  # 기본값으로 활성화 상태
-                'role': emp[3] if emp[3] else 'employee'
-            })
-        
-        return jsonify(employee_list)
+        try:
+            print("🔍 직원 목록 API 호출")  # 디버깅 로그
+            
+            conn, db_type = get_db_connection()
+            cursor = conn.cursor()
+            
+            print(f"DB 타입: {db_type}")
+            
+            cursor.execute('''
+                SELECT id, name, created_at, role
+                FROM employees 
+                ORDER BY created_at DESC
+            ''')
+            employees = cursor.fetchall()
+            conn.close()
+            
+            print(f"📋 조회된 직원 수: {len(employees)}명")
+            
+            employee_list = []
+            for emp in employees:
+                employee_data = {
+                    'id': emp[0],
+                    'employee_id': emp[1],  # name을 employee_id로 표시
+                    'employee_name': emp[1],  # name을 employee_name으로도 표시
+                    'team': '',  # 빈 값으로 표시 (필요없음)
+                    'created_date': emp[2],  # created_at을 created_date로 표시
+                    'is_active': True,  # 기본값으로 활성화 상태
+                    'role': emp[3] if emp[3] else 'employee'
+                }
+                employee_list.append(employee_data)
+                print(f"  - {employee_data}")
+            
+            print("✅ 직원 목록 조회 성공")
+            return jsonify(employee_list)
+            
+        except Exception as e:
+            print(f"❌ 직원 목록 조회 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'직원 목록 조회 실패: {str(e)}'}), 500
     
     elif request.method == 'POST':
         # 새 직원 추가 (핵심 정보만 사용)
