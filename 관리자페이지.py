@@ -61,22 +61,50 @@ def login():
     all_employees = cursor.fetchall()
     print(f"📋 전체 직원 목록 ({len(all_employees)}명):")
     for emp in all_employees:
-        print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
+        # PostgreSQL (dict)와 SQLite (tuple)의 반환 타입을 모두 처리
+        try:
+            if isinstance(emp, dict):
+                print(f"  - ID:{emp.get('id')} | 이름:'{emp.get('name')}' | 역할:{emp.get('role')}")
+            else:
+                print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
+        except (KeyError, IndexError) as e:
+            print(f"  - 직원 정보 출력 오류: {e}, 데이터: {emp}")
     
     conn.close()
     
     if employee:
-        print(f"✅ 로그인 성공: {employee[1]} (ID:{employee[0]})")
-        session['employee_id'] = employee_id
-        session['employee_name'] = employee[1]
-        session['employee_role'] = employee[2]
+        # 로그인 성공 시에도 데이터 타입에 맞게 처리
+        if isinstance(employee, dict):
+            employee_name = employee.get('name')
+            employee_id_val = employee.get('id')
+            employee_role = employee.get('role')
+        else:
+            employee_name = employee[1]
+            employee_id_val = employee[0]
+            employee_role = employee[2]
+
+        print(f"✅ 로그인 성공: {employee_name} (ID:{employee_id_val})")
+        session['employee_id'] = employee_id # 로그인 시 사용한 이름
+        session['employee_name'] = employee_name
+        session['employee_role'] = employee_role
         return jsonify({'success': True})
     else:
         print(f"❌ 로그인 실패: '{employee_id}' 직원을 찾을 수 없음")
-        available_names = [emp[1] for emp in all_employees]
+        
+        # 사용 가능한 직원 이름 목록 생성
+        available_names = []
+        for emp in all_employees:
+            try:
+                if isinstance(emp, dict):
+                    available_names.append(emp.get('name'))
+                else:
+                    available_names.append(emp[1])
+            except (KeyError, IndexError):
+                continue # 오류가 있는 데이터는 무시
+        
         return jsonify({
             'success': False, 
-            'message': f"'{employee_id}' 직원을 찾을 수 없습니다.\n\n사용 가능한 직원 이름:\n" + "\n".join([f"• {name}" for name in available_names[:10]])
+            'message': f"'{employee_id}' 직원을 찾을 수 없습니다.\n\n사용 가능한 직원 이름:\n" + "\n".join([f"• {name}" for name in available_names[:10] if name])
         })
 
 @app.route('/admin-login', methods=['POST'])
