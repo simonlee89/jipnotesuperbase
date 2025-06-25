@@ -1408,6 +1408,95 @@ def get_guarantee_list():
         })
     return jsonify(result)
 
+@app.route('/check-postgresql-data')
+def check_postgresql_data():
+    """PostgreSQL 데이터 상태 확인 및 수정 (권한 체크 없음)"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
+        html = f"""
+        <html><head><title>PostgreSQL 데이터 상태 확인</title></head><body>
+        <h1>🔍 PostgreSQL 데이터 상태 확인</h1>
+        <h2>DB 타입: {db_type}</h2>
+        """
+        
+        # 1. employees 테이블 확인
+        try:
+            cursor.execute("SELECT COUNT(*) FROM employees")
+            emp_count = cursor.fetchone()[0]
+            html += f"<h3>👥 employees 테이블: {emp_count}명</h3>"
+            
+            if emp_count > 0:
+                cursor.execute("SELECT id, name, role FROM employees LIMIT 5")
+                employees = cursor.fetchall()
+                html += "<ul>"
+                for emp in employees:
+                    html += f"<li>ID:{emp[0]} | 이름:{emp[1]} | 역할:{emp[2]}</li>"
+                html += "</ul>"
+            else:
+                html += "<p style='color:red;'>❌ employees 테이블이 비어있습니다!</p>"
+                html += "<p>📝 테스트 직원을 추가하겠습니다...</p>"
+                
+                # 직접 테스트 직원 추가
+                test_employees = [
+                    ('admin', 'admin@company.com', 'IT', 'Administrator', 'admin'),
+                    ('관리자', 'manager@company.com', 'Management', 'Manager', 'admin'),
+                    ('직원1', 'emp1@company.com', 'Sales', 'Sales Rep', 'employee'),
+                    ('테스트직원', 'test@company.com', 'Test', 'Tester', 'employee')
+                ]
+                
+                for name, email, dept, pos, role in test_employees:
+                    try:
+                        cursor.execute('''
+                            INSERT INTO employees (name, email, department, position, role)
+                            VALUES (%s, %s, %s, %s, %s)
+                        ''', (name, email, dept, pos, role))
+                        html += f"<p style='color:green;'>✅ {name} 추가 완료</p>"
+                    except Exception as e:
+                        html += f"<p style='color:red;'>❌ {name} 추가 실패: {e}</p>"
+                
+                conn.commit()
+                
+                # 다시 확인
+                cursor.execute("SELECT COUNT(*) FROM employees")
+                new_count = cursor.fetchone()[0]
+                html += f"<p><strong>🔄 추가 후 직원 수: {new_count}명</strong></p>"
+                
+        except Exception as e:
+            html += f"<p style='color:red;'>❌ employees 테이블 확인 실패: {e}</p>"
+        
+        # 2. 다른 테이블들 확인
+        tables = ['employee_customers', 'links', 'office_links', 'guarantee_insurance_log', 'customer_info']
+        for table in tables:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                count = cursor.fetchone()[0]
+                html += f"<p>📊 {table}: {count}개</p>"
+            except Exception as e:
+                html += f"<p style='color:red;'>❌ {table} 확인 실패: {e}</p>"
+        
+        conn.close()
+        
+        html += f"""
+        <h3>✅ 다음 단계:</h3>
+        <ul>
+            <li>🔄 <a href="/api/employees">직원 목록 API 다시 확인</a></li>
+            <li>🔐 <a href="/">관리자 로그인 다시 시도</a></li>
+            <li>📊 <a href="/admin">관리자 페이지 접속</a></li>
+        </ul>
+        </body></html>
+        """
+        
+        return html
+        
+    except Exception as e:
+        return f"""
+        <h1>❌ PostgreSQL 데이터 확인 실패</h1>
+        <h2>오류: {str(e)}</h2>
+        <p><a href="/">메인 페이지로 돌아가기</a></p>
+        """
+
 @app.route('/complete-db-reset')
 def complete_db_reset():
     """PostgreSQL 완전 리셋 및 재구축"""

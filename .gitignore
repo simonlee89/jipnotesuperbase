@@ -29,3 +29,10 @@ coverage.xml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# SQLite 데이터베이스 파일들
+*.db
+*.sqlite
+*.sqlite3
+integrated.db
+admin_system.db
