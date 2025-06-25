@@ -47,7 +47,7 @@ def login():
     
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         
         # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
@@ -151,7 +151,7 @@ def admin_panel():
 
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -181,7 +181,7 @@ def guarantee_delete(id):
     
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
         conn.commit()
@@ -200,7 +200,7 @@ def guarantee_edit(id):
     memo = request.form.get('memo', '')
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         cursor.execute('UPDATE links SET memo = %s WHERE id = %s', (memo, id))
         conn.commit()
@@ -219,7 +219,7 @@ def manage_employees():
     
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
 
         if request.method == 'GET':
@@ -253,7 +253,7 @@ def delete_employee(emp_id):
     
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM employees WHERE id = %s", (emp_id,))
         conn.commit()
@@ -278,7 +278,7 @@ def manage_customers():
     if request.method == 'GET':
         conn = None
         try:
-            conn = db_utils.get_db_connection()
+            conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
             
             if employee_id == 'admin':
@@ -325,7 +325,7 @@ def manage_customers():
         
         conn = None
         try:
-            conn = db_utils.get_db_connection()
+            conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
             
             columns = ', '.join(f'"{k}"' for k in customer_data.keys())
@@ -360,7 +360,7 @@ def update_delete_customer(customer_id):
 
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
 
         # 권한 확인
@@ -393,7 +393,7 @@ def update_customer_memo(customer_id):
     
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         cursor.execute("UPDATE employee_customers SET memo = %s WHERE id = %s", (memo, customer_id))
         conn.commit()
@@ -420,7 +420,7 @@ def update_customer_field(customer_id):
 
     conn = None
     try:
-        conn = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         query = f'UPDATE employee_customers SET "{field}" = %s WHERE id = %s'
         cursor.execute(query, (value, customer_id))
