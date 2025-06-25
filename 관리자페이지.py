@@ -222,14 +222,15 @@ def manage_employees():
             employee_list = []
             for emp in employees:
                 try:
+                    # 데이터 접근 방식을 인덱스(emp[0])에서 키(emp['id'])로 변경하여 안정성 확보
                     employee_data = {
-                        'id': emp[0],
-                        'employee_id': emp[1],  # name을 employee_id로 표시
-                        'employee_name': emp[1],  # name을 employee_name으로도 표시
-                        'team': '',  # 빈 값으로 표시 (필요없음)
-                        'created_date': str(emp[2]) if emp[2] else '',  # created_at을 문자열로 변환
-                        'is_active': True,  # 기본값으로 활성화 상태
-                        'role': emp[3] if emp[3] else 'employee'
+                        'id': emp['id'],
+                        'employee_id': emp['name'],
+                        'employee_name': emp['name'],
+                        'team': '',
+                        'created_date': str(emp['created_at']) if emp.get('created_at') else '',
+                        'is_active': True,
+                        'role': emp['role'] if emp.get('role') else 'employee'
                     }
                     employee_list.append(employee_data)
                     print(f"  - {employee_data}")
