@@ -503,30 +503,23 @@ def manage_customers():
         
         customer_list = []
         for customer in customers:
-            management_site_id = customer[1]
+            # 데이터 접근 방식을 인덱스(customer[1])에서 키(customer['management_site_id'])로 변경
+            management_site_id = customer['management_site_id']
             unchecked_likes_jug = get_unchecked_likes_count(management_site_id, '/data/integrated.db', mode='residence')
             unchecked_likes_work = get_unchecked_likes_count(management_site_id, '/data/integrated.db', mode='work')
-            customer_list.append({
-                'id': customer[0],
-                'management_site_id': customer[1],
-                'customer_name': customer[2],
-                'phone': customer[3],
-                'inquiry_date': customer[4],
-                'move_in_date': customer[5],
-                'amount': customer[6],
-                'room_count': customer[7],
-                'location': customer[8],
-                'loan_info': customer[9] if len(customer) > 9 else None,
-                'parking': customer[10] if len(customer) > 10 else None,
-                'pets': customer[11] if len(customer) > 11 else None,
-                'progress_status': customer[12] if len(customer) > 12 else customer[9],
-                'memo': customer[13] if len(customer) > 13 else customer[10],
-                'employee_id': customer[14] if len(customer) > 14 else employee_id,
-                'residence_url': f'{RESIDENCE_SITE_URL}/customer/{customer[1]}',
-                'business_url': f'{BUSINESS_SITE_URL}/customer/{customer[1]}',
-                'unchecked_likes_jug': unchecked_likes_jug,
-                'unchecked_likes_work': unchecked_likes_work
-            })
+            
+            customer_data = {}
+            # 키 기반으로 안전하게 데이터 할당
+            for key in customer.keys():
+                customer_data[key] = customer[key]
+            
+            # URL 및 좋아요 수 추가
+            customer_data['residence_url'] = f'{RESIDENCE_SITE_URL}/customer/{management_site_id}'
+            customer_data['business_url'] = f'{BUSINESS_SITE_URL}/customer/{management_site_id}'
+            customer_data['unchecked_likes_jug'] = unchecked_likes_jug
+            customer_data['unchecked_likes_work'] = unchecked_likes_work
+            
+            customer_list.append(customer_data)
         
         return jsonify(customer_list)
     

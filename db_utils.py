@@ -95,54 +95,37 @@ def get_db_connection():
         raise Exception(f"모든 DB 연결 시도 실패: {e}")
 
 def init_database():
-    """DB 연결을 가져오고, 모든 테이블이 존재하는지 확인 및 생성 (PostgreSQL의 경우 매번 초기화)"""
+    """DB 연결을 가져오고, 모든 테이블이 존재하는지 확인 및 생성"""
     conn, db_type = get_db_connection()
     cursor = conn.cursor()
     logger.info(f"DB 타입: {db_type}")
 
-    # PostgreSQL의 경우, 항상 테이블을 삭제하고 다시 생성하여 스키마를 최신 상태로 유지
     if db_type == 'postgresql':
-        logger.info("PostgreSQL 테이블 구조 리셋 시작 (기존 테이블 삭제)...")
+        logger.info("PostgreSQL 테이블 생성 (필요시)...")
         try:
-            # 의존성 역순으로 테이블 삭제
-            cursor.execute("DROP TABLE IF EXISTS guarantee_insurance_log CASCADE;")
-            cursor.execute("DROP TABLE IF EXISTS employee_customers CASCADE;")
-            cursor.execute("DROP TABLE IF EXISTS links CASCADE;")
-            cursor.execute("DROP TABLE IF EXISTS office_links CASCADE;")
-            cursor.execute("DROP TABLE IF EXISTS customer_info CASCADE;")
-            cursor.execute("DROP TABLE IF EXISTS employees CASCADE;")
-            logger.info("✅ 기존 테이블 삭제 완료.")
-        except Exception as e:
-            logger.warning(f"테이블 삭제 중 오류 (무시 가능): {e}")
-            conn.rollback()
-
-        logger.info("PostgreSQL 테이블 생성 중...")
-        try:
-            # 여기에 모든 CREATE TABLE 문 포함
-            create_all_tables_postgres(cursor)
-            logger.info("✅ PostgreSQL 테이블 생성 완료.")
+            create_all_tables_postgres(cursor) # IF NOT EXISTS로 생성
+            logger.info("✅ PostgreSQL 테이블 생성 확인 완료.")
         except Exception as e:
             logger.error(f"PostgreSQL 테이블 생성 실패: {e}")
             conn.rollback()
-
     else: # SQLite
-        logger.info("SQLite 테이블 생성 중...")
+        logger.info("SQLite 테이블 생성 (필요시)...")
         try:
             create_all_tables_sqlite(cursor)
-            logger.info("✅ SQLite 테이블 생성 완료.")
+            logger.info("✅ SQLite 테이블 생성 확인 완료.")
         except Exception as e:
             logger.error(f"SQLite 테이블 생성 실패: {e}")
             conn.rollback()
         
-    logger.info("=== 데이터베이스 초기화 완료 ===")
+    logger.info("=== 데이터베이스 초기화/확인 완료 ===")
     conn.commit()
     conn.close()
 
 def create_all_tables_postgres(cursor):
-    """PostgreSQL용 모든 테이블 생성 쿼리 실행"""
+    """PostgreSQL용 모든 테이블 생성 쿼리 실행 (IF NOT EXISTS 사용)"""
     # 1. employees
     cursor.execute('''
-        CREATE TABLE employees (
+        CREATE TABLE IF NOT EXISTS employees (
             id SERIAL PRIMARY KEY,
             name VARCHAR(200) UNIQUE NOT NULL,
             email VARCHAR(200) NOT NULL DEFAULT '',
@@ -155,7 +138,7 @@ def create_all_tables_postgres(cursor):
     ''')
     # 2. employee_customers
     cursor.execute('''
-        CREATE TABLE employee_customers (
+        CREATE TABLE IF NOT EXISTS employee_customers (
             id SERIAL PRIMARY KEY,
             employee_id VARCHAR(100) NOT NULL,
             management_site_id VARCHAR(50) UNIQUE NOT NULL,
@@ -176,7 +159,7 @@ def create_all_tables_postgres(cursor):
     ''')
     # 3. links
     cursor.execute('''
-        CREATE TABLE links (
+        CREATE TABLE IF NOT EXISTS links (
             id SERIAL PRIMARY KEY,
             url TEXT NOT NULL,
             platform VARCHAR(50),
@@ -195,7 +178,7 @@ def create_all_tables_postgres(cursor):
     ''')
     # 4. office_links
     cursor.execute('''
-        CREATE TABLE office_links (
+        CREATE TABLE IF NOT EXISTS office_links (
             id SERIAL PRIMARY KEY,
             url TEXT NOT NULL,
             platform VARCHAR(50),
@@ -213,7 +196,7 @@ def create_all_tables_postgres(cursor):
     ''')
     # 5. guarantee_insurance_log
     cursor.execute('''
-        CREATE TABLE guarantee_insurance_log (
+        CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
             id SERIAL PRIMARY KEY,
             link_id INTEGER,
             management_site_id VARCHAR(50),
@@ -224,7 +207,7 @@ def create_all_tables_postgres(cursor):
     ''')
     # 6. customer_info
     cursor.execute('''
-        CREATE TABLE customer_info (
+        CREATE TABLE IF NOT EXISTS customer_info (
             id SERIAL PRIMARY KEY,
             customer_name VARCHAR(200) DEFAULT '제일좋은집 찾아드릴분',
             move_in_date VARCHAR(50) DEFAULT '',
