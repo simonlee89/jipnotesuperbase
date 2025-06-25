@@ -1354,17 +1354,9 @@
                 
                 if (result.success) {
                     showAlert('고객이 성공적으로 추가되었습니다.', 'success');
-                    
-                                                                    // 주거사이트와 업무사이트 링크 업데이트
-                        if (result.management_site_id) {
-                            const propertyLinkCell = row.querySelector('td:nth-last-child(3)');
-                            const businessLinkCell = row.querySelector('td:nth-last-child(2)');
-                            const propertyUrl = `{{ residence_site_url }}/customer/${result.management_site_id}`;
-                            const businessUrl = `{{ business_site_url }}/customer/${result.management_site_id}`;
-                            propertyLinkCell.innerHTML = `<a href="${propertyUrl}" target="_blank" class="management-link">주거사이트</a>`;
-                            businessLinkCell.innerHTML = `<a href="${businessUrl}" target="_blank" class="management-link">업무사이트</a>`;
-                        }
-                    
+                    // 수동으로 행을 업데이트하는 대신, 전체 목록을 다시 로드하여
+                    // 서버로부터 받은 최신 데이터로 화면을 다시 그립니다.
+                    // 이렇게 하면 모든 정보(새로 생성된 ID 포함)가 정확하게 반영됩니다.
                     loadCustomers();
                 } else {
                     showAlert(result.message || '고객 추가에 실패했습니다.', 'error');
