@@ -94,6 +94,12 @@ def get_db_connection():
         logger.error(f"❌ SQLite DB 생성 실패: {e}")
         raise Exception(f"모든 DB 연결 시도 실패: {e}")
 
+def dict_from_row(row):
+    """데이터베이스 row 객체를 Python 딕셔너리로 변환합니다."""
+    if row:
+        return dict(row)
+    return None
+
 def init_database():
     """DB 연결을 가져오고, 모든 테이블이 존재하는지 확인 및 생성"""
     conn, db_type = get_db_connection()
