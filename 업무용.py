@@ -417,24 +417,24 @@ def links():
         
         conn.close()
         
-        link_list = []
+        # 데이터 접근 방식을 인덱스에서 키(컬럼명)로 변경
+        links_list = []
         for link in links_data:
-            # 데이터 접근 방식을 인덱스에서 키(컬럼명)로 변경
-            link_list.append({
+            links_list.append({
                 'id': link['id'],
                 'url': link['url'],
                 'platform': link['platform'],
                 'added_by': link['added_by'],
                 'date_added': link['date_added'].strftime('%Y-%m-%d %H:%M') if link.get('date_added') else '',
                 'rating': link['rating'],
-                'liked': link['liked'],
-                'disliked': link['disliked'],
-                'memo': link['memo'],
-                'guarantee_insurance': link['guarantee_insurance']
+                'liked': bool(link['liked']),
+                'disliked': bool(link['disliked']),
+                'memo': link.get('memo', ''),
+                'guarantee_insurance': bool(link['guarantee_insurance'])
             })
         
-        print(f"링크 조회 완료 - 총 {len(link_list)}개, 고객: {management_site_id or '기본'}")
-        return jsonify(link_list)
+        print(f"링크 조회 완료 - 총 {len(links_list)}개, 고객: {management_site_id or '기본'}")
+        return jsonify(links_list)
 
 @app.route('/api/links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_link(link_id):
