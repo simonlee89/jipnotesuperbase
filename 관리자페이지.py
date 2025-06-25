@@ -48,26 +48,26 @@ def login():
     conn = None
     try:
         conn, _ = db_utils.get_db_connection()
-    cursor = conn.cursor()
+        cursor = conn.cursor()
     
-    # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
+        # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
         cursor.execute('SELECT id, name, role FROM employees WHERE name = %s', (employee_id,))
-    employee = cursor.fetchone()
+        employee = cursor.fetchone()
     
-    # 디버깅: 전체 직원 목록 조회
-    cursor.execute('SELECT id, name, role FROM employees ORDER BY id')
-    all_employees = cursor.fetchall()
-    print(f"📋 전체 직원 목록 ({len(all_employees)}명):")
-    for emp in all_employees:
+        # 디버깅: 전체 직원 목록 조회
+        cursor.execute('SELECT id, name, role FROM employees ORDER BY id')
+        all_employees = cursor.fetchall()
+        print(f"📋 전체 직원 목록 ({len(all_employees)}명):")
+        for emp in all_employees:
             try:
                 if isinstance(emp, dict):
                     print(f"  - ID:{emp.get('id')} | 이름:'{emp.get('name')}' | 역할:{emp.get('role')}")
                 else:
-        print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
+                    print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
             except (KeyError, IndexError) as e:
                 print(f"  - 직원 정보 출력 오류: {e}, 데이터: {emp}")
     
-    if employee:
+        if employee:
             if isinstance(employee, dict):
                 employee_name = employee.get('name')
                 employee_id_val = employee.get('id')
@@ -81,9 +81,9 @@ def login():
             session['employee_id'] = employee_name # 로그인 시 사용한 이름
             session['employee_name'] = employee_name
             session['employee_role'] = employee_role
-        return jsonify({'success': True})
-    else:
-        print(f"❌ 로그인 실패: '{employee_id}' 직원을 찾을 수 없음")
+            return jsonify({'success': True})
+        else:
+            print(f"❌ 로그인 실패: '{employee_id}' 직원을 찾을 수 없음")
             
             available_names = []
             for emp in all_employees:
@@ -95,8 +95,8 @@ def login():
                 except (KeyError, IndexError):
                     continue
             
-        return jsonify({
-            'success': False, 
+            return jsonify({
+                'success': False, 
                 'message': f"'{employee_id}' 직원을 찾을 수 없습니다.\n\n사용 가능한 직원 이름:\n" + "\n".join([f"• {name}" for name in available_names[:10] if name])
             })
     except Exception as e:
@@ -136,7 +136,7 @@ def employee_dashboard():
     if 'employee_id' not in session and 'is_admin' not in session:
         return redirect(url_for('index'))
     
-        employee_name = session.get('employee_name', '직원')
+    employee_name = session.get('employee_name', '직원')
     
     return render_template('employee_dashboard.html', 
                          employee_name=employee_name,
@@ -182,10 +182,10 @@ def guarantee_delete(id):
     conn = None
     try:
         conn, _ = db_utils.get_db_connection()
-    cursor = conn.cursor()
+        cursor = conn.cursor()
         cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
-    conn.commit()
-    return redirect(url_for('admin_panel'))
+        conn.commit()
+        return redirect(url_for('admin_panel'))
     except Exception as e:
         if conn: conn.rollback()
         return "삭제 중 오류 발생", 500
@@ -201,10 +201,10 @@ def guarantee_edit(id):
     conn = None
     try:
         conn, _ = db_utils.get_db_connection()
-    cursor = conn.cursor()
+        cursor = conn.cursor()
         cursor.execute('UPDATE links SET memo = %s WHERE id = %s', (memo, id))
-    conn.commit()
-    return redirect(url_for('admin_panel'))
+        conn.commit()
+        return redirect(url_for('admin_panel'))
     except Exception as e:
         if conn: conn.rollback()
         return "수정 중 오류 발생", 500
@@ -280,7 +280,7 @@ def manage_customers():
         try:
             conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
-            
+        
             if employee_id == 'admin':
                 query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC"
                 cursor.execute(query)
@@ -317,7 +317,8 @@ def manage_customers():
             'pets': data.get('pets'),
             'memo': data.get('memo'),
             'progress_status': data.get('progress_status', '진행중'),
-            'employee_id': current_employee_id
+            'employee_id': current_employee_id,
+            'created_date': datetime.now()
         }
         
         management_site_id = str(uuid.uuid4().hex)[:8]
@@ -334,6 +335,7 @@ def manage_customers():
             
             cursor.execute(query, params)
             new_customer_raw = cursor.fetchone()
+            conn.commit()
             
             if not new_customer_raw:
                 raise Exception("INSERT 후 새로운 고객 정보를 가져오는데 실패했습니다.")
@@ -364,18 +366,18 @@ def update_delete_customer(customer_id):
         # 권한 확인
         if employee_id != 'admin':
             cursor.execute("SELECT id FROM employee_customers WHERE id = %s AND employee_id = %s", (customer_id, employee_id))
-        if not cursor.fetchone():
+            if not cursor.fetchone():
                 return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
 
         if request.method == 'PUT':
             data = request.get_json()
             # 여기에 필드 업데이트 로직이 필요하지만, 현재 사용되지 않으므로 pass
             pass
-        return jsonify({'success': True})
+            return jsonify({'success': True})
     
         if request.method == 'DELETE':
             cursor.execute("DELETE FROM employee_customers WHERE id = %s", (customer_id,))
-        conn.commit()
+            conn.commit()
             return jsonify({'success': True, 'message': '고객이 삭제되었습니다.'})
 
     except Exception as e:
@@ -392,10 +394,10 @@ def update_customer_memo(customer_id):
     conn = None
     try:
         conn, _ = db_utils.get_db_connection()
-    cursor = conn.cursor()
+        cursor = conn.cursor()
         cursor.execute("UPDATE employee_customers SET memo = %s WHERE id = %s", (memo, customer_id))
-    conn.commit()
-    return jsonify({'success': True})
+        conn.commit()
+        return jsonify({'success': True})
     except Exception as e:
         if conn: conn.rollback()
         return jsonify({'success': False, 'message': '메모 업데이트 실패'}), 500
@@ -433,4 +435,4 @@ def update_customer_field(customer_id):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=True) 
+    app.run(host='0.0.0.0', port=port, debug=True)
