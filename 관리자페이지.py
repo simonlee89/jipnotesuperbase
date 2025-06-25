@@ -1401,5 +1401,167 @@ def get_guarantee_list():
         })
     return jsonify(result)
 
+@app.route('/fix-postgresql-structure')
+def fix_postgresql_structure():
+    """PostgreSQL 테이블 구조 수정 웹 엔드포인트"""
+    try:
+        print("=== 🔧 PostgreSQL 구조 수정 시작 ===")
+        
+        conn, db_type = get_db_connection()
+        if db_type != 'postgresql':
+            return "❌ PostgreSQL 환경이 아닙니다."
+        
+        cursor = conn.cursor()
+        result_html = "<html><head><title>PostgreSQL 구조 수정</title></head><body>"
+        result_html += "<h1>🔧 PostgreSQL 구조 수정 결과</h1>"
+        
+        # 1. employees 테이블 구조 확인
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = 'employees'
+        """)
+        employee_columns = [row[0] for row in cursor.fetchall()]
+        result_html += f"<h2>📊 현재 employees 컬럼</h2><p>{employee_columns}</p>"
+        
+        # 구 구조인지 확인
+        if 'employee_id' in employee_columns and 'employee_name' in employee_columns:
+            result_html += "<h3>🔄 구 구조를 신 구조로 변환 중...</h3>"
+            
+            # 데이터 백업
+            cursor.execute("SELECT * FROM employees")
+            old_data = cursor.fetchall()
+            result_html += f"<p>백업된 데이터: {len(old_data)}개</p>"
+            
+            # 테이블 재생성
+            cursor.execute("DROP TABLE employees")
+            cursor.execute('''
+                CREATE TABLE employees (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    email VARCHAR(200) NOT NULL DEFAULT '',
+                    department VARCHAR(100) NOT NULL DEFAULT '',
+                    position VARCHAR(100) NOT NULL DEFAULT '',
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    last_login TIMESTAMP,
+                    role VARCHAR(50) NOT NULL DEFAULT 'employee'
+                )
+            ''')
+            result_html += "<p>✅ employees 신 테이블 생성</p>"
+            
+            # 데이터 복원
+            for old_row in old_data:
+                employee_name = old_row[2] if len(old_row) > 2 else old_row[1]
+                
+                cursor.execute('''
+                    INSERT INTO employees (name, email, department, position, created_at, role)
+                    VALUES (%s, '', '', '', NOW(), 'employee')
+                ''', (employee_name,))
+            
+            result_html += f"<p>✅ 데이터 복원 완료: {len(old_data)}개</p>"
+        
+        elif 'name' not in employee_columns:
+            result_html += "<h3>❌ employees 테이블 구조가 이상함. 재생성합니다.</h3>"
+            cursor.execute("DROP TABLE IF EXISTS employees")
+            cursor.execute('''
+                CREATE TABLE employees (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    email VARCHAR(200) NOT NULL DEFAULT '',
+                    department VARCHAR(100) NOT NULL DEFAULT '',
+                    position VARCHAR(100) NOT NULL DEFAULT '',
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    last_login TIMESTAMP,
+                    role VARCHAR(50) NOT NULL DEFAULT 'employee'
+                )
+            ''')
+            result_html += "<p>✅ employees 테이블 재생성</p>"
+        
+        # 2. employee_customers 테이블 컬럼 추가
+        cursor.execute("""
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = 'employee_customers'
+        """)
+        customer_columns = [row[0] for row in cursor.fetchall()]
+        
+        result_html += f"<h2>📊 현재 employee_customers 컬럼</h2><p>{customer_columns}</p>"
+        
+        # 누락된 컬럼들 추가
+        missing_columns = [
+            ('phone', 'VARCHAR(50)'),
+            ('inquiry_date', 'VARCHAR(50)'),
+            ('move_in_date', 'VARCHAR(50)'),
+            ('amount', 'VARCHAR(100)'),
+            ('room_count', 'VARCHAR(50)'),
+            ('location', 'VARCHAR(200)'),
+            ('loan_info', 'TEXT'),
+            ('parking', 'VARCHAR(50)'),
+            ('pets', 'VARCHAR(50)'),
+            ('progress_status', 'VARCHAR(50) DEFAULT \'진행중\''),
+            ('memo', 'TEXT'),
+            ('created_date', 'TIMESTAMP DEFAULT NOW()')
+        ]
+        
+        result_html += "<h3>컬럼 추가 결과:</h3><ul>"
+        for col_name, col_type in missing_columns:
+            if col_name not in customer_columns:
+                try:
+                    cursor.execute(f'ALTER TABLE employee_customers ADD COLUMN {col_name} {col_type}')
+                    result_html += f"<li>✅ {col_name} 컬럼 추가</li>"
+                except Exception as e:
+                    result_html += f"<li>❌ {col_name} 추가 실패: {e}</li>"
+            else:
+                result_html += f"<li>⚠️ {col_name} 이미 존재</li>"
+        result_html += "</ul>"
+        
+        # 3. 테스트 직원 추가
+        cursor.execute("SELECT COUNT(*) FROM employees")
+        emp_count = cursor.fetchone()[0]
+        
+        result_html += f"<h2>👥 현재 직원 수: {emp_count}명</h2>"
+        
+        if emp_count < 5:  # 5명 미만이면 테스트 직원 추가
+            test_employees = [
+                ('admin', 'admin'),
+                ('관리자', 'admin'),
+                ('직원1', 'employee'),
+                ('직원2', 'employee'),
+                ('테스트직원', 'employee')
+            ]
+            
+            result_html += "<h3>테스트 직원 추가:</h3><ul>"
+            for name, role in test_employees:
+                try:
+                    cursor.execute('''
+                        INSERT INTO employees (name, email, department, position, role)
+                        VALUES (%s, '', '', '', %s)
+                        ON CONFLICT (name) DO NOTHING
+                    ''', (name, role))
+                    result_html += f"<li>✅ '{name}' 추가</li>"
+                except Exception as e:
+                    result_html += f"<li>❌ '{name}' 추가 실패: {e}</li>"
+            result_html += "</ul>"
+        
+        # 4. 최종 확인
+        cursor.execute("SELECT id, name, role FROM employees")
+        employees = cursor.fetchall()
+        result_html += f"<h2>📋 최종 employees 테이블: {len(employees)}명</h2><ul>"
+        for emp in employees:
+            result_html += f"<li>ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}</li>"
+        result_html += "</ul>"
+        
+        cursor.execute("SELECT COUNT(*) FROM employee_customers")
+        customer_count = cursor.fetchone()[0]
+        result_html += f"<h2>📋 employee_customers 테이블: {customer_count}명</h2>"
+        
+        conn.commit()
+        conn.close()
+        
+        result_html += "<hr><p><a href='/'>관리자 페이지로 돌아가기</a></p></body></html>"
+        return result_html
+        
+    except Exception as e:
+        import traceback
+        return f"<h2>❌ 오류 발생: {e}</h2><pre>{traceback.format_exc()}</pre><p><a href='/'>돌아가기</a></p>"
+
 if __name__ == '__main__':
     app.run(debug=True, port=8080) 
