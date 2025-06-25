@@ -312,12 +312,11 @@ def manage_employees():
     elif request.method == 'POST':
         # 새 직원 추가 (핵심 정보만 사용)
         data = request.get_json()
-        employee_id = data.get('employee_id')  # 실제로는 name으로 사용
-        employee_name = data.get('employee_name')  # 실제로는 name으로 사용 (중복)
-        team = data.get('team', '')  # 사용하지 않음
-        password = data.get('password', '1234')  # 사용하지 않음
+        employee_id = data.get('employee_id')  # 웹에서 입력한 "직원 아이디"
+        employee_name = data.get('employee_name')  # 웹에서 입력한 "직원 이름"
+        team = data.get('team', '')  # 웹에서 입력한 "팀" (실제로는 사용 안함)
         
-        # employee_name을 우선 사용, 없으면 employee_id 사용
+        # 우선순위: employee_name > employee_id
         final_name = employee_name if employee_name else employee_id
         
         if not final_name:
