@@ -291,20 +291,51 @@ def links():
                 VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
             ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
             result = cursor.fetchone()
-            link_id = result['id'] if result and isinstance(result, dict) else (result[0] if result else None)
-        else:
+            new_link_id = result['id'] if result and isinstance(result, dict) else (result[0] if result else None)
+            
+            # 새로 추가된 링크 정보 다시 조회 (방금 추가한 ID 기준)
+            cursor.execute('SELECT * FROM office_links WHERE id = %s', (new_link_id,))
+            new_link_data = cursor.fetchone()
+            
+        else: # SQLite
             cursor.execute('''
                 INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-            link_id = cursor.lastrowid
-        
-        conn.commit()
+            ''', (url, platform, added_by, datetime.now().strftime("%Y-%m-%d %H:%M"), memo, management_site_id, guarantee_insurance))
+            new_link_id = cursor.lastrowid
+            conn.commit()
+            
+            # 새로 추가된 링크 정보 다시 조회
+            cursor.execute('SELECT * FROM office_links WHERE id = ?', (new_link_id,))
+            new_link_data = cursor.fetchone()
+            
         conn.close()
-        
-        print(f"새 링크 추가됨 - ID: {link_id}, 고객: {management_site_id or '기본'}")
-        return jsonify({'success': True, 'id': link_id})
-    
+
+        # 데이터베이스 타입을 고려하여 결과 처리
+        if db_type == 'postgresql':
+            # psycopg2의 RealDictCursor는 딕셔너리 형태로 반환
+            response_data = dict(new_link_data)
+        else:
+            # SQLite의 row는 인덱스로 접근해야 함
+            response_data = {
+                'id': new_link_data[0],
+                'url': new_link_data[1],
+                'platform': new_link_data[2],
+                'added_by': new_link_data[3],
+                'date_added': new_link_data[4],
+                'rating': new_link_data[5],
+                'liked': new_link_data[6],
+                'disliked': new_link_data[7],
+                'memo': new_link_data[8],
+                'management_site_id': new_link_data[9],
+                'guarantee_insurance': new_link_data[10],
+                'is_deleted': new_link_data[11],
+                'unchecked_likes_work': new_link_data[12]
+            }
+
+        print(f"새 링크 추가됨 - ID: {new_link_id}, 고객: {management_site_id or '기본'}")
+        return jsonify(response_data), 201
+
     else:
         # 필터 파라미터
         platform_filter = request.args.get('platform', 'all')
@@ -386,26 +417,24 @@ def links():
         
         conn.close()
         
-        links_list = []
-        for index, link in enumerate(links_data):  # 추가 순서대로 번호 매기기
-            # 최신순으로 정렬되어 있으므로, 번호는 역순으로 계산
-            link_number = total_count - index
-            links_list.append({
-                'id': link[0],
-                'number': link_number,  # 추가 순서대로 번호 (첫 번째=1, 두 번째=2...)
-                'url': link[1],
-                'platform': link[2],
-                'added_by': link[3],
-                'date_added': link[4],
-                'rating': link[5],
-                'liked': bool(link[6]),
-                'disliked': bool(link[7]),
-                'memo': link[8] if len(link) > 8 else '',
-                'guarantee_insurance': bool(link[12]) if len(link) > 12 else False
+        link_list = []
+        for link in links_data:
+            # 데이터 접근 방식을 인덱스에서 키(컬럼명)로 변경
+            link_list.append({
+                'id': link['id'],
+                'url': link['url'],
+                'platform': link['platform'],
+                'added_by': link['added_by'],
+                'date_added': link['date_added'].strftime('%Y-%m-%d %H:%M') if link.get('date_added') else '',
+                'rating': link['rating'],
+                'liked': link['liked'],
+                'disliked': link['disliked'],
+                'memo': link['memo'],
+                'guarantee_insurance': link['guarantee_insurance']
             })
         
-        print(f"링크 조회 완료 - 총 {len(links_list)}개, 고객: {management_site_id or '기본'}")
-        return jsonify(links_list)
+        print(f"링크 조회 완료 - 총 {len(link_list)}개, 고객: {management_site_id or '기본'}")
+        return jsonify(link_list)
 
 @app.route('/api/links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_link(link_id):

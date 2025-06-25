@@ -189,7 +189,8 @@ def create_all_tables_postgres(cursor):
             management_site_id VARCHAR(50),
             guarantee_insurance BOOLEAN DEFAULT FALSE,
             is_deleted BOOLEAN DEFAULT FALSE,
-            is_checked BOOLEAN DEFAULT FALSE
+            is_checked BOOLEAN DEFAULT FALSE,
+            residence_extra TEXT
         )
     ''')
     # 4. office_links
@@ -286,7 +287,8 @@ def create_all_tables_sqlite(cursor):
             management_site_id TEXT,
             guarantee_insurance INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
-            is_checked INTEGER DEFAULT 0
+            is_checked INTEGER DEFAULT 0,
+            residence_extra TEXT
         )
     ''')
     # 4. office_links
