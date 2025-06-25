@@ -278,8 +278,6 @@ def links():
             added_by = session.get('employee_id', '중개사')  # 세션에서 가져오되 기본값 설정
             memo = data.get('memo', '')
             guarantee_insurance = data.get('guarantee_insurance', False)
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            guarantee_int = 1 if guarantee_insurance else 0
             residence_extra = data.get('residence_extra', '')
             
             # 필수 필드 검증 (added_by는 기본값이 있으므로 제외)
@@ -301,7 +299,7 @@ def links():
                 cursor.execute('''
                     INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
+                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra))
                 # PostgreSQL RealDictCursor 호환성 처리
                 result = cursor.fetchone()
                 link_id = result['id'] if isinstance(result, dict) else result[0]
@@ -309,7 +307,7 @@ def links():
                 cursor.execute('''
                     INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_int, residence_extra))
+                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance, residence_extra))
                 link_id = cursor.lastrowid
             
             conn.commit()
@@ -365,11 +363,15 @@ def links():
                 params.append(user_filter)
             
             if like_filter == 'liked':
-                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-                query += ' AND liked = 1'
+                if db_type == 'postgresql':
+                    query += ' AND liked = TRUE'
+                else:
+                    query += ' AND liked = 1'
             elif like_filter == 'disliked':
-                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-                query += ' AND disliked = 1'
+                if db_type == 'postgresql':
+                    query += ' AND disliked = TRUE'
+                else:
+                    query += ' AND disliked = 1'
             
             if date_filter:
                 if db_type == 'postgresql':
@@ -379,11 +381,15 @@ def links():
                 params.append(date_filter)
             
             if guarantee_filter == 'available':
-                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-                query += ' AND guarantee_insurance = 1'
+                if db_type == 'postgresql':
+                    query += ' AND guarantee_insurance = TRUE'
+                else:
+                    query += ' AND guarantee_insurance = 1'
             elif guarantee_filter == 'unavailable':
-                # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-                query += ' AND guarantee_insurance = 0'
+                if db_type == 'postgresql':
+                    query += ' AND guarantee_insurance = FALSE'
+                else:
+                    query += ' AND guarantee_insurance = 0'
             
             query += ' ORDER BY id DESC'
             cursor.execute(query, params)
@@ -478,20 +484,18 @@ def update_link(link_id):
         
         elif action == 'like':
             liked = data.get('liked', False)
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            liked_int = 1 if liked else 0
             if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET liked = %s, disliked = 0, is_checked = 0 WHERE id = %s', (liked_int, link_id))
+                cursor.execute('UPDATE links SET liked = %s, disliked = FALSE, is_checked = FALSE WHERE id = %s', (liked, link_id))
             else:
+                liked_int = 1 if liked else 0
                 cursor.execute('UPDATE links SET liked = ?, disliked = 0, is_checked = 0 WHERE id = ?', (liked_int, link_id))
         
         elif action == 'dislike':
             disliked = data.get('disliked', False)
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            disliked_int = 1 if disliked else 0
             if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET disliked = %s, liked = 0 WHERE id = %s', (disliked_int, link_id))
+                cursor.execute('UPDATE links SET disliked = %s, liked = FALSE WHERE id = %s', (disliked, link_id))
             else:
+                disliked_int = 1 if disliked else 0
                 cursor.execute('UPDATE links SET disliked = ?, liked = 0 WHERE id = ?', (disliked_int, link_id))
         
         elif action == 'memo':
@@ -503,11 +507,10 @@ def update_link(link_id):
         
         elif action == 'guarantee':
             guarantee_insurance = data.get('guarantee_insurance', False)
-            # PostgreSQL과 SQLite 모두 INTEGER 사용 (타입 통일)
-            guarantee_int = 1 if guarantee_insurance else 0
             if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_int, link_id))
+                cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
             else:
+                guarantee_int = 1 if guarantee_insurance else 0
                 cursor.execute('UPDATE links SET guarantee_insurance = ? WHERE id = ?', (guarantee_int, link_id))
         
         conn.commit()

@@ -421,8 +421,8 @@ def update_link(link_id):
     link_result = cursor.fetchone()
     if link_result and link_result[0]:  # management_site_id가 있는 경우
         management_site_id = link_result[0]
-        _, _, found = get_customer_info(management_site_id)
-        if not found:
+        customer_info = get_customer_info(management_site_id)
+        if not customer_info:
             conn.close()
             return jsonify({'success': False, 'error': '삭제된 고객의 링크입니다. 작업을 수행할 수 없습니다.'}), 404
     
@@ -457,7 +457,7 @@ def update_link(link_id):
                               (disliked, False, link_id))
             else:
                 cursor.execute('UPDATE office_links SET disliked = ?, liked = ? WHERE id = ?', 
-                              (disliked, False if disliked else 0, link_id))
+                              (disliked, 0, link_id))
         
         elif action == 'memo':
             memo = data.get('memo', '')
