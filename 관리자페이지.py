@@ -5,137 +5,20 @@ from datetime import datetime
 import os
 import requests
 import time
-from db_utils import get_db_connection, init_database, execute_query, get_customer_info
+from db_utils import get_db_connection, init_database, execute_query, get_customer_info, ensure_all_columns
 from psycopg2.extras import RealDictCursor
 
 # 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
 RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
 BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'http://localhost:5001')
 
-def init_admin_db():
-    """관리자 데이터베이스 초기화 - 공통 DB 유틸리티 사용"""
-    print("=== DB 초기화 시작 ===")
-    try:
-        # 기본 테이블 초기화
-        init_database()
-        
-        # 추가 테이블들 생성
-        conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-        
-        if db_type == 'postgresql':
-            # PostgreSQL용 추가 테이블
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS links (
-                    id SERIAL PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    platform VARCHAR(50),
-                    added_by VARCHAR(100),
-                    date_added TIMESTAMP,
-                    rating INTEGER DEFAULT 0,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
-                    memo TEXT,
-                    management_site_id VARCHAR(50),
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
-                    is_checked INTEGER DEFAULT 0
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS office_links (
-                    id SERIAL PRIMARY KEY,
-                    url TEXT NOT NULL,
-                    platform VARCHAR(50),
-                    added_by VARCHAR(100),
-                    date_added TIMESTAMP,
-                    rating INTEGER DEFAULT 0,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
-                    memo TEXT,
-                    management_site_id VARCHAR(50),
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
-                    unchecked_likes_work INTEGER DEFAULT 0
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
-                    id SERIAL PRIMARY KEY,
-                    link_id INTEGER,
-                    management_site_id VARCHAR(50),
-                    employee_id VARCHAR(50),
-                    action VARCHAR(100),
-                    timestamp TIMESTAMP
-                )
-            ''')
-        else:
-            # SQLite용 추가 테이블 (기존 코드)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS links (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    url TEXT NOT NULL,
-                    platform TEXT,
-                    added_by TEXT,
-                    date_added TEXT,
-                    rating INTEGER DEFAULT 0,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
-                    memo TEXT,
-                    management_site_id TEXT,
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
-                    is_checked INTEGER DEFAULT 0
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS office_links (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    url TEXT NOT NULL,
-                    platform TEXT,
-                    added_by TEXT,
-                    date_added TEXT,
-                    rating INTEGER DEFAULT 0,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
-                    memo TEXT,
-                    management_site_id TEXT,
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
-                    unchecked_likes_work INTEGER DEFAULT 0
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS guarantee_insurance_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    link_id INTEGER,
-                    management_site_id TEXT,
-                    employee_id TEXT,
-                    action TEXT,
-                    timestamp TEXT,
-                    FOREIGN KEY (link_id) REFERENCES office_links (id)
-                )
-            ''')
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        print("=== DB 초기화 완료 ===")
-        
-    except Exception as e:
-        print(f"=== DB 초기화 실패: {e} ===")
-        raise
-
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # 세션용 비밀키
 
 # Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
 try:
-    init_admin_db()
+    init_database()
+    ensure_all_columns()
     print("✅ 관리자 DB 초기화 성공")
 except Exception as e:
     print(f"❌ 관리자 DB 초기화 실패: {e}")
@@ -955,39 +838,9 @@ def get_unchecked_likes_count(management_site_id, db_path, mode='residence'):
     conn.close()
     return count
 
-def ensure_is_deleted_column():
-    """office_links 테이블에 is_deleted 컬럼이 없으면 추가 (통합 DB만)"""
-    db_path = '/data/integrated.db'
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(office_links)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'is_deleted' not in columns:
-            cursor.execute("ALTER TABLE office_links ADD COLUMN is_deleted INTEGER DEFAULT 0")
-            conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"{db_path} is_deleted 컬럼 추가 실패: {e}")
-
-def ensure_unchecked_likes_work_column():
-    """office_links 테이블에 unchecked_likes_work 컬럼이 없으면 추가 (통합 DB만)"""
-    db_path = '/data/integrated.db'
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("PRAGMA table_info(office_links)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'unchecked_likes_work' not in columns:
-            cursor.execute("ALTER TABLE office_links ADD COLUMN unchecked_likes_work INTEGER DEFAULT 0")
-            conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"{db_path} unchecked_likes_work 컬럼 추가 실패: {e}")
-
-# 서버 시작 시 컬럼 보장
-ensure_is_deleted_column()
-ensure_unchecked_likes_work_column()
+# 서버 시작 시 컬럼 보장 - db_utils로 이동
+# ensure_is_deleted_column()
+# ensure_unchecked_likes_work_column()
 
 # 숨기기 함수
 
@@ -1009,7 +862,7 @@ def hide_link(link_id, db_path='/data/integrated.db'):
 def force_init_db():
     """Railway에서 DB 강제 초기화용 엔드포인트"""
     try:
-        init_admin_db()
+        init_database()
         
         # 테이블 존재 확인
         conn, db_type = get_db_connection()
