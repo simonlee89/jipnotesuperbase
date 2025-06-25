@@ -257,10 +257,10 @@ def init_database():
                 ON CONFLICT (id) DO NOTHING
             ''')
             
-            # 인덱스 생성
+            # 인덱스 생성 (신 구조에 맞게)
             indexes = [
-                "CREATE INDEX IF NOT EXISTS idx_employees_employee_id ON employees(employee_id);",
-                "CREATE INDEX IF NOT EXISTS idx_employees_team ON employees(team);",
+                "CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name);",
+                "CREATE INDEX IF NOT EXISTS idx_employees_role ON employees(role);",
                 "CREATE INDEX IF NOT EXISTS idx_employee_customers_employee_id ON employee_customers(employee_id);",
                 "CREATE INDEX IF NOT EXISTS idx_employee_customers_management_site_id ON employee_customers(management_site_id);",
                 "CREATE INDEX IF NOT EXISTS idx_links_management_site_id ON links(management_site_id);",
