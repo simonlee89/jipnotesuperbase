@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 from datetime import datetime
 import os
@@ -63,7 +63,6 @@ def index():
             move_in_date = ''
         
         conn.close()
-        from flask import session
         employee_id = session.get('employee_id', '')
         return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
         
@@ -268,7 +267,7 @@ def links():
         data = request.json
         url = data.get('url')
         platform = data.get('platform')
-        added_by = data.get('added_by', '관리자')  # 기본값 설정
+        added_by = session.get('employee_id', '관리자')  # 세션에서 사용자 정보 가져오도록 수정
         memo = data.get('memo', '')
         guarantee_insurance = data.get('guarantee_insurance', False)
         
@@ -291,7 +290,8 @@ def links():
                 INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
                 VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
             ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-            link_id = cursor.fetchone()[0]
+            result = cursor.fetchone()
+            link_id = result['id'] if result and isinstance(result, dict) else (result[0] if result else None)
         else:
             cursor.execute('''
                 INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
