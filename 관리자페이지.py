@@ -323,19 +323,26 @@ def manage_employees():
             
             print(f"📋 조회된 직원 수: {len(employees)}명")
             
+            if len(employees) == 0:
+                print("❌ 직원 데이터가 없습니다!")
+                return jsonify({'error': f'직원 목록 조회 실패: 직원 데이터가 없습니다 (조회된 수: {len(employees)})'}), 500
+            
             employee_list = []
             for emp in employees:
-                employee_data = {
-                    'id': emp[0],
-                    'employee_id': emp[1],  # name을 employee_id로 표시
-                    'employee_name': emp[1],  # name을 employee_name으로도 표시
-                    'team': '',  # 빈 값으로 표시 (필요없음)
-                    'created_date': emp[2],  # created_at을 created_date로 표시
-                    'is_active': True,  # 기본값으로 활성화 상태
-                    'role': emp[3] if emp[3] else 'employee'
-                }
-                employee_list.append(employee_data)
-                print(f"  - {employee_data}")
+                try:
+                    employee_data = {
+                        'id': emp[0],
+                        'employee_id': emp[1],  # name을 employee_id로 표시
+                        'employee_name': emp[1],  # name을 employee_name으로도 표시
+                        'team': '',  # 빈 값으로 표시 (필요없음)
+                        'created_date': str(emp[2]) if emp[2] else '',  # created_at을 문자열로 변환
+                        'is_active': True,  # 기본값으로 활성화 상태
+                        'role': emp[3] if emp[3] else 'employee'
+                    }
+                    employee_list.append(employee_data)
+                    print(f"  - {employee_data}")
+                except Exception as e:
+                    print(f"❌ 직원 데이터 처리 오류: {e}, 데이터: {emp}")
             
             print("✅ 직원 목록 조회 성공")
             return jsonify(employee_list)
