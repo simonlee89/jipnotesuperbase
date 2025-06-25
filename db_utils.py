@@ -94,20 +94,29 @@ def get_db_connection():
         raise Exception(f"모든 DB 연결 시도 실패: {e}")
 
 def init_database():
-    """
-    데이터베이스 테이블을 초기화합니다.
-    PostgreSQL과 SQLite 모두 완벽하게 지원하는 구조로 생성합니다.
-    """
-    try:
-        logger.info("=== 데이터베이스 초기화 시작 ===")
-        conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-        logger.info(f"DB 타입: {db_type}")
-        
-        if db_type == 'postgresql':
-            # PostgreSQL용 테이블 생성 - '관리자페이지.py'와 호환되는 신규 구조
-            logger.info("PostgreSQL 테이블 생성 중...")
-            
+    """DB 연결을 가져오고, 모든 테이블이 존재하는지 확인 및 생성 (PostgreSQL의 경우 매번 초기화)"""
+    conn, db_type = get_db_connection()
+    cursor = conn.cursor()
+    print(f"INFO:db_utils:DB 타입: {db_type}")
+
+    # PostgreSQL의 경우, 항상 테이블을 삭제하고 다시 생성하여 스키마를 최신 상태로 유지
+    if db_type == 'postgresql':
+        print("INFO:db_utils:PostgreSQL 테이블 구조 리셋 시작 (기존 테이블 삭제)...")
+        try:
+            # 의존성 역순으로 테이블 삭제 (CASCADE로 관련 객체도 함께 삭제)
+            cursor.execute("DROP TABLE IF EXISTS guarantee_insurance_log CASCADE;")
+            cursor.execute("DROP TABLE IF EXISTS employee_customers CASCADE;")
+            cursor.execute("DROP TABLE IF EXISTS links CASCADE;")
+            cursor.execute("DROP TABLE IF EXISTS office_links CASCADE;")
+            cursor.execute("DROP TABLE IF EXISTS customer_info CASCADE;")
+            cursor.execute("DROP TABLE IF EXISTS employees CASCADE;") # employees는 마지막에
+            print("INFO:db_utils:✅ 기존 테이블 삭제 완료.")
+        except Exception as e:
+            print(f"WARN:db_utils:테이블 삭제 중 오류 (무시 가능): {e}")
+            conn.rollback() # 오류 발생 시 트랜잭션 롤백
+
+        print("INFO:db_utils:PostgreSQL 테이블 생성 중...")
+        try:
             # 1. employees 테이블
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
