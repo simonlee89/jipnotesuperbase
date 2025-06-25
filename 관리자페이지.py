@@ -33,7 +33,7 @@ def index():
         return redirect(url_for('admin_panel'))
     return render_template('admin_main.html')
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     """직원 로그인 (새로운 테이블 구조에 맞게 수정)"""
     data = request.get_json()
@@ -456,142 +456,98 @@ def activate_employee(emp_id):
 @app.route('/api/customers', methods=['GET', 'POST'])
 def manage_customers():
     # 관리자 또는 직원만 접근 가능
-    if 'employee_id' not in session and 'is_admin' not in session:
+    if 'employee_id' not in session and not session.get('is_admin'):
         return jsonify({'error': 'Unauthorized'}), 401
-    
-    # 관리자는 모든 고객 조회, 직원은 자신의 고객만 조회
-    if 'is_admin' in session:
-        employee_id = None  # 관리자는 모든 고객 조회
-    else:
-        employee_id = session['employee_id']
-    
-    if request.method == 'GET':
-        # 해당 직원의 고객 목록 조회
-        conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-        
-        if employee_id:  # 직원인 경우
-            if db_type == 'postgresql':
-                cursor.execute('''
-                    SELECT id, management_site_id, customer_name, phone, inquiry_date, 
-                           move_in_date, amount, room_count, location, loan_info, parking, 
-                           pets, progress_status, memo, employee_id
-                    FROM employee_customers 
-                    WHERE employee_id = %s
-                    ORDER BY inquiry_date DESC
-                ''', (employee_id,))
-            else:
-                cursor.execute('''
-                    SELECT id, management_site_id, customer_name, phone, inquiry_date, 
-                           move_in_date, amount, room_count, location, loan_info, parking, 
-                           pets, progress_status, memo, employee_id
-                    FROM employee_customers 
-                    WHERE employee_id = ?
-                    ORDER BY inquiry_date DESC
-                ''', (employee_id,))
-        else:  # 관리자인 경우 모든 고객 조회
-            cursor.execute('''
-                SELECT id, management_site_id, customer_name, phone, inquiry_date, 
-                       move_in_date, amount, room_count, location, loan_info, parking, 
-                       pets, progress_status, memo, employee_id
-                FROM employee_customers 
-                ORDER BY inquiry_date DESC
-            ''')
-        
-        customers = cursor.fetchall()
-        conn.close()
-        
-        customer_list = []
-        for customer in customers:
-            # 데이터 접근 방식을 인덱스(customer[1])에서 키(customer['management_site_id'])로 변경
-            management_site_id = customer['management_site_id']
-            unchecked_likes_jug = get_unchecked_likes_count(management_site_id, '/data/integrated.db', mode='residence')
-            unchecked_likes_work = get_unchecked_likes_count(management_site_id, '/data/integrated.db', mode='work')
-            
-            customer_data = {}
-            # 키 기반으로 안전하게 데이터 할당
-            for key in customer.keys():
-                customer_data[key] = customer[key]
-            
-            # URL 및 좋아요 수 추가
-            customer_data['residence_url'] = f'{RESIDENCE_SITE_URL}/customer/{management_site_id}'
-            customer_data['business_url'] = f'{BUSINESS_SITE_URL}/customer/{management_site_id}'
-            customer_data['unchecked_likes_jug'] = unchecked_likes_jug
-            customer_data['unchecked_likes_work'] = unchecked_likes_work
-            
-            customer_list.append(customer_data)
-        
-        return jsonify(customer_list)
-    
-    elif request.method == 'POST':
-        # 새 고객 추가
-        data = request.get_json()
-        management_site_id = str(uuid.uuid4())[:8]
-        
-        # 관리자가 추가하는 경우 직원 ID를 지정할 수 있음
-        if 'is_admin' in session and data.get('employee_id'):
-            add_employee_id = data.get('employee_id')
-        elif 'is_admin' in session:
-            add_employee_id = 'admin'  # 관리자가 직접 추가
-        else:
-            add_employee_id = employee_id
 
-        print(f"🕵️ [고객추가] 새 고객 추가 시도. 담당자: '{add_employee_id}', 생성 ID: '{management_site_id}'")
-        print(f"ℹ️ [고객추가] 전달된 데이터: {data}")
-        
+    employee_id = session.get('employee_id')
+    if session.get('is_admin'):
+        employee_id = 'admin' # 관리자는 'admin'으로 식별
+
+    # --- GET 요청: 고객 목록 조회 ---
+    if request.method == 'GET':
         try:
-            conn, db_type = get_db_connection()
+            conn = db_utils.get_db_connection()
             cursor = conn.cursor()
             
-            sql = ""
-            params = ()
-
-            if db_type == 'postgresql':
-                sql = '''
-                    INSERT INTO employee_customers (
-                        employee_id, management_site_id, customer_name, phone, inquiry_date,
-                        move_in_date, amount, room_count, location, loan_info, parking, pets,
-                        progress_status, memo, created_date
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                '''
-                params = (
-                    add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
-                    data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
-                    data.get('room_count'), data.get('location'), data.get('loan_info'),
-                    data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
-                    data.get('memo'), datetime.now() # PostreSQL은 timestamp 타입
-                )
-            else: # SQLite
-                sql = '''
-                    INSERT INTO employee_customers (
-                        employee_id, management_site_id, customer_name, phone, inquiry_date,
-                        move_in_date, amount, room_count, location, loan_info, parking, pets,
-                        progress_status, memo, created_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                '''
-                params = (
-                    add_employee_id, management_site_id, data.get('customer_name'), data.get('phone'),
-                    data.get('inquiry_date'), data.get('move_in_date'), data.get('amount'),
-                    data.get('room_count'), data.get('location'), data.get('loan_info'),
-                    data.get('parking'), data.get('pets'), data.get('progress_status', '진행중'),
-                    data.get('memo'), datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                )
+            # 관리자는 모든 고객을, 직원은 자기 담당 고객만 조회
+            if employee_id == 'admin':
+                query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC"
+                cursor.execute(query)
+            else:
+                query = "SELECT * FROM employee_customers WHERE employee_id = %s ORDER BY inquiry_date DESC, id DESC"
+                cursor.execute(query, (employee_id,))
             
-            print(f"执行 [고객추가] 쿼리 실행...")
-            cursor.execute(sql, params)
-            print(f"✅ [고객추가] 쿼리 실행 완료 (영향 받은 행: {cursor.rowcount})")
-
-            conn.commit()
-            print("✅ [고객추가] DB Commit 완료. 데이터가 최종 저장되었습니다.")
-
-            conn.close()
+            customers_raw = cursor.fetchall()
+            customers_list = [db_utils.dict_from_row(row, cursor) for row in customers_raw]
             
-            return jsonify({'success': True, 'management_site_id': management_site_id})
+            # # 좋아요 개수 추가
+            # for customer in customers_list:
+            #     if customer.get('management_site_id'):
+            #         customer['unchecked_likes_jug'] = get_unchecked_likes_count(customer['management_site_id'], 'residence')
+            #         customer['unchecked_likes_work'] = get_unchecked_likes_count(customer['management_site_id'], 'business')
+
+            return jsonify(customers_list)
+
         except Exception as e:
-            print(f"🚨 [고객추가] DB 작업 중 심각한 오류 발생: {e}")
-            import traceback
-            traceback.print_exc()
-            return jsonify({'success': False, 'message': str(e)})
+            print(f"고객 목록 조회 오류: {e}")
+            return jsonify({'error': f'고객 목록 조회 실패: {e}'}), 500
+        finally:
+            if conn:
+                conn.close()
+
+    # --- POST 요청: 새 고객 추가 ---
+    if request.method == 'POST':
+        data = request.get_json()
+        current_employee_id = session.get('employee_id')
+        
+        customer_data = {
+            'inquiry_date': data.get('inquiry_date'),
+            'move_in_date': data.get('move_in_date'),
+            'customer_name': data.get('customer_name'),
+            'phone': data.get('phone'),
+            'amount': data.get('amount'),
+            'room_count': data.get('room_count'),
+            'location': data.get('location'),
+            'loan_info': data.get('loan_info'),
+            'parking': data.get('parking'),
+            'pets': data.get('pets'),
+            'memo': data.get('memo'),
+            'progress_status': data.get('progress_status', '진행중'),
+            'employee_id': current_employee_id,
+            'added_by': current_employee_id 
+        }
+        
+        management_site_id = str(uuid.uuid4().hex)[:8]
+        print(f"🕵️ [고객추가] 새 고객 추가 시도. 담당자: '{current_employee_id}', 생성 ID: '{management_site_id}'")
+
+        conn = None
+        try:
+            conn = db_utils.get_db_connection()
+            cursor = conn.cursor()
+            
+            columns = ', '.join(f'"{k}"' for k in customer_data.keys())
+            placeholders = ', '.join(['%s'] * len(customer_data))
+            query = f"INSERT INTO employee_customers ({columns}, management_site_id) VALUES ({placeholders}, %s) RETURNING *"
+            params = list(customer_data.values()) + [management_site_id]
+            
+            cursor.execute(query, params)
+            new_customer_raw = cursor.fetchone()
+            conn.commit()
+            
+            if not new_customer_raw:
+                raise Exception("INSERT 후 새로운 고객 정보를 가져오는데 실패했습니다.")
+
+            new_customer = db_utils.dict_from_row(new_customer_raw, cursor)
+            print(f"✅ [고객추가] 성공. 반환 데이터: {new_customer}")
+
+            return jsonify({'success': True, 'message': '고객이 추가되었습니다.', 'customer': new_customer})
+
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"❌ [고객추가] 오류 발생: {e}")
+            return jsonify({'success': False, 'message': f'고객 추가 중 오류 발생: {e}'}), 500
+        finally:
+            if conn: conn.close()
 
 @app.route('/api/customers/<int:customer_id>', methods=['PUT', 'DELETE'])
 def update_delete_customer(customer_id):
@@ -1802,6 +1758,113 @@ def railway_test_login():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/customers', methods=['POST'])
+def add_customer():
+    employee_id = session.get('employee_id', 'unknown')
+    
+    data = request.get_json()
+    customer_data = {
+        'inquiry_date': data.get('inquiry_date'),
+        'move_in_date': data.get('move_in_date'),
+        'customer_name': data.get('customer_name'),
+        'phone': data.get('phone'),
+        'amount': data.get('amount'),
+        'room_count': data.get('room_count'),
+        'location': data.get('location'),
+        'loan_info': data.get('loan_info'),
+        'parking': data.get('parking'),
+        'pets': data.get('pets'),
+        'memo': data.get('memo'),
+        'progress_status': data.get('progress_status', '진행중'),
+        'employee_id': employee_id,
+        'added_by': employee_id 
+    }
+    
+    management_site_id = str(uuid.uuid4().hex)[:8]
+    print(f"🕵️ [고객추가] 새 고객 추가 시도. 담당자: '{employee_id}', 생성 ID: '{management_site_id}'")
+    print(f"ℹ️ [고객추가] 전달된 데이터: {data}")
+
+    conn = None
+    try:
+        conn = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        columns = ', '.join(f'"{k}"' for k in customer_data.keys())
+        placeholders = ', '.join(['%s'] * len(customer_data))
+        
+        query = f"INSERT INTO employee_customers ({columns}, management_site_id) VALUES ({placeholders}, %s) RETURNING *"
+        
+        params = list(customer_data.values()) + [management_site_id]
+        
+        print("执行 [고객추가] 쿼리 실행...")
+        cursor.execute(query, params)
+        
+        new_customer_raw = cursor.fetchone()
+        if not new_customer_raw:
+            raise Exception("INSERT 후 새로운 고객 정보를 가져오는데 실패했습니다.")
+
+        print(f"✅ [고객추가] 쿼리 실행 완료 (영향 받은 행: {cursor.rowcount})")
+        
+        conn.commit()
+        print(f"✅ [고객추가] DB Commit 완료. 데이터가 최종 저장되었습니다.")
+
+        new_customer = db_utils.dict_from_row(new_customer_raw, cursor)
+
+        return jsonify({
+            'success': True,
+            'message': '고객이 추가되었습니다.',
+            'customer': new_customer
+        })
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"❌ [고객추가] 오류 발생: {e}")
+        return jsonify({'success': False, 'message': f'고객 추가 중 오류 발생: {e}'}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/customers/<int:customer_id>', methods=['DELETE'])
+def delete_customer(customer_id):
+    if 'employee_id' not in session:
+        return jsonify({'success': False, 'message': '인증되지 않았습니다.'}), 401
+    
+    employee_id = session.get('employee_id')
+    
+    conn = None
+    try:
+        conn = db_utils.get_db_connection()
+        cursor = conn.cursor()
+
+        # 삭제 전 management_site_id 조회
+        cursor.execute("SELECT management_site_id FROM employee_customers WHERE id = %s AND (employee_id = %s OR 'admin' = %s)", 
+                       (customer_id, employee_id, employee_id))
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({'success': False, 'message': '해당 고객을 삭제할 권한이 없습니다.'}), 403
+
+        management_site_id = result['management_site_id']
+
+        # 고객 삭제
+        cursor.execute("DELETE FROM employee_customers WHERE id = %s", (customer_id,))
+        conn.commit()
+
+        # 다른 DB의 링크 삭제 (존재하는 경우)
+        if management_site_id:
+            db_utils.delete_customer_links_from_property_db(management_site_id)
+
+        return jsonify({'success': True, 'message': '고객이 삭제되었습니다.'})
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"고객 삭제 중 오류 발생: {e}")
+        return jsonify({'success': False, 'message': '고객 삭제 중 서버 오류 발생'}), 500
+    finally:
+        if conn:
+            conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080) 

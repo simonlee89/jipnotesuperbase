@@ -1340,32 +1340,37 @@
                 }
             });
             
-            // 메모 처리
             const memoCell = row.querySelector('.memo-cell');
             customerData.memo = memoCell.textContent.trim() === '-' ? '' : memoCell.textContent.trim();
             
             try {
                 const response = await fetch('/api/customers', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(customerData)
                 });
                 
                 const result = await response.json();
                 
-                if (result.success) {
+                if (result.success && result.customer) {
                     showAlert('고객이 성공적으로 추가되었습니다.', 'success');
-                    console.log('[saveNewCustomer] 성공! 서버가 반환한 정보:', result, '이제 loadCustomers()를 호출합니다.');
-                    loadCustomers();
+                    
+                    // 1. 로컬 데이터 업데이트: 서버에서 받은 새 고객 정보를 배열 맨 앞에 추가
+                    customers.unshift(result.customer);
+                    
+                    // 2. 필터 재적용 및 화면 다시 그리기
+                    // 현재 활성화된 필터 버튼을 찾아 필터링 함수를 다시 호출합니다.
+                    // 이렇게 하면 화면이 자연스럽게 최신 상태로 업데이트됩니다.
+                    const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+                    filterCustomers(activeFilter);
+                    
+                    // 3. 통계 업데이트
+                    updateStats();
                 } else {
                     showAlert(result.message || '고객 추가에 실패했습니다.', 'error');
-                    console.error('[saveNewCustomer] 실패:', result.message);
                 }
             } catch (error) {
                 showAlert('서버 오류가 발생했습니다.', 'error');
-                console.error('[saveNewCustomer] 예외 발생:', error);
             }
         }
         
