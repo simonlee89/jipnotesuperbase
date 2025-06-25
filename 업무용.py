@@ -17,16 +17,11 @@ except ImportError:
 def init_db():
     print("=== 업무용 DB 초기화 시작 ===")
     try:
-        # 공통 DB 유틸리티 사용
-        init_success = init_database()
-        if init_success:
-            print("=== 업무용 DB 초기화 완료 ===")
-        else:
-            print("=== 업무용 DB 초기화 실패 ===")
-            raise Exception("DB 초기화 실패")
-        
+        # 공통 DB 유틸리티 사용 (반환값 없음)
+        init_database()
+        print("=== 업무용 DB 초기화/확인 완료 ===")
     except Exception as e:
-        print(f"=== 업무용 DB 초기화 오류: {e} ===")
+        print(f"=== 업무용 DB 초기화 중 오류 발생: {e} ===")
         # 실패해도 앱은 계속 실행
         pass
 
@@ -35,9 +30,9 @@ app = Flask(__name__)
 # Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
 try:
     init_db()
-    print("✅ 업무용 DB 초기화 성공")
+    print("✅ 업무용 DB 초기화 작업 호출 완료")
 except Exception as e:
-    print(f"❌ 업무용 DB 초기화 실패: {e}")
+    print(f"❌ 업무용 DB 초기화 호출 중 심각한 오류: {e}")
     # 실패해도 앱은 계속 실행
 
 @app.route('/')
@@ -303,12 +298,12 @@ def links():
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (url, platform, added_by, datetime.now().strftime("%Y-%m-%d %H:%M"), memo, management_site_id, guarantee_insurance))
             new_link_id = cursor.lastrowid
-            conn.commit()
             
             # 새로 추가된 링크 정보 다시 조회
             cursor.execute('SELECT * FROM office_links WHERE id = ?', (new_link_id,))
             new_link_data = cursor.fetchone()
             
+        conn.commit() # 변경사항을 DB에 최종 저장 (PostgreSQL, SQLite 모두 적용)
         conn.close()
 
         # 데이터베이스 타입을 고려하여 결과 처리
