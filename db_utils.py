@@ -155,13 +155,13 @@ def init_database():
                     added_by VARCHAR(100),
                     date_added TIMESTAMP,
                     rating INTEGER DEFAULT 0,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
+                    liked BOOLEAN DEFAULT FALSE,
+                    disliked BOOLEAN DEFAULT FALSE,
                     memo TEXT,
                     management_site_id VARCHAR(50),
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
-                    is_checked INTEGER DEFAULT 0
+                    guarantee_insurance BOOLEAN DEFAULT FALSE,
+                    is_deleted BOOLEAN DEFAULT FALSE,
+                    is_checked BOOLEAN DEFAULT FALSE
                 )
             ''')
             logger.info("✅ links 테이블 생성")
@@ -175,12 +175,12 @@ def init_database():
                     added_by VARCHAR(100),
                     date_added TIMESTAMP,
                     rating INTEGER DEFAULT 0,
-                    liked INTEGER DEFAULT 0,
-                    disliked INTEGER DEFAULT 0,
+                    liked BOOLEAN DEFAULT FALSE,
+                    disliked BOOLEAN DEFAULT FALSE,
                     memo TEXT,
                     management_site_id VARCHAR(50),
-                    guarantee_insurance INTEGER DEFAULT 0,
-                    is_deleted INTEGER DEFAULT 0,
+                    guarantee_insurance BOOLEAN DEFAULT FALSE,
+                    is_deleted BOOLEAN DEFAULT FALSE,
                     unchecked_likes_work INTEGER DEFAULT 0
                 )
             ''')

@@ -453,8 +453,8 @@ def update_link(link_id):
         elif action == 'dislike':
             disliked = data.get('disliked', False)
             if db_type == 'postgresql':
-                cursor.execute('UPDATE office_links SET disliked = %s, liked = %s WHERE id = %s', 
-                              (disliked, False, link_id))
+                cursor.execute('UPDATE office_links SET disliked = %s, liked = FALSE WHERE id = %s', 
+                              (disliked, link_id))
             else:
                 cursor.execute('UPDATE office_links SET disliked = ?, liked = ? WHERE id = ?', 
                               (disliked, 0, link_id))
