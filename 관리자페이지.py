@@ -371,7 +371,8 @@ def update_delete_customer(customer_id):
 
         if request.method == 'PUT':
             data = request.get_json()
-            # ... (이하 생략)
+            # 여기에 필드 업데이트 로직이 필요하지만, 현재 사용되지 않으므로 pass
+            pass
             return jsonify({'success': True})
 
         if request.method == 'DELETE':
@@ -387,11 +388,50 @@ def update_delete_customer(customer_id):
 
 @app.route('/api/customers/<int:customer_id>/memo', methods=['PUT'])
 def update_customer_memo(customer_id):
-    # ... (이하 생략)
+    data = request.get_json()
+    memo = data.get('memo')
+    
+    conn = None
+    try:
+        conn = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE employee_customers SET memo = %s WHERE id = %s", (memo, customer_id))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({'success': False, 'message': '메모 업데이트 실패'}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/customers/<int:customer_id>/field', methods=['PUT'])
 def update_customer_field(customer_id):
-    # ... (이하 생략)
+    data = request.get_json()
+    field, value = list(data.items())[0]
+
+    # 허용된 필드 목록
+    allowed_fields = [
+        "inquiry_date", "move_in_date", "customer_name", "phone", 
+        "amount", "room_count", "location", "loan_info", 
+        "parking", "pets", "progress_status"
+    ]
+    if field not in allowed_fields:
+        return jsonify({'success': False, 'error': '허용되지 않은 필드'}), 400
+
+    conn = None
+    try:
+        conn = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        query = f'UPDATE employee_customers SET "{field}" = %s WHERE id = %s'
+        cursor.execute(query, (value, customer_id))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.rollback()
+        print(f"필드 업데이트 오류: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
