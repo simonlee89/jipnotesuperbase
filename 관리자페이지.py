@@ -825,25 +825,58 @@ def robust_delete_query(db_path, query, params=()):
     return False
 
 def delete_customer_links_from_property_db(management_site_id):
-    """매물 사이트 DB(통합 DB)에서 해당 고객의 링크들과 보증보험 로그까지 robust하게 삭제"""
+    """
+    매물 사이트 DB(통합 DB)에서 해당 고객의 링크들과 보증보험 로그까지 삭제합니다.
+    PostgreSQL과 SQLite를 모두 지원하도록 수정되었습니다.
+    """
     try:
-        # 0. 먼저 guarantee_insurance를 0으로 업데이트
-        robust_delete_query('/data/integrated.db', "UPDATE office_links SET guarantee_insurance = 0 WHERE management_site_id = ?", (management_site_id,))
-        # 1. office_links, guarantee_insurance_log robust 삭제
-        robust_delete_query('/data/integrated.db', "DELETE FROM office_links WHERE management_site_id = ?", (management_site_id,))
-        robust_delete_query('/data/integrated.db', "DELETE FROM guarantee_insurance_log WHERE management_site_id = ?", (management_site_id,))
-        # office_links에서 삭제된 id로 guarantee_insurance_log도 추가 삭제 (link_id 기준)
-        conn = sqlite3.connect('/data/integrated.db', timeout=5.0)
-        conn.execute('PRAGMA busy_timeout = 5000;')
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM office_links WHERE management_site_id = ?", (management_site_id,))
-        link_ids = [row[0] for row in cursor.fetchall()]
+
+        # 1. 해당 고객이 등록한 링크 ID 목록 조회 (주거용, 업무용 모두)
+        link_ids_to_delete = []
+        if db_type == 'postgresql':
+            cursor.execute("SELECT id FROM links WHERE management_site_id = %s", (management_site_id,))
+            link_ids_to_delete.extend([row['id'] for row in cursor.fetchall()])
+            cursor.execute("SELECT id FROM office_links WHERE management_site_id = %s", (management_site_id,))
+            link_ids_to_delete.extend([row['id'] for row in cursor.fetchall()])
+        else:
+            cursor.execute("SELECT id FROM links WHERE management_site_id = ?", (management_site_id,))
+            link_ids_to_delete.extend([row[0] for row in cursor.fetchall()])
+            cursor.execute("SELECT id FROM office_links WHERE management_site_id = ?", (management_site_id,))
+            link_ids_to_delete.extend([row[0] for row in cursor.fetchall()])
+
+        # 2. 관련 보증보험 로그 삭제
+        if link_ids_to_delete:
+            # IN 절을 위한 플레이스홀더 생성
+            if db_type == 'postgresql':
+                placeholders = ', '.join(['%s'] * len(link_ids_to_delete))
+                cursor.execute(f"DELETE FROM guarantee_insurance_log WHERE link_id IN ({placeholders})", link_ids_to_delete)
+            else:
+                placeholders = ', '.join(['?'] * len(link_ids_to_delete))
+                cursor.execute(f"DELETE FROM guarantee_insurance_log WHERE link_id IN ({placeholders})", link_ids_to_delete)
+            print(f"✅ {len(link_ids_to_delete)}개 링크에 대한 보증보험 로그 삭제 완료.")
+
+        # 3. 주거용, 업무용 링크 삭제
+        if db_type == 'postgresql':
+            cursor.execute("DELETE FROM links WHERE management_site_id = %s", (management_site_id,))
+            print(f"✅ 주거용 링크 {cursor.rowcount}개 삭제 완료.")
+            cursor.execute("DELETE FROM office_links WHERE management_site_id = %s", (management_site_id,))
+            print(f"✅ 업무용 링크 {cursor.rowcount}개 삭제 완료.")
+        else:
+            cursor.execute("DELETE FROM links WHERE management_site_id = ?", (management_site_id,))
+            print(f"✅ 주거용 링크 {cursor.rowcount}개 삭제 완료.")
+            cursor.execute("DELETE FROM office_links WHERE management_site_id = ?", (management_site_id,))
+            print(f"✅ 업무용 링크 {cursor.rowcount}개 삭제 완료.")
+
+        conn.commit()
         conn.close()
-        for link_id in link_ids:
-            robust_delete_query('/data/integrated.db', "DELETE FROM guarantee_insurance_log WHERE link_id = ?", (link_id,))
+        print(f"✅ Management Site ID '{management_site_id}' 관련 모든 링크 및 로그 삭제 성공")
         return True
     except Exception as e:
-        print('robust delete 실패:', e)
+        print(f"🚨 Management Site ID '{management_site_id}' 관련 링크 삭제 중 심각한 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def get_unchecked_likes_count(management_site_id, db_path, mode='residence'):

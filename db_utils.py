@@ -408,31 +408,37 @@ def execute_query(query, params=None, fetch=False):
         conn.close()
 
 def get_customer_info(management_site_id):
-    """
-    management_site_id를 기반으로 고객 정보를 조회합니다.
-    """
+    """management_site_id로 고객 정보를 조회하고, 상세한 디버깅 로그를 남깁니다."""
+    print(f"🕵️  [get_customer_info] 고객 정보 조회 시도: management_site_id='{management_site_id}'")
+    if not management_site_id:
+        print("❌ [get_customer_info] management_site_id가 제공되지 않았습니다.")
+        return None
+
     try:
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
         
+        print(f"ℹ️  [get_customer_info] DB 타입: {db_type}")
+
         if db_type == 'postgresql':
-            cursor.execute(
-                "SELECT * FROM employee_customers WHERE management_site_id = %s",
-                (management_site_id,)
-            )
+            query = "SELECT * FROM employee_customers WHERE management_site_id = %s"
         else: # sqlite
-            cursor.execute(
-                "SELECT * FROM employee_customers WHERE management_site_id = ?",
-                (management_site_id,)
-            )
+            query = "SELECT * FROM employee_customers WHERE management_site_id = ?"
         
-        customer_info = cursor.fetchone()
+        print(f"执行 [get_customer_info] 쿼리: {query} (파라미터: {management_site_id})")
+        cursor.execute(query, (management_site_id,))
+        customer = cursor.fetchone()
         
-        cursor.close()
         conn.close()
-        
-        return customer_info if customer_info else None
-        
+
+        if customer:
+            print(f"✅ [get_customer_info] 고객 정보 조회 성공: {dict(customer)}")
+            return dict(customer)
+        else:
+            print(f"🤷 [get_customer_info] 해당 ID의 고객을 찾을 수 없습니다: '{management_site_id}'")
+            return None
     except Exception as e:
-        logger.error(f"고객 정보 조회 실패 (ID: {management_site_id}): {e}")
+        print(f"🚨 [get_customer_info] DB 조회 중 심각한 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
         return None 
