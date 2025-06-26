@@ -999,6 +999,64 @@ def debug_check_customers():
     except Exception as e:
         return f"오류 발생: {e}", 500
 
+# ==================== 고객 정보 API 라우트 ====================
+@app.route('/api/customer_info', methods=['GET', 'POST'])
+def customer_info_api():
+    """고객 정보 API - 주거용/업무용 사이트에서 사용"""
+    management_site_id = request.args.get('management_site_id')
+    
+    if request.method == 'GET':
+        if not management_site_id:
+            return jsonify({'error': 'management_site_id가 필요합니다.'}), 400
+        
+        customer_info = db_utils.get_customer_info(management_site_id)
+        if not customer_info:
+            return jsonify({'error': '고객 정보를 찾을 수 없습니다.'}), 404
+        
+        return jsonify({
+            'customer_name': customer_info.get('customer_name', '고객'),
+            'move_in_date': customer_info.get('move_in_date', ''),
+            'management_site_id': management_site_id
+        })
+    
+    elif request.method == 'POST':
+        # 고객 정보 업데이트 (필요한 경우)
+        if not management_site_id:
+            return jsonify({'error': 'management_site_id가 필요합니다.'}), 400
+        
+        data = request.json
+        customer_name = data.get('customer_name')
+        move_in_date = data.get('move_in_date')
+        
+        try:
+            conn, _ = db_utils.get_db_connection()
+            cursor = conn.cursor()
+            
+            update_fields = []
+            params = []
+            
+            if customer_name is not None:
+                update_fields.append('customer_name = %s')
+                params.append(customer_name)
+            
+            if move_in_date is not None:
+                update_fields.append('move_in_date = %s')
+                params.append(move_in_date)
+            
+            if update_fields:
+                params.append(management_site_id)
+                query = f"UPDATE employee_customers SET {', '.join(update_fields)} WHERE management_site_id = %s"
+                cursor.execute(query, params)
+                conn.commit()
+            
+            conn.close()
+            return jsonify({'success': True})
+            
+        except Exception as e:
+            if 'conn' in locals():
+                conn.close()
+            return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=True)
