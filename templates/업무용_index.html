@@ -740,6 +740,42 @@
             padding-top: 2px;
             border-top: 1px solid rgba(255, 140, 0, 0.1);
         }
+        
+        /* 추가자 선택 버튼 스타일 */
+        .button-row {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-xs);
+        }
+        
+        .btn-toggle {
+            flex: 1;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: 2px solid rgba(255, 140, 0, 0.3);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s var(--ease-luxury);
+            text-align: center;
+            font-family: inherit;
+        }
+        
+        .btn-toggle:hover {
+            border-color: var(--hermes-orange);
+            background: var(--bg-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .btn-toggle.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--hermes-orange);
+            box-shadow: var(--shadow-medium);
+        }
 
         /* 반응형 디자인 - 모바일 최적화 */
         @media (max-width: 1200px) {
@@ -832,6 +868,9 @@
             
             .section-title {
                 font-size: 20px;
+                white-space: nowrap; /* 한 줄로 표시 */
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             
             .content-section {
@@ -2061,6 +2100,14 @@
                     </div>
 
                     <div class="form-group">
+                        <label>추가자</label>
+                        <div class="button-row">
+                            <button type="button" class="btn-toggle active" data-user="중개인" onclick="selectUser(this)">중개인</button>
+                            <button type="button" class="btn-toggle" data-user="고객" onclick="selectUser(this)">고객</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label for="memo">상세 메모</label>
                         <textarea id="memo" name="memo" rows="4" placeholder="오피스 특징, 위치, 시설 등 상세 정보를 입력하세요"></textarea>
                     </div>
@@ -2258,6 +2305,17 @@
             });
         }
 
+        // 추가자 선택 함수
+        function selectUser(button) {
+            // 모든 버튼에서 active 클래스 제거
+            document.querySelectorAll('.btn-toggle[data-user]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 클릭된 버튼에 active 클래스 추가
+            button.classList.add('active');
+        }
+        
         // 매물 추가 함수
         function addProperty() {
             const submitText = document.getElementById('submitText');
@@ -2266,10 +2324,14 @@
             submitText.style.display = 'none';
             submitLoading.style.display = 'inline-block';
             
+            // 선택된 추가자 가져오기
+            const selectedUserBtn = document.querySelector('.btn-toggle[data-user].active');
+            const selectedUser = selectedUserBtn ? selectedUserBtn.dataset.user : '중개인';
+            
             const data = {
                 url: document.getElementById('url').value,
                 platform: document.getElementById('platform').value,
-                added_by: '관리자',
+                added_by: selectedUser,
                 memo: document.getElementById('memo').value
             };
             

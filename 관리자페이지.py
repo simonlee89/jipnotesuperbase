@@ -147,6 +147,25 @@ def employee_dashboard():
     
     employee_name = session.get('employee_name', '직원')
     
+    # 관리자가 아닌 경우 직원이 여전히 존재하는지 확인
+    if not session.get('is_admin'):
+        conn = None
+        try:
+            conn, _ = db_utils.get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, name FROM employees WHERE name = %s', (employee_name,))
+            employee = cursor.fetchone()
+            
+            if not employee:
+                # 직원이 삭제된 경우 오류 페이지 표시
+                return render_template('employee_error.html')
+        except Exception as e:
+            print(f"직원 존재 확인 오류: {e}")
+            return render_template('employee_error.html')
+        finally:
+            if conn:
+                conn.close()
+    
     # 보증보험 매물 목록 조회
     conn = None
     guarantee_list = []

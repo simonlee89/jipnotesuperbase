@@ -796,6 +796,66 @@
             margin-bottom: 24px;
         }
         
+        /* 진행여부 선택 UI 스타일 */
+        .status-selector {
+            position: relative;
+            z-index: 100;
+        }
+        
+        .status-options {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .status-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 70px;
+            font-size: 12px;
+        }
+        
+        .status-option:hover {
+            border-color: #6366f1;
+            background: #f8fafc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+        }
+        
+        .status-option.active {
+            border-color: #6366f1;
+            background: #6366f1;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .status-option.active .status-icon {
+            filter: brightness(0) invert(1);
+        }
+        
+        .status-icon {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+        
+        .status-text {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
         /* 카드형 보증보험 UI 스타일 추가 */
         .guarantee-card {
             background: #fff;
@@ -1468,13 +1528,58 @@
             
             let inputElement;
             if (type === 'select' && field === 'progress_status') {
-                inputElement = document.createElement('select');
-                inputElement.innerHTML = `
-                    <option value="진행중">진행중</option>
-                    <option value="계약">계약</option>
-                    <option value="보류">보류</option>
+                // 예쁜 버튼 형태의 진행여부 선택 UI 생성
+                const statusContainer = document.createElement('div');
+                statusContainer.className = 'status-selector';
+                statusContainer.innerHTML = `
+                    <div class="status-options">
+                        <button type="button" class="status-option ${currentValue === '진행중' ? 'active' : ''}" data-value="진행중">
+                            <span class="status-icon">🔄</span>
+                            <span class="status-text">진행중</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '계약' ? 'active' : ''}" data-value="계약">
+                            <span class="status-icon">✅</span>
+                            <span class="status-text">계약</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '보류' ? 'active' : ''}" data-value="보류">
+                            <span class="status-icon">⏸️</span>
+                            <span class="status-text">보류</span>
+                        </button>
+                    </div>
                 `;
-                inputElement.value = currentValue;
+                
+                cell.innerHTML = '';
+                cell.appendChild(statusContainer);
+                
+                // 버튼 클릭 이벤트 처리
+                const buttons = statusContainer.querySelectorAll('.status-option');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const selectedValue = btn.dataset.value;
+                        const customerId = cell.closest('tr').dataset.customerId;
+                        
+                        if (customerId) {
+                            updateCustomerField(customerId, field, selectedValue, cell, false);
+                        } else {
+                            // 새 행의 경우 바로 업데이트
+                            cell.classList.remove('editing-cell');
+                            const statusClass = selectedValue === '계약' ? 'status-complete' : 
+                                               selectedValue === '보류' ? 'status-hold' : 'status-progress';
+                            cell.innerHTML = `<span class="status-badge ${statusClass}">${selectedValue}</span>`;
+                        }
+                    });
+                });
+                
+                // ESC 키로 취소
+                document.addEventListener('keydown', function escHandler(e) {
+                    if (e.key === 'Escape') {
+                        cancelCellEdit(cell, currentValue);
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                });
+                
+                return; // select 처리 부분을 건너뛰기 위해 return
             } else {
                 inputElement = document.createElement('input');
                 inputElement.type = type;
