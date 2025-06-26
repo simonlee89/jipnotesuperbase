@@ -29,6 +29,15 @@ try:
     db_utils.init_database()
     db_utils.ensure_all_columns()
     print("✅ 관리자 DB 초기화 성공")
+    
+    # office_links 테이블 스키마 수정 (is_checked 컬럼 추가)
+    try:
+        from fix_office_links_schema import fix_office_links_schema
+        fix_office_links_schema()
+        print("✅ office_links 스키마 수정 완료")
+    except Exception as schema_error:
+        print(f"⚠️ office_links 스키마 수정 실패 (무시하고 계속): {schema_error}")
+        
 except Exception as e:
     print(f"❌ 관리자 DB 초기화 실패: {e}")
     # 실패해도 앱은 계속 실행
@@ -445,10 +454,48 @@ def manage_customers():
             customers_raw = cursor.fetchall()
             customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
             
-            # 디버깅: 고객 정보 확인
+            # 각 고객의 미확인 좋아요 수 계산 (안전한 방식)
+            for customer in customers_list:
+                management_site_id = customer.get('management_site_id')
+                
+                # 기본값 설정
+                customer['unchecked_likes_residence'] = 0
+                customer['unchecked_likes_business'] = 0
+                
+                if management_site_id:
+                    # 주거용 미확인 좋아요 수 (안전한 쿼리)
+                    try:
+                        cursor.execute(
+                            'SELECT COUNT(*) FROM links WHERE management_site_id = %s AND liked = TRUE AND COALESCE(is_checked, FALSE) = FALSE',
+                            (management_site_id,)
+                        )
+                        result = cursor.fetchone()
+                        if result:
+                            customer['unchecked_likes_residence'] = result[0]
+                        print(f"[좋아요 계산] {customer.get('customer_name')} 주거용: {customer['unchecked_likes_residence']}")
+                    except Exception as e:
+                        print(f"[좋아요 계산 오류] 주거용 - {customer.get('customer_name')}: {e}")
+                        customer['unchecked_likes_residence'] = 0
+                    
+                    # 업무용 미확인 좋아요 수 (안전한 쿼리)
+                    try:
+                        cursor.execute(
+                            'SELECT COUNT(*) FROM office_links WHERE management_site_id = %s AND liked = TRUE AND COALESCE(is_checked, FALSE) = FALSE',
+                            (management_site_id,)
+                        )
+                        result = cursor.fetchone()
+                        if result:
+                            customer['unchecked_likes_business'] = result[0]
+                        print(f"[좋아요 계산] {customer.get('customer_name')} 업무용: {customer['unchecked_likes_business']}")
+                    except Exception as e:
+                        print(f"[좋아요 계산 오류] 업무용 - {customer.get('customer_name')}: {e}")
+                        customer['unchecked_likes_business'] = 0
+            
+            # 디버깅: 고객 정보 및 미확인 좋아요 수 확인
             print(f"[고객 목록] 총 {len(customers_list)}명의 고객")
             for i, customer in enumerate(customers_list[:3]):  # 처음 3명만 출력
                 print(f"  고객 {i+1}: {customer.get('customer_name')} - management_site_id: {customer.get('management_site_id')}")
+                print(f"    미확인 좋아요 - 주거용: {customer.get('unchecked_likes_residence')}, 업무용: {customer.get('unchecked_likes_business')}")
             
             return jsonify(customers_list)
 
