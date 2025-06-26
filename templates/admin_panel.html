@@ -782,8 +782,8 @@
                                         <th>플랫폼</th>
                                         <th>등록자</th>
                                         <th>등록일</th>
+                                        <th>보증보험</th>
                                         <th>메모</th>
-                                        <th>주거사이트</th>
                                         <th>작업</th>
                                     </tr>
                                 </thead>
@@ -805,19 +805,15 @@
                                             <td>{{ row['added_by'] }}</td>
                                             <td>{{ row['date_added'] }}</td>
                                             <td>
+                                                <span class="badge" style="background:#22c55e; color:white;">
+                                                    🛡️ 보증보험 가능
+                                                </span>
+                                            </td>
+                                            <td>
                                                 <form method="POST" action="{{ url_for('guarantee_edit', id=row['id']) }}" style="display:flex; gap:8px; align-items:center;">
                                                     <input type="text" name="memo" value="{{ row['memo'] or '' }}" style="width:150px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px;">
                                                     <button type="submit" class="btn btn-sm btn-primary">수정</button>
                                                 </form>
-                                            </td>
-                                            <td>
-                                                {% if row['management_site_id'] %}
-                                                    <a href="{{ residence_site_url }}/customer/{{ row['management_site_id'] }}" target="_blank" class="btn btn-sm btn-secondary">
-                                                        🏠 열기
-                                                    </a>
-                                                {% else %}
-                                                    <span style="color:#94a3b8; font-size:12px;">-</span>
-                                                {% endif %}
                                             </td>
                                             <td>
                                                 <form method="POST" action="{{ url_for('guarantee_delete', id=row['id']) }}" style="display:inline;">

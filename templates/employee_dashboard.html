@@ -965,10 +965,56 @@
                 <!-- 보증보험 매물 리스트 (초기에는 숨김) -->
                 <div class="card" id="guarantee-log-section" style="display:none;">
                     <div class="card-header">
-                        <h2 class="card-title"><span>🛡️</span> 보증보험</h2>
+                        <h2 class="card-title"><span>🛡️</span> 보증보험 매물 리스트</h2>
                     </div>
-                    <div id="guarantee-link-list">
-                        <!-- 보증보험 매물 리스트가 여기에 렌더링됩니다 -->
+                    <div class="table-container">
+                        <table class="customers-table">
+                            <thead>
+                                <tr>
+                                    <th>번호</th>
+                                    <th>URL</th>
+                                    <th>플랫폼</th>
+                                    <th>등록자</th>
+                                    <th>등록일</th>
+                                    <th>보증보험</th>
+                                    <th>메모</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if guarantee_list and guarantee_list|length > 0 %}
+                                    {% for row in guarantee_list %}
+                                    <tr>
+                                        <td>{{ loop.revindex }}</td>
+                                        <td><a href="{{ row['url'] }}" target="_blank" style="color: #6366f1; text-decoration: none;">{{ row['url'][:50] }}{% if row['url']|length > 50 %}...{% endif %}</a></td>
+                                        <td>
+                                            {% if row['platform'] == 'zigbang' %}
+                                                <span class="badge" style="background:#ff6b6b; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">직방</span>
+                                            {% elif row['platform'] == 'naver' %}
+                                                <span class="badge" style="background:#03c75a; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">네이버</span>
+                                            {% else %}
+                                                <span class="badge" style="background:#868e96; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">{{ row['platform'] }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ row['added_by'] }}</td>
+                                        <td>{{ row['date_added'] }}</td>
+                                        <td>
+                                            <span class="badge" style="background:#22c55e; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
+                                                🛡️ 보증보험 가능
+                                            </span>
+                                        </td>
+                                        <td>{{ row['memo'] or '-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" style="text-align:center; color:#64748b; padding:40px;">
+                                            <div style="font-size:16px; margin-bottom:8px;">📋 등록된 보증보험 매물이 없습니다.</div>
+                                            <div style="font-size:14px; color:#94a3b8;">주거용 사이트에서 보증보험 가능 매물을 등록하면 여기에 표시됩니다.</div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 

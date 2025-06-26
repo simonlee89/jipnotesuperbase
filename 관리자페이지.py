@@ -147,6 +147,28 @@ def employee_dashboard():
     
     employee_name = session.get('employee_name', '직원')
     
+    # 보증보험 매물 목록 조회
+    conn = None
+    guarantee_list = []
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            FROM links l
+            WHERE l.guarantee_insurance = TRUE 
+            ORDER BY l.id DESC
+            LIMIT 20
+        ''')
+        
+        guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"보증보험 목록 조회 오류: {e}")
+    finally:
+        if conn:
+            conn.close()
+    
     # 디버깅: URL 확인
     print(f"[대시보드] 주거 사이트 URL: {RESIDENCE_SITE_URL}")
     print(f"[대시보드] 업무 사이트 URL: {BUSINESS_SITE_URL}")
@@ -154,7 +176,8 @@ def employee_dashboard():
     return render_template('employee_dashboard.html', 
                          employee_name=employee_name,
                          residence_site_url=RESIDENCE_SITE_URL,
-                         business_site_url=BUSINESS_SITE_URL)
+                         business_site_url=BUSINESS_SITE_URL,
+                         guarantee_list=guarantee_list)
 
 @app.route('/admin')
 def admin_panel():
@@ -238,12 +261,15 @@ def manage_employees():
         if request.method == 'GET':
             cursor.execute('SELECT id, employee_id, employee_name, team, created_date, status FROM employees ORDER BY created_date DESC')
             employees_raw = cursor.fetchall()
+            print(f"[직원 목록] 조회된 직원 수: {len(employees_raw)}")
             employees = []
             for emp in employees_raw:
                 emp_dict = db_utils.dict_from_row(emp)
                 # status가 없거나 1이면 활성, 0이면 비활성
                 emp_dict['is_active'] = emp_dict.get('status', 1) == 1
                 employees.append(emp_dict)
+                print(f"[직원 목록] 직원: {emp_dict.get('employee_name')} - 활성: {emp_dict['is_active']}")
+            print(f"[직원 목록] 최종 응답: {employees}")
             return jsonify(employees)
 
         if request.method == 'POST':
@@ -799,9 +825,10 @@ def residence_links():
             
             # 데이터 형식 변환
             links_list = []
-            for link in links_data:
+            for idx, link in enumerate(links_data):
                 links_list.append({
                     'id': link['id'],
+                    'number': len(links_data) - idx,  # 역순 번호
                     'url': link['url'],
                     'platform': link['platform'],
                     'added_by': link['added_by'],
