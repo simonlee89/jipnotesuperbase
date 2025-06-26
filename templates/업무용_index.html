@@ -2274,7 +2274,7 @@
             };
             
             // managementSiteId가 있는 경우 URL 파라미터 추가
-            let url = '/api/links';
+            let url = '/api/office-links';
             if (managementSiteId && managementSiteId !== 'None') {
                 url += `?management_site_id=${managementSiteId}`;
             }
@@ -2314,7 +2314,7 @@
 
         // 매물 목록 로드 함수
         function loadLinks() {
-            let url = '/api/links';
+            let url = '/api/office-links';
             if (managementSiteId) {
                 url += `?management_site_id=${managementSiteId}`;
             }
@@ -2434,7 +2434,7 @@
             const likeBtn = document.querySelector(`button[onclick="toggleLike(${id})"]`);
             const isCurrentlyLiked = likeBtn.classList.contains('active');
             
-            fetch(`/api/links/${id}`, {
+            fetch(`/api/office-links/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2458,7 +2458,7 @@
             const dislikeBtn = document.querySelector(`button[onclick="toggleDislike(${id})"]`);
             const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
             
-            fetch(`/api/links/${id}`, {
+            fetch(`/api/office-links/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2480,7 +2480,7 @@
 
         function deleteLink(id) {
             if (confirm('정말로 이 프리미엄 매물을 삭제하시겠습니까?')) {
-                fetch(`/api/links/${id}`, {
+                fetch(`/api/office-links/${id}`, {
                     method: 'DELETE'
                 })
                 .then(response => response.json())
@@ -2504,7 +2504,7 @@
 
         function confirmRating() {
             if (selectedRating > 0 && currentRatingId) {
-                fetch(`/api/links/${currentRatingId}`, {
+                fetch(`/api/office-links/${currentRatingId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2629,7 +2629,7 @@
             const memoText = document.getElementById('memoTextarea').value;
             
             if (currentMemoId) {
-                fetch(`/api/links/${currentMemoId}`, {
+                fetch(`/api/office-links/${currentMemoId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2672,7 +2672,7 @@
             const platformFilter = document.getElementById('platformFilter').value;
             const likeFilter = document.getElementById('likeFilter').value;
             
-            let url = '/api/links';
+            let url = '/api/office-links';
             const params = new URLSearchParams();
             
             if (managementSiteId) {

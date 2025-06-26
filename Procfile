@@ -1,1 +1,1 @@
-web: gunicorn app:app --bind 0.0.0.0:$PORT
+web: gunicorn 관리자페이지:app --bind 0.0.0.0:$PORT

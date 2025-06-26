@@ -1238,18 +1238,18 @@
                                 ${customer.progress_status || '진행중'}
                             </span>
                         </td>
-                        <td>
-                            ${customer.management_site_id ? 
-                                `<a href="{{ residence_site_url }}/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${jugAlarm}` : 
-                                '<span class="property-link-placeholder">주거사이트 없음</span>'
-                            }
-                        </td>
-                        <td>
-                            ${customer.management_site_id ? 
-                                `<a href="{{ business_site_url }}/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${workAlarm}` : 
-                                '<span class="property-link-placeholder">업무사이트 없음</span>'
-                            }
-                        </td>
+                                        <td>
+                    ${customer.management_site_id ? 
+                        `<a href="/residence/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${jugAlarm}` :
+                        '<span class="property-link-placeholder">주거사이트 없음</span>'
+                    }
+                </td>
+                <td>
+                    ${customer.management_site_id ? 
+                        `<a href="/business/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${workAlarm}` :
+                        '<span class="property-link-placeholder">업무사이트 없음</span>'
+                    }
+                </td>
                         <td>
                             <div class="action-buttons">
                                 <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${customer.id})">삭제</button>
