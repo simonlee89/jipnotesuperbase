@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-import sqlite3
 import uuid
 from datetime import datetime
 import os
@@ -520,12 +519,9 @@ def residence_customer_site(management_site_id):
     
     # 미확인 좋아요 처리
     try:
-        conn, db_type = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-        if db_type == 'postgresql':
-            cursor.execute('UPDATE links SET is_checked = TRUE WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
-        else:
-            cursor.execute('UPDATE links SET is_checked = 1 WHERE management_site_id = ? AND liked = 1 AND is_checked = 0', (management_site_id,))
+        cursor.execute('UPDATE links SET is_checked = TRUE WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -540,29 +536,29 @@ def residence_customer_site(management_site_id):
 @app.route('/business')
 def business_index():
     """업무용 메인 페이지"""
-    try:
-        conn, db_type = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        # 고객 정보 가져오기
-        try:
-            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-            customer_info_raw = cursor.fetchone()
+            try:
+            conn, _ = db_utils.get_db_connection()
+            cursor = conn.cursor()
             
-            if customer_info_raw:
-                customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
-                move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
-            else:
+            # 고객 정보 가져오기
+            try:
+                cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+                customer_info_raw = cursor.fetchone()
+                
+                if customer_info_raw:
+                    customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
+                    move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
+                else:
+                    customer_name = '프리미엄등록'
+                    move_in_date = ''
+            except Exception as e:
+                print(f"[업무용] customer_info 조회 오류: {e}")
                 customer_name = '프리미엄등록'
                 move_in_date = ''
-        except Exception as e:
-            print(f"[업무용] customer_info 조회 오류: {e}")
-            customer_name = '프리미엄등록'
-            move_in_date = ''
-        
-        conn.close()
-        employee_id = session.get('employee_id', '')
-        return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
+            
+            conn.close()
+            employee_id = session.get('employee_id', '')
+            return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
         
     except Exception as e:
         print(f"[업무용] 메인 페이지 오류: {e}")
@@ -584,12 +580,9 @@ def business_customer_site(management_site_id):
     
     # 미확인 좋아요 처리 (업무용은 unchecked_likes_work 컬럼 사용)
     try:
-        conn, db_type = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-        if db_type == 'postgresql':
-            cursor.execute('UPDATE office_links SET unchecked_likes_work = 0 WHERE management_site_id = %s', (management_site_id,))
-        else:
-            cursor.execute('UPDATE office_links SET unchecked_likes_work = 0 WHERE management_site_id = ?', (management_site_id,))
+        cursor.execute('UPDATE office_links SET unchecked_likes_work = 0 WHERE management_site_id = %s', (management_site_id,))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -608,7 +601,7 @@ def residence_links():
     
     if request.method == 'POST':
         try:
-            conn, db_type = db_utils.get_db_connection()
+            conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
             
             data = request.json
@@ -631,20 +624,13 @@ def residence_links():
                     conn.close()
                     return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'}), 404
             
-            # DB에 링크 추가
-            if db_type == 'postgresql':
-                cursor.execute('''
-                    INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-                result = cursor.fetchone()
-                link_id = result['id'] if isinstance(result, dict) else result[0]
-            else:
-                cursor.execute('''
-                    INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-                link_id = cursor.lastrowid
+            # DB에 링크 추가 (PostgreSQL)
+            cursor.execute('''
+                INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
+                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
+            result = cursor.fetchone()
+            link_id = result['id'] if isinstance(result, dict) else result[0]
             
             conn.commit()
             conn.close()
@@ -657,7 +643,7 @@ def residence_links():
     
     else:  # GET 요청
         try:
-            conn, db_type = db_utils.get_db_connection()
+            conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
             
             # 필터 파라미터 처리
@@ -672,61 +658,37 @@ def residence_links():
             
             # 고객별 필터링
             if management_site_id:
-                if db_type == 'postgresql':
-                    query += ' AND management_site_id = %s'
-                else:
-                    query += ' AND management_site_id = ?'
+                query += ' AND management_site_id = %s'
                 params.append(management_site_id)
             else:
                 query += ' AND management_site_id IS NULL'
             
             # 플랫폼 필터
             if platform_filter != 'all':
-                if db_type == 'postgresql':
-                    query += ' AND platform = %s'
-                else:
-                    query += ' AND platform = ?'
+                query += ' AND platform = %s'
                 params.append(platform_filter)
             
             # 사용자 필터
             if user_filter != 'all':
-                if db_type == 'postgresql':
-                    query += ' AND added_by = %s'
-                else:
-                    query += ' AND added_by = ?'
+                query += ' AND added_by = %s'
                 params.append(user_filter)
             
             # 좋아요 필터
             if like_filter == 'liked':
-                if db_type == 'postgresql':
-                    query += ' AND liked = TRUE'
-                else:
-                    query += ' AND liked = 1'
+                query += ' AND liked = TRUE'
             elif like_filter == 'disliked':
-                if db_type == 'postgresql':
-                    query += ' AND disliked = TRUE'
-                else:
-                    query += ' AND disliked = 1'
+                query += ' AND disliked = TRUE'
             
             # 날짜 필터
             if date_filter:
-                if db_type == 'postgresql':
-                    query += ' AND date_added = %s'
-                else:
-                    query += ' AND date_added = ?'
+                query += ' AND date_added = %s'
                 params.append(date_filter)
             
             # 보증보험 필터
             if guarantee_filter == 'available':
-                if db_type == 'postgresql':
-                    query += ' AND guarantee_insurance = TRUE'
-                else:
-                    query += ' AND guarantee_insurance = 1'
+                query += ' AND guarantee_insurance = TRUE'
             elif guarantee_filter == 'unavailable':
-                if db_type == 'postgresql':
-                    query += ' AND guarantee_insurance = FALSE'
-                else:
-                    query += ' AND guarantee_insurance = 0'
+                query += ' AND guarantee_insurance = FALSE'
             
             query += ' ORDER BY id DESC'
             cursor.execute(query, params)
@@ -760,7 +722,7 @@ def residence_links():
 @app.route('/api/links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_residence_link(link_id):
     """주거용 링크 수정/삭제"""
-    conn, db_type = db_utils.get_db_connection()
+    conn, _ = db_utils.get_db_connection()
     cursor = conn.cursor()
     
     if request.method == 'PUT':
@@ -769,51 +731,30 @@ def update_residence_link(link_id):
         
         if action == 'rating':
             rating = data.get('rating', 5)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET rating = %s WHERE id = %s', (rating, link_id))
-            else:
-                cursor.execute('UPDATE links SET rating = ? WHERE id = ?', (rating, link_id))
+            cursor.execute('UPDATE links SET rating = %s WHERE id = %s', (rating, link_id))
         
         elif action == 'like':
             liked = data.get('liked', False)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET liked = %s, disliked = FALSE, is_checked = FALSE WHERE id = %s', (liked, link_id))
-            else:
-                liked_int = 1 if liked else 0
-                cursor.execute('UPDATE links SET liked = ?, disliked = 0, is_checked = 0 WHERE id = ?', (liked_int, link_id))
+            cursor.execute('UPDATE links SET liked = %s, disliked = FALSE, is_checked = FALSE WHERE id = %s', (liked, link_id))
         
         elif action == 'dislike':
             disliked = data.get('disliked', False)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET disliked = %s, liked = FALSE WHERE id = %s', 
-                              (disliked, link_id))
-            else:
-                cursor.execute('UPDATE links SET disliked = ?, liked = ? WHERE id = ?', 
-                              (disliked, 0, link_id))
+            cursor.execute('UPDATE links SET disliked = %s, liked = FALSE WHERE id = %s', (disliked, link_id))
         
         elif action == 'memo':
             memo = data.get('memo', '')
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET memo = %s WHERE id = %s', (memo, link_id))
-            else:
-                cursor.execute('UPDATE links SET memo = ? WHERE id = ?', (memo, link_id))
+            cursor.execute('UPDATE links SET memo = %s WHERE id = %s', (memo, link_id))
         
         elif action == 'guarantee':
             guarantee_insurance = data.get('guarantee_insurance', False)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
-            else:
-                cursor.execute('UPDATE links SET guarantee_insurance = ? WHERE id = ?', (guarantee_insurance, link_id))
+            cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
         
         conn.commit()
         conn.close()
         return jsonify({'success': True})
     
     elif request.method == 'DELETE':
-        if db_type == 'postgresql':
-            cursor.execute('DELETE FROM links WHERE id = %s', (link_id,))
-        else:
-            cursor.execute('DELETE FROM links WHERE id = ?', (link_id,))
+        cursor.execute('DELETE FROM links WHERE id = %s', (link_id,))
         conn.commit()
         conn.close()
         return jsonify({'success': True})
@@ -843,55 +784,25 @@ def business_links():
             if not customer_info:
                 return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'})
         
-        conn, db_type = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         
-        if db_type == 'postgresql':
-            cursor.execute('''
-                INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-            result = cursor.fetchone()
-            new_link_id = result['id'] if result and isinstance(result, dict) else (result[0] if result else None)
-            
-            # 새로 추가된 링크 정보 다시 조회
-            cursor.execute('SELECT * FROM office_links WHERE id = %s', (new_link_id,))
-            new_link_data = cursor.fetchone()
-            
-        else: # SQLite
-            cursor.execute('''
-                INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (url, platform, added_by, datetime.now().strftime("%Y-%m-%d %H:%M"), memo, management_site_id, guarantee_insurance))
-            new_link_id = cursor.lastrowid
-            
-            # 새로 추가된 링크 정보 다시 조회
-            cursor.execute('SELECT * FROM office_links WHERE id = ?', (new_link_id,))
-            new_link_data = cursor.fetchone()
+        cursor.execute('''
+            INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+        ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
+        result = cursor.fetchone()
+        new_link_id = result['id'] if result and isinstance(result, dict) else (result[0] if result else None)
+        
+        # 새로 추가된 링크 정보 다시 조회
+        cursor.execute('SELECT * FROM office_links WHERE id = %s', (new_link_id,))
+        new_link_data = cursor.fetchone()
             
         conn.commit()
         conn.close()
 
-        # 데이터베이스 타입을 고려하여 결과 처리
-        if db_type == 'postgresql':
-            response_data = dict(new_link_data)
-        else:
-            # SQLite의 row는 인덱스로 접근
-            response_data = {
-                'id': new_link_data[0],
-                'url': new_link_data[1],
-                'platform': new_link_data[2],
-                'added_by': new_link_data[3],
-                'date_added': new_link_data[4],
-                'rating': new_link_data[5],
-                'liked': new_link_data[6],
-                'disliked': new_link_data[7],
-                'memo': new_link_data[8],
-                'management_site_id': new_link_data[9],
-                'guarantee_insurance': new_link_data[10],
-                'is_deleted': new_link_data[11],
-                'unchecked_likes_work': new_link_data[12]
-            }
+        # PostgreSQL 결과 처리
+        response_data = dict(new_link_data)
 
         return jsonify(response_data), 201
 
@@ -903,7 +814,7 @@ def business_links():
         date_filter = request.args.get('date', '')
         guarantee_filter = request.args.get('guarantee', 'all')
         
-        conn, db_type = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         
         query = 'SELECT * FROM office_links WHERE 1=1'
@@ -911,61 +822,34 @@ def business_links():
         
         # 고객별 필터링 추가
         if management_site_id:
-            if db_type == 'postgresql':
-                query += ' AND management_site_id = %s'
-            else:
-                query += ' AND management_site_id = ?'
+            query += ' AND management_site_id = %s'
             params.append(management_site_id)
         else:
             query += ' AND management_site_id IS NULL'
         
         if platform_filter != 'all':
-            if db_type == 'postgresql':
-                query += ' AND platform = %s'
-            else:
-                query += ' AND platform = ?'
+            query += ' AND platform = %s'
             params.append(platform_filter)
         
         if user_filter != 'all':
-            if db_type == 'postgresql':
-                query += ' AND added_by = %s'
-            else:
-                query += ' AND added_by = ?'
+            query += ' AND added_by = %s'
             params.append(user_filter)
         
         if like_filter == 'liked':
-            if db_type == 'postgresql':
-                query += ' AND liked = TRUE'
-            else:
-                query += ' AND liked = 1'
+            query += ' AND liked = TRUE'
         elif like_filter == 'disliked':
-            if db_type == 'postgresql':
-                query += ' AND disliked = TRUE'
-            else:
-                query += ' AND disliked = 1'
+            query += ' AND disliked = TRUE'
         elif like_filter == 'none':
-            if db_type == 'postgresql':
-                query += ' AND liked = FALSE AND disliked = FALSE'
-            else:
-                query += ' AND liked = 0 AND disliked = 0'
+            query += ' AND liked = FALSE AND disliked = FALSE'
         
         if date_filter:
-            if db_type == 'postgresql':
-                query += ' AND date_added = %s'
-            else:
-                query += ' AND date_added = ?'
+            query += ' AND date_added = %s'
             params.append(date_filter)
         
         if guarantee_filter == 'available':
-            if db_type == 'postgresql':
-                query += ' AND guarantee_insurance = TRUE'
-            else:
-                query += ' AND guarantee_insurance = 1'
+            query += ' AND guarantee_insurance = TRUE'
         elif guarantee_filter == 'unavailable':
-            if db_type == 'postgresql':
-                query += ' AND guarantee_insurance = FALSE'
-            else:
-                query += ' AND guarantee_insurance = 0'
+            query += ' AND guarantee_insurance = FALSE'
         
         query += ' ORDER BY id DESC'
         
@@ -994,7 +878,7 @@ def business_links():
 @app.route('/api/office-links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_business_link(link_id):
     """업무용 링크 수정/삭제"""
-    conn, db_type = db_utils.get_db_connection()
+    conn, _ = db_utils.get_db_connection()
     cursor = conn.cursor()
     
     if request.method == 'PUT':
@@ -1003,56 +887,33 @@ def update_business_link(link_id):
         
         if action == 'rating':
             rating = data.get('rating', 5)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE office_links SET rating = %s WHERE id = %s', (rating, link_id))
-            else:
-                cursor.execute('UPDATE office_links SET rating = ? WHERE id = ?', (rating, link_id))
+            cursor.execute('UPDATE office_links SET rating = %s WHERE id = %s', (rating, link_id))
         
         elif action == 'like':
             liked = data.get('liked', False)
-            if db_type == 'postgresql':
-                if liked:
-                    cursor.execute('UPDATE office_links SET liked = TRUE, disliked = FALSE, is_checked = FALSE, unchecked_likes_work = unchecked_likes_work + 1 WHERE id = %s', (link_id,))
-                else:
-                    cursor.execute('UPDATE office_links SET liked = FALSE, is_checked = FALSE WHERE id = %s', (link_id,))
+            if liked:
+                cursor.execute('UPDATE office_links SET liked = TRUE, disliked = FALSE, is_checked = FALSE, unchecked_likes_work = unchecked_likes_work + 1 WHERE id = %s', (link_id,))
             else:
-                if liked:
-                    cursor.execute('UPDATE office_links SET liked = 1, disliked = 0, is_checked = 0, unchecked_likes_work = unchecked_likes_work + 1 WHERE id = ?', (link_id,))
-                else:
-                    cursor.execute('UPDATE office_links SET liked = 0, is_checked = 0 WHERE id = ?', (link_id,))
+                cursor.execute('UPDATE office_links SET liked = FALSE, is_checked = FALSE WHERE id = %s', (link_id,))
         
         elif action == 'dislike':
             disliked = data.get('disliked', False)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE office_links SET disliked = %s, liked = FALSE WHERE id = %s', 
-                              (disliked, link_id))
-            else:
-                cursor.execute('UPDATE office_links SET disliked = ?, liked = ? WHERE id = ?', 
-                              (disliked, 0, link_id))
+            cursor.execute('UPDATE office_links SET disliked = %s, liked = FALSE WHERE id = %s', (disliked, link_id))
         
         elif action == 'memo':
             memo = data.get('memo', '')
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE office_links SET memo = %s WHERE id = %s', (memo, link_id))
-            else:
-                cursor.execute('UPDATE office_links SET memo = ? WHERE id = ?', (memo, link_id))
+            cursor.execute('UPDATE office_links SET memo = %s WHERE id = %s', (memo, link_id))
         
         elif action == 'guarantee':
             guarantee_insurance = data.get('guarantee_insurance', False)
-            if db_type == 'postgresql':
-                cursor.execute('UPDATE office_links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
-            else:
-                cursor.execute('UPDATE office_links SET guarantee_insurance = ? WHERE id = ?', (guarantee_insurance, link_id))
+            cursor.execute('UPDATE office_links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
         
         conn.commit()
         conn.close()
         return jsonify({'success': True})
     
     elif request.method == 'DELETE':
-        if db_type == 'postgresql':
-            cursor.execute('DELETE FROM office_links WHERE id = %s', (link_id,))
-        else:
-            cursor.execute('DELETE FROM office_links WHERE id = ?', (link_id,))
+        cursor.execute('DELETE FROM office_links WHERE id = %s', (link_id,))
         conn.commit()
         conn.close()
         return jsonify({'success': True})
