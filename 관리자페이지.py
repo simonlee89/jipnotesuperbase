@@ -472,7 +472,7 @@ def update_customer_field(customer_id):
 def residence_index():
     """주거용 메인 페이지"""
     try:
-        conn, db_type = db_utils.get_db_connection()
+        conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         
         # 고객 정보 가져오기
@@ -481,12 +481,8 @@ def residence_index():
             customer_info_raw = cursor.fetchone()
             
             if customer_info_raw:
-                if db_type == 'postgresql':
-                    customer_name = customer_info_raw.get('customer_name', '제일좋은집 찾아드릴분')
-                    move_in_date = customer_info_raw.get('move_in_date', '')
-                else:
-                    customer_name = customer_info_raw[0] if customer_info_raw[0] else '제일좋은집 찾아드릴분'
-                    move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
+                customer_name = customer_info_raw.get('customer_name', '제일좋은집 찾아드릴분')
+                move_in_date = customer_info_raw.get('move_in_date', '')
             else:
                 customer_name = '제일좋은집 찾아드릴분'
                 move_in_date = ''
@@ -536,29 +532,29 @@ def residence_customer_site(management_site_id):
 @app.route('/business')
 def business_index():
     """업무용 메인 페이지"""
-            try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 고객 정보 가져오기
+        try:
+            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
+            customer_info_raw = cursor.fetchone()
             
-            # 고객 정보 가져오기
-            try:
-                cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-                customer_info_raw = cursor.fetchone()
-                
-                if customer_info_raw:
-                    customer_name = customer_info_raw[0] if customer_info_raw[0] else '프리미엄등록'
-                    move_in_date = customer_info_raw[1] if customer_info_raw[1] else ''
-                else:
-                    customer_name = '프리미엄등록'
-                    move_in_date = ''
-            except Exception as e:
-                print(f"[업무용] customer_info 조회 오류: {e}")
+            if customer_info_raw:
+                customer_name = customer_info_raw.get('customer_name', '프리미엄등록')
+                move_in_date = customer_info_raw.get('move_in_date', '')
+            else:
                 customer_name = '프리미엄등록'
                 move_in_date = ''
-            
-            conn.close()
-            employee_id = session.get('employee_id', '')
-            return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
+        except Exception as e:
+            print(f"[업무용] customer_info 조회 오류: {e}")
+            customer_name = '프리미엄등록'
+            move_in_date = ''
+        
+        conn.close()
+        employee_id = session.get('employee_id', '')
+        return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
         
     except Exception as e:
         print(f"[업무용] 메인 페이지 오류: {e}")
