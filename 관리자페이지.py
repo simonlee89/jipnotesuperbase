@@ -401,48 +401,12 @@ def manage_customers():
                 cursor.execute(query, (employee_id,))
             
             customers_raw = cursor.fetchall()
-            customers_list = []
-            
-            # 각 고객별로 미확인 좋아요 개수 조회
-            for customer_raw in customers_raw:
-                customer = db_utils.dict_from_row(customer_raw)
-                management_site_id = customer.get('management_site_id')
-                
-                if management_site_id:
-                    # 주거용 사이트 미확인 좋아요 개수
-                    cursor.execute("""
-                        SELECT COUNT(*) as count 
-                        FROM links 
-                        WHERE management_site_id = %s 
-                        AND liked = TRUE 
-                        AND is_checked = FALSE
-                    """, (management_site_id,))
-                    residence_likes = cursor.fetchone()
-                    
-                    # 업무용 사이트 미확인 좋아요 개수
-                    cursor.execute("""
-                        SELECT COUNT(*) as count 
-                        FROM office_links 
-                        WHERE management_site_id = %s 
-                        AND liked = TRUE 
-                        AND is_checked = FALSE
-                    """, (management_site_id,))
-                    business_likes = cursor.fetchone()
-                    
-                    customer['unchecked_likes_residence'] = residence_likes.get('count', 0) if residence_likes else 0
-                    customer['unchecked_likes_business'] = business_likes.get('count', 0) if business_likes else 0
-                    customer['unchecked_likes_total'] = customer['unchecked_likes_residence'] + customer['unchecked_likes_business']
-                else:
-                    customer['unchecked_likes_residence'] = 0
-                    customer['unchecked_likes_business'] = 0
-                    customer['unchecked_likes_total'] = 0
-                
-                customers_list.append(customer)
+            customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
             
             # 디버깅: 고객 정보 확인
             print(f"[고객 목록] 총 {len(customers_list)}명의 고객")
             for i, customer in enumerate(customers_list[:3]):  # 처음 3명만 출력
-                print(f"  고객 {i+1}: {customer.get('customer_name')} - management_site_id: {customer.get('management_site_id')} - 미확인 좋아요: {customer.get('unchecked_likes_total')}")
+                print(f"  고객 {i+1}: {customer.get('customer_name')} - management_site_id: {customer.get('management_site_id')}")
             
             return jsonify(customers_list)
 
