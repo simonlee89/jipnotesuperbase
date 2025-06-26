@@ -1292,6 +1292,19 @@
             document.getElementById('new-customers').textContent = newThisWeek;
         }
         
+        // 고객명 자동 생성 함수
+        function generateCustomerName() {
+            const now = new Date();
+            const year = now.getFullYear().toString().slice(-2);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+            
+            return `고객_${year}${month}${day}_${hour}${minute}${second}`;
+        }
+
         // 새 행 추가
         function addNewRow() {
             const tbody = document.getElementById('customers-list');
@@ -1299,13 +1312,16 @@
             const now = new Date();
             now.setHours(now.getHours() + 9);
             const today = now.toISOString().slice(0, 10);
+            
+            // 자동 고객명 생성
+            const autoCustomerName = generateCustomerName();
 
             const newRow = document.createElement('tr');
             newRow.className = 'new-row';
             newRow.innerHTML = `
                 <td class="editable-cell" data-field="inquiry_date" data-type="date" onclick="editCell(this)">${today}</td>
                 <td class="editable-cell" data-field="move_in_date" data-type="date" onclick="editCell(this)">-</td>
-                <td class="editable-cell" data-field="customer_name" data-type="text" onclick="editCell(this)"><strong>새 고객</strong></td>
+                <td class="editable-cell" data-field="customer_name" data-type="text" onclick="editCell(this)"><strong>${autoCustomerName}</strong></td>
                 <td class="editable-cell" data-field="phone" data-type="tel" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="amount" data-type="text" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="room_count" data-type="text" onclick="editCell(this)">-</td>
@@ -1339,12 +1355,11 @@
                 const field = cell.dataset.field;
                 if (field) {
                     let value = cell.textContent.trim();
-                    // customer_name 필드는 "새 고객" 기본값만 제외하고, 실제 입력값은 유지
-                    if (field === 'customer_name' && value === '새 고객') {
-                        value = '';
-                    } else if (value === '-') {
+                    // 빈 값이나 기본 플레이스홀더만 제외
+                    if (value === '-') {
                         value = '';
                     }
+                    // customer_name은 자동생성된 이름이나 사용자 입력값 모두 유지
                     customerData[field] = value;
                 }
             });
@@ -1416,12 +1431,8 @@
             } else {
                 inputElement = document.createElement('input');
                 inputElement.type = type;
-                // 고객명 필드에서 "새 고객" 기본값은 빈 값으로 처리
-                if (field === 'customer_name' && currentValue === '새 고객') {
-                    inputElement.value = '';
-                } else {
-                    inputElement.value = currentValue === '-' ? '' : currentValue;
-                }
+                // 자동 생성된 고객명은 편집 가능하도록 그대로 표시
+                inputElement.value = currentValue === '-' ? '' : currentValue;
                 // 날짜 필드이고 값이 비어있으면 오늘 날짜로 자동 입력
                 if (type === 'date' && !inputElement.value) {
                     const now = new Date();
