@@ -1124,6 +1124,10 @@
         
         // 페이지 로드 시 실행
         document.addEventListener('DOMContentLoaded', function() {
+            // 디버깅: URL 확인
+            console.log('주거 사이트 URL:', '{{ residence_site_url }}');
+            console.log('업무 사이트 URL:', '{{ business_site_url }}');
+            
             loadCustomers();
             updateStats();
 

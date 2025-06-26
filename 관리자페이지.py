@@ -9,8 +9,18 @@ import db_utils
 from psycopg2.extras import RealDictCursor
 
 # 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
-RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
-BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'http://localhost:5001')
+# Railway 환경에서는 환경변수로, 로컬에서는 기본값 사용
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    # Railway 배포 환경
+    RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'https://xn--2e0b220bo4n.com')
+    BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'https://xn--2e0bx78aevc.com')
+else:
+    # 로컬 개발 환경
+    RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
+    BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'http://localhost:5001')
+
+print(f"🏠 주거 사이트 URL: {RESIDENCE_SITE_URL}")
+print(f"💼 업무 사이트 URL: {BUSINESS_SITE_URL}")
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # 세션용 비밀키
@@ -49,11 +59,11 @@ def login():
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-    
+        
         # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
         cursor.execute('SELECT id, name, role FROM employees WHERE name = %s', (employee_id,))
         employee = cursor.fetchone()
-    
+        
         # 디버깅: 전체 직원 목록 조회
         cursor.execute('SELECT id, name, role FROM employees ORDER BY id')
         all_employees = cursor.fetchall()
@@ -66,7 +76,7 @@ def login():
                     print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
             except (KeyError, IndexError) as e:
                 print(f"  - 직원 정보 출력 오류: {e}, 데이터: {emp}")
-    
+        
         if employee:
             if isinstance(employee, dict):
                 employee_name = employee.get('name')
@@ -138,6 +148,10 @@ def employee_dashboard():
     
     employee_name = session.get('employee_name', '직원')
     
+    # 디버깅: URL 확인
+    print(f"[대시보드] 주거 사이트 URL: {RESIDENCE_SITE_URL}")
+    print(f"[대시보드] 업무 사이트 URL: {BUSINESS_SITE_URL}")
+    
     return render_template('employee_dashboard.html', 
                          employee_name=employee_name,
                          residence_site_url=RESIDENCE_SITE_URL,
@@ -153,14 +167,14 @@ def admin_panel():
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-    
+        
         cursor.execute('''
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
             FROM links l
             WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
             ORDER BY l.id DESC
         ''')
-    
+        
         guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
 
         return render_template('admin_panel.html', 
@@ -221,26 +235,35 @@ def manage_employees():
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-            
+        
         if request.method == 'GET':
             cursor.execute('SELECT id, name, created_at, role FROM employees ORDER BY created_at DESC')
             employees = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
             return jsonify(employees)
 
         if request.method == 'POST':
+            print("🔄 직원 추가 요청 받음")
             data = request.get_json()
-            name = data.get('name')
-            role = data.get('role', 'employee')
+            print(f"📥 요청 데이터: {data}")
             
-            if not name:
+            name = data.get('employee_name')  # 클라이언트에서 employee_name으로 보내므로 수정
+            role = data.get('team', 'employee')  # 클라이언트에서 team으로 보내므로 수정
+            
+            print(f"📝 추출된 데이터 - 이름: '{name}', 역할/팀: '{role}'")
+            
+            if not name or name.strip() == '':
+                print(f"❌ 이름이 비어있음: name='{name}'")
                 return jsonify({'success': False, 'message': '이름을 입력해야 합니다.'}), 400
             
+            print(f"✅ 직원 추가 중: {name}")
             cursor.execute("INSERT INTO employees (name, role) VALUES (%s, %s) RETURNING *", (name, role))
             new_employee = db_utils.dict_from_row(cursor.fetchone())
             conn.commit()
+            print(f"🎉 직원 추가 성공: {new_employee}")
             return jsonify({'success': True, 'employee': new_employee})
             
     except Exception as e:
+        print(f"❌ 직원 추가 오류: {e}")
         if conn: conn.rollback()
         return jsonify({'error': str(e)}), 500
     finally:
@@ -280,7 +303,7 @@ def manage_customers():
         try:
             conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
-        
+            
             if employee_id == 'admin':
                 query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC"
                 cursor.execute(query)
@@ -290,6 +313,12 @@ def manage_customers():
             
             customers_raw = cursor.fetchall()
             customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+            
+            # 디버깅: 고객 정보 확인
+            print(f"[고객 목록] 총 {len(customers_list)}명의 고객")
+            for i, customer in enumerate(customers_list[:3]):  # 처음 3명만 출력
+                print(f"  고객 {i+1}: {customer.get('customer_name')} - management_site_id: {customer.get('management_site_id')}")
+            
             return jsonify(customers_list)
 
         except Exception as e:
@@ -341,6 +370,12 @@ def manage_customers():
                 raise Exception("INSERT 후 새로운 고객 정보를 가져오는데 실패했습니다.")
 
             new_customer = db_utils.dict_from_row(new_customer_raw)
+            
+            # 디버깅: 새 고객 정보 확인
+            print(f"[새 고객 추가] 이름: {new_customer.get('customer_name')}")
+            print(f"[새 고객 추가] management_site_id: {new_customer.get('management_site_id')}")
+            print(f"[새 고객 추가] 전체 데이터: {new_customer}")
+            
             return jsonify({'success': True, 'message': '고객이 추가되었습니다.', 'customer': new_customer})
 
         except Exception as e:
