@@ -43,4 +43,30 @@ SELECT
     'links 테이블에 residence_extra 필드 존재 여부:' as info,
     COUNT(*) as column_count
 FROM information_schema.columns 
-WHERE table_name = 'links' AND column_name = 'residence_extra'; 
+WHERE table_name = 'links' AND column_name = 'residence_extra';
+
+-- 6. links와 office_links 테이블에 is_checked 필드 추가 (없는 경우)
+ALTER TABLE links ADD COLUMN IF NOT EXISTS is_checked BOOLEAN DEFAULT TRUE;
+ALTER TABLE office_links ADD COLUMN IF NOT EXISTS is_checked BOOLEAN DEFAULT TRUE;
+
+-- 기존 좋아요 데이터의 is_checked 값 업데이트
+-- 이미 좋아요가 눌린 항목들은 확인된 것으로 처리
+UPDATE links SET is_checked = TRUE WHERE liked = TRUE AND is_checked IS NULL;
+UPDATE office_links SET is_checked = TRUE WHERE liked = TRUE AND is_checked IS NULL;
+
+-- is_checked 필드 확인
+SELECT 
+    'links 테이블 is_checked 필드:' as info,
+    column_name, 
+    data_type, 
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'links' AND column_name = 'is_checked';
+
+SELECT 
+    'office_links 테이블 is_checked 필드:' as info,
+    column_name, 
+    data_type, 
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'office_links' AND column_name = 'is_checked'; 

@@ -792,27 +792,27 @@
                                         {% for row in guarantee_list %}
                                         <tr>
                                             <td>{{ loop.revindex }}</td>
-                                            <td><a href="{{ row.url }}" target="_blank">{{ row.url[:50] }}{% if row.url|length > 50 %}...{% endif %}</a></td>
+                                            <td><a href="{{ row['url'] }}" target="_blank">{{ row['url'][:50] }}{% if row['url']|length > 50 %}...{% endif %}</a></td>
                                             <td>
-                                                {% if row.platform == 'zigbang' %}
+                                                {% if row['platform'] == 'zigbang' %}
                                                     <span class="badge" style="background:#ff6b6b; color:white;">직방</span>
-                                                {% elif row.platform == 'naver' %}
+                                                {% elif row['platform'] == 'naver' %}
                                                     <span class="badge" style="background:#03c75a; color:white;">네이버</span>
                                                 {% else %}
-                                                    <span class="badge" style="background:#868e96; color:white;">{{ row.platform }}</span>
+                                                    <span class="badge" style="background:#868e96; color:white;">{{ row['platform'] }}</span>
                                                 {% endif %}
                                             </td>
-                                            <td>{{ row.added_by }}</td>
-                                            <td>{{ row.date_added }}</td>
+                                            <td>{{ row['added_by'] }}</td>
+                                            <td>{{ row['date_added'] }}</td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('guarantee_edit', id=row.id) }}" style="display:flex; gap:8px; align-items:center;">
-                                                    <input type="text" name="memo" value="{{ row.memo or '' }}" style="width:150px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px;">
+                                                <form method="POST" action="{{ url_for('guarantee_edit', id=row['id']) }}" style="display:flex; gap:8px; align-items:center;">
+                                                    <input type="text" name="memo" value="{{ row['memo'] or '' }}" style="width:150px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px;">
                                                     <button type="submit" class="btn btn-sm btn-primary">수정</button>
                                                 </form>
                                             </td>
                                             <td>
-                                                {% if row.management_site_id %}
-                                                    <a href="{{ residence_site_url }}/customer/{{ row.management_site_id }}" target="_blank" class="btn btn-sm btn-secondary">
+                                                {% if row['management_site_id'] %}
+                                                    <a href="{{ residence_site_url }}/customer/{{ row['management_site_id'] }}" target="_blank" class="btn btn-sm btn-secondary">
                                                         🏠 열기
                                                     </a>
                                                 {% else %}
@@ -820,7 +820,7 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('guarantee_delete', id=row.id) }}" style="display:inline;">
+                                                <form method="POST" action="{{ url_for('guarantee_delete', id=row['id']) }}" style="display:inline;">
                                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</button>
                                                 </form>
                                             </td>
@@ -891,22 +891,22 @@
             tbody.innerHTML = employeeList.map(emp => `
                 <tr>
                     <td><strong>${emp.employee_id}</strong></td>
-                    <td>${emp.employee_name}</td>
-                    <td><span class="status-badge" style="background: #e0e7ff; color: #3730a3;">${emp.team}</span></td>
+                    <td>${emp.name || emp.employee_name}</td>
+                    <td><span class="status-badge" style="background: #e0e7ff; color: #3730a3;">${emp.team || emp.role}</span></td>
                     <td>${emp.created_date}</td>
                     <td>
-                        <span class="status-badge ${emp.is_active ? 'status-active' : 'status-inactive'}">
-                            ${emp.is_active ? '활성' : '비활성'}
+                        <span class="status-badge ${emp.status === 'active' ? 'status-active' : 'status-inactive'}">
+                            ${emp.status === 'active' ? '활성' : '비활성'}
                         </span>
                     </td>
                     <td>
                         <div class="action-buttons">
-                            ${emp.is_active ? 
+                            ${emp.status === 'active' ? 
                                 `<button class="btn btn-danger btn-sm" onclick="deactivateEmployee(${emp.id})">비활성화</button>` :
                                 `<button class="btn btn-success btn-sm" onclick="activateEmployee(${emp.id})">활성화</button>`
                             }
                             <button class="btn btn-secondary btn-sm" onclick="resetPassword(${emp.id})">비밀번호 재설정</button>
-                            ${!emp.is_active ? 
+                            ${emp.status !== 'active' ? 
                                 `<button class="btn btn-danger btn-sm" onclick="permanentDelete(${emp.id})">완전삭제</button>` : ''
                             }
                         </div>
@@ -918,7 +918,7 @@
         // 팀 필터 업데이트
         function updateTeamFilter() {
             const teamFilter = document.getElementById('team-filter');
-            const teams = [...new Set(employees.map(emp => emp.team).filter(team => team))];
+            const teams = [...new Set(employees.map(emp => emp.team || emp.role).filter(team => team))];
             
             teamFilter.innerHTML = '<option value="">전체 팀</option>' + 
                 teams.map(team => `<option value="${team}">${team}</option>`).join('');
@@ -935,11 +935,15 @@
             let filteredEmployees = employees;
             
             if (statusFilter !== '') {
-                filteredEmployees = filteredEmployees.filter(emp => emp.is_active == statusFilter);
+                if (statusFilter === '1') {
+                    filteredEmployees = filteredEmployees.filter(emp => emp.status === 'active');
+                } else if (statusFilter === '0') {
+                    filteredEmployees = filteredEmployees.filter(emp => emp.status !== 'active');
+                }
             }
             
             if (teamFilter !== '') {
-                filteredEmployees = filteredEmployees.filter(emp => emp.team === teamFilter);
+                filteredEmployees = filteredEmployees.filter(emp => (emp.team || emp.role) === teamFilter);
             }
             
             displayEmployees(filteredEmployees);

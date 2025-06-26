@@ -171,8 +171,6 @@ def admin_panel():
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo, l.management_site_id
             FROM links l
             WHERE l.guarantee_insurance = TRUE 
-            AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
-            AND l.date_added >= CURRENT_DATE - INTERVAL '30 days'
             ORDER BY l.id DESC
         ''')
         
@@ -403,12 +401,48 @@ def manage_customers():
                 cursor.execute(query, (employee_id,))
             
             customers_raw = cursor.fetchall()
-            customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+            customers_list = []
+            
+            # 각 고객별로 미확인 좋아요 개수 조회
+            for customer_raw in customers_raw:
+                customer = db_utils.dict_from_row(customer_raw)
+                management_site_id = customer.get('management_site_id')
+                
+                if management_site_id:
+                    # 주거용 사이트 미확인 좋아요 개수
+                    cursor.execute("""
+                        SELECT COUNT(*) as count 
+                        FROM links 
+                        WHERE management_site_id = %s 
+                        AND liked = TRUE 
+                        AND is_checked = FALSE
+                    """, (management_site_id,))
+                    residence_likes = cursor.fetchone()
+                    
+                    # 업무용 사이트 미확인 좋아요 개수
+                    cursor.execute("""
+                        SELECT COUNT(*) as count 
+                        FROM office_links 
+                        WHERE management_site_id = %s 
+                        AND liked = TRUE 
+                        AND is_checked = FALSE
+                    """, (management_site_id,))
+                    business_likes = cursor.fetchone()
+                    
+                    customer['unchecked_likes_residence'] = residence_likes.get('count', 0) if residence_likes else 0
+                    customer['unchecked_likes_business'] = business_likes.get('count', 0) if business_likes else 0
+                    customer['unchecked_likes_total'] = customer['unchecked_likes_residence'] + customer['unchecked_likes_business']
+                else:
+                    customer['unchecked_likes_residence'] = 0
+                    customer['unchecked_likes_business'] = 0
+                    customer['unchecked_likes_total'] = 0
+                
+                customers_list.append(customer)
             
             # 디버깅: 고객 정보 확인
             print(f"[고객 목록] 총 {len(customers_list)}명의 고객")
             for i, customer in enumerate(customers_list[:3]):  # 처음 3명만 출력
-                print(f"  고객 {i+1}: {customer.get('customer_name')} - management_site_id: {customer.get('management_site_id')}")
+                print(f"  고객 {i+1}: {customer.get('customer_name')} - management_site_id: {customer.get('management_site_id')} - 미확인 좋아요: {customer.get('unchecked_likes_total')}")
             
             return jsonify(customers_list)
 
@@ -681,11 +715,11 @@ def business_customer_site(management_site_id):
     customer_name = customer_info.get('customer_name', '고객')
     print(f"[업무ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
     
-    # 미확인 좋아요 처리 (업무용은 unchecked_likes_work 컬럼 사용)
+    # 미확인 좋아요 처리 (업무용도 is_checked 사용)
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE office_links SET unchecked_likes_work = 0 WHERE management_site_id = %s', (management_site_id,))
+        cursor.execute('UPDATE office_links SET is_checked = TRUE WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -997,9 +1031,9 @@ def update_business_link(link_id):
         elif action == 'like':
             liked = data.get('liked', False)
             if liked:
-                cursor.execute('UPDATE office_links SET liked = TRUE, disliked = FALSE, is_checked = FALSE, unchecked_likes_work = unchecked_likes_work + 1 WHERE id = %s', (link_id,))
+                cursor.execute('UPDATE office_links SET liked = TRUE, disliked = FALSE, is_checked = FALSE WHERE id = %s', (link_id,))
             else:
-                cursor.execute('UPDATE office_links SET liked = FALSE, is_checked = FALSE WHERE id = %s', (link_id,))
+                cursor.execute('UPDATE office_links SET liked = FALSE WHERE id = %s', (link_id,))
         
         elif action == 'dislike':
             disliked = data.get('disliked', False)

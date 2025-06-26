@@ -1218,8 +1218,10 @@
                 const memoText = customer.memo || '-';
                 const memoDisplay = memoText.length > 10 ? memoText.substring(0, 10) + '...' : memoText;
                 // 미확인 좋아요 알림 텍스트
-                const jugAlarm = customer.unchecked_likes_jug > 0 ? `<span class='like-alarm'>🔔 좋아요 ${customer.unchecked_likes_jug}건</span>` : '';
-                const workAlarm = customer.unchecked_likes_work > 0 ? `<span class='like-alarm' style="background:#fffbe6; color:#ff9800; border-radius:8px; padding:2px 8px; margin-left:6px; font-weight:600; font-size:13px; display:inline-block;">🔔 좋아요 ${customer.unchecked_likes_work}건</span>` : '';
+                const residenceAlarm = customer.unchecked_likes_residence > 0 ? 
+                    `<span class='like-alarm' style="background:#e8f5e9; color:#4caf50; border-radius:8px; padding:2px 8px; margin-left:6px; font-weight:600; font-size:13px; display:inline-block;">🔔 좋아요 ${customer.unchecked_likes_residence}건</span>` : '';
+                const businessAlarm = customer.unchecked_likes_business > 0 ? 
+                    `<span class='like-alarm' style="background:#fffbe6; color:#ff9800; border-radius:8px; padding:2px 8px; margin-left:6px; font-weight:600; font-size:13px; display:inline-block;">🔔 좋아요 ${customer.unchecked_likes_business}건</span>` : '';
                 return `
                     <tr data-customer-id="${customer.id}">
                         <td class="editable-cell" data-field="inquiry_date" data-type="date" onclick="editCell(this)">${customer.inquiry_date || '-'}</td>
@@ -1240,13 +1242,13 @@
                         </td>
                                         <td>
                     ${customer.management_site_id ? 
-                        `<a href="/residence/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${jugAlarm}` :
+                        `<a href="/residence/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${residenceAlarm}` :
                         '<span class="property-link-placeholder">주거사이트 없음</span>'
                     }
                 </td>
                 <td>
                     ${customer.management_site_id ? 
-                        `<a href="/business/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${workAlarm}` :
+                        `<a href="/business/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${businessAlarm}` :
                         '<span class="property-link-placeholder">업무사이트 없음</span>'
                     }
                 </td>
