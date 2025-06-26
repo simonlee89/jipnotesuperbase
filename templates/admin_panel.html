@@ -666,6 +666,24 @@
                     <h1 class="page-title">직원 관리</h1>
                     <p class="page-subtitle">직원 추가, 수정, 삭제 및 팀 관리</p>
                 </div>
+                
+                <!-- Flask Flash 메시지 표시 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            {% if category == 'success' %}
+                                <div class="alert alert-success" style="margin-bottom: 20px; padding: 16px; border-radius: 12px; background: #10b98126; border: 1px solid #10b981; color: #059669;">
+                                    {{ message }}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-error" style="margin-bottom: 20px; padding: 16px; border-radius: 12px; background: #ef444426; border: 1px solid #ef4444; color: #dc2626;">
+                                    {{ message }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
                 <div id="alert-container"></div>
 
                 <!-- 탭 버튼 -->
@@ -767,11 +785,19 @@
                 <!-- 보증보험 매물 카드 (탭) -->
                 <div id="guarantee-section" style="display:none;">
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h2 class="card-title">
                                 <span>🛡️</span>
                                 보증보험 매물 리스트
                             </h2>
+                            <div style="display: flex; gap: 16px; align-items: center;">
+                                <span style="font-size: 14px; color: #64748b;">
+                                    총 <strong style="color: #6366f1;">{{ guarantee_list|length if guarantee_list else 0 }}</strong>개의 보증보험 가능 매물
+                                </span>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="location.reload()">
+                                    <span>🔄</span> 새로고침
+                                </button>
+                            </div>
                         </div>
                         <div class="table-container">
                             <table class="employees-table">
@@ -811,14 +837,20 @@
                                             </td>
                                             <td>
                                                 <form method="POST" action="{{ url_for('guarantee_edit', id=row['id']) }}" style="display:flex; gap:8px; align-items:center;">
-                                                    <input type="text" name="memo" value="{{ row['memo'] or '' }}" style="width:150px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px;">
-                                                    <button type="submit" class="btn btn-sm btn-primary">수정</button>
+                                                    <input type="text" name="memo" value="{{ row['memo'] or '' }}" placeholder="메모 입력..." style="width:200px; padding:6px 10px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                                                    <button type="submit" class="btn btn-sm btn-primary" style="display: flex; align-items: center; gap: 4px;">
+                                                        <span>✏️</span> 수정
+                                                    </button>
                                                 </form>
                                             </td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('guarantee_delete', id=row['id']) }}" style="display:inline;">
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</button>
-                                                </form>
+                                                <div style="display: flex; gap: 8px; align-items: center;">
+                                                    <form method="POST" action="{{ url_for('guarantee_delete', id=row['id']) }}" style="display:inline;">
+                                                        <button type="submit" class="btn btn-sm btn-danger" style="display: flex; align-items: center; gap: 4px;" onclick="return confirm('정말로 이 보증보험 매물을 삭제하시겠습니까?')">
+                                                            <span>🗑️</span> 삭제
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                         {% endfor %}

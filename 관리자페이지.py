@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 import uuid
 from datetime import datetime
 import os
@@ -247,12 +247,20 @@ def guarantee_delete(id):
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
+        
+        # 보증보험 상태를 FALSE로 변경 (매물은 유지하되 보증보험 리스트에서만 제거)
         cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
+        
+        # 선택적: 완전 삭제를 원하면 아래 주석을 해제
+        # cursor.execute('DELETE FROM links WHERE id = %s', (id,))
+        
         conn.commit()
+        flash('보증보험 매물이 리스트에서 제거되었습니다.', 'success')
         return redirect(url_for('admin_panel'))
     except Exception as e:
         if conn: conn.rollback()
-        return "삭제 중 오류 발생", 500
+        flash(f'삭제 중 오류가 발생했습니다: {str(e)}', 'error')
+        return redirect(url_for('admin_panel'))
     finally:
         if conn: conn.close()
 
