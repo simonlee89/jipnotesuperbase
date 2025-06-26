@@ -783,6 +783,7 @@
                                         <th>등록자</th>
                                         <th>등록일</th>
                                         <th>메모</th>
+                                        <th>주거사이트</th>
                                         <th>작업</th>
                                     </tr>
                                 </thead>
@@ -791,18 +792,35 @@
                                         {% for row in guarantee_list %}
                                         <tr>
                                             <td>{{ loop.revindex }}</td>
-                                            <td><a href="{{ row[1] }}" target="_blank">{{ row[1] }}</a></td>
-                                            <td>{{ row[2] }}</td>
-                                            <td>{{ row[3] }}</td>
-                                            <td>{{ row[4] }}</td>
+                                            <td><a href="{{ row.url }}" target="_blank">{{ row.url[:50] }}{% if row.url|length > 50 %}...{% endif %}</a></td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('guarantee_edit', id=row[0]) }}">
-                                                    <input type="text" name="memo" value="{{ row[5] or '' }}" style="width:100px;">
+                                                {% if row.platform == 'zigbang' %}
+                                                    <span class="badge" style="background:#ff6b6b; color:white;">직방</span>
+                                                {% elif row.platform == 'naver' %}
+                                                    <span class="badge" style="background:#03c75a; color:white;">네이버</span>
+                                                {% else %}
+                                                    <span class="badge" style="background:#868e96; color:white;">{{ row.platform }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ row.added_by }}</td>
+                                            <td>{{ row.date_added }}</td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('guarantee_edit', id=row.id) }}" style="display:flex; gap:8px; align-items:center;">
+                                                    <input type="text" name="memo" value="{{ row.memo or '' }}" style="width:150px; padding:4px 8px; border:1px solid #e2e8f0; border-radius:6px;">
                                                     <button type="submit" class="btn btn-sm btn-primary">수정</button>
                                                 </form>
                                             </td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('guarantee_delete', id=row[0]) }}" style="display:inline;">
+                                                {% if row.management_site_id %}
+                                                    <a href="{{ residence_site_url }}/customer/{{ row.management_site_id }}" target="_blank" class="btn btn-sm btn-secondary">
+                                                        🏠 열기
+                                                    </a>
+                                                {% else %}
+                                                    <span style="color:#94a3b8; font-size:12px;">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('guarantee_delete', id=row.id) }}" style="display:inline;">
                                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</button>
                                                 </form>
                                             </td>
@@ -810,7 +828,10 @@
                                         {% endfor %}
                                     {% else %}
                                         <tr>
-                                            <td colspan="7" style="text-align:center; color:#64748b;">등록된 보증보험 매물이 없습니다.</td>
+                                            <td colspan="8" style="text-align:center; color:#64748b; padding:40px;">
+                                                <div style="font-size:16px; margin-bottom:8px;">📋 등록된 보증보험 매물이 없습니다.</div>
+                                                <div style="font-size:14px; color:#94a3b8;">주거용 사이트에서 보증보험 가능 매물을 등록하면 여기에 표시됩니다.</div>
+                                            </td>
                                         </tr>
                                     {% endif %}
                                 </tbody>

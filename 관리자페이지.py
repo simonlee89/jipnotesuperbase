@@ -168,7 +168,7 @@ def admin_panel():
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo, l.management_site_id
             FROM links l
             WHERE l.guarantee_insurance = TRUE 
             AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
@@ -238,8 +238,14 @@ def manage_employees():
         cursor = conn.cursor()
         
         if request.method == 'GET':
-            cursor.execute('SELECT id, name, created_at, role FROM employees ORDER BY created_at DESC')
-            employees = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
+            cursor.execute('SELECT id, employee_id, employee_name, team, created_date, status FROM employees ORDER BY created_date DESC')
+            employees_raw = cursor.fetchall()
+            employees = []
+            for emp in employees_raw:
+                emp_dict = db_utils.dict_from_row(emp)
+                # status가 없거나 1이면 활성, 0이면 비활성
+                emp_dict['is_active'] = emp_dict.get('status', 1) == 1
+                employees.append(emp_dict)
             return jsonify(employees)
 
         if request.method == 'POST':
@@ -247,18 +253,34 @@ def manage_employees():
             data = request.get_json()
             print(f"📥 요청 데이터: {data}")
             
-            name = data.get('employee_name')  # 클라이언트에서 employee_name으로 보내므로 수정
-            role = data.get('team', 'employee')  # 클라이언트에서 team으로 보내므로 수정
+            employee_id = data.get('employee_id')
+            employee_name = data.get('employee_name')
+            team = data.get('team', '')
+            password = data.get('password', '1234')  # 기본 비밀번호
             
-            print(f"📝 추출된 데이터 - 이름: '{name}', 역할/팀: '{role}'")
+            print(f"📝 추출된 데이터 - ID: '{employee_id}', 이름: '{employee_name}', 팀: '{team}'")
             
-            if not name or name.strip() == '':
-                print(f"❌ 이름이 비어있음: name='{name}'")
+            if not employee_id or employee_id.strip() == '':
+                print(f"❌ 직원 ID가 비어있음")
+                return jsonify({'success': False, 'message': '직원 ID를 입력해야 합니다.'}), 400
+                
+            if not employee_name or employee_name.strip() == '':
+                print(f"❌ 이름이 비어있음")
                 return jsonify({'success': False, 'message': '이름을 입력해야 합니다.'}), 400
             
-            print(f"✅ 직원 추가 중: {name}")
-            cursor.execute("INSERT INTO employees (name, role) VALUES (%s, %s) RETURNING *", (name, role))
-            new_employee = db_utils.dict_from_row(cursor.fetchone())
+            # 중복 ID 체크
+            cursor.execute("SELECT id FROM employees WHERE employee_id = %s", (employee_id,))
+            if cursor.fetchone():
+                return jsonify({'success': False, 'message': '이미 존재하는 직원 ID입니다.'}), 400
+            
+            print(f"✅ 직원 추가 중: {employee_name}")
+            cursor.execute("""
+                INSERT INTO employees (employee_id, employee_name, team, password, status, created_date) 
+                VALUES (%s, %s, %s, %s, 1, %s) RETURNING *
+            """, (employee_id, employee_name, team, password, datetime.now()))
+            new_employee_raw = cursor.fetchone()
+            new_employee = db_utils.dict_from_row(new_employee_raw)
+            new_employee['is_active'] = True
             conn.commit()
             print(f"🎉 직원 추가 성공: {new_employee}")
             return jsonify({'success': True, 'employee': new_employee})
@@ -272,6 +294,7 @@ def manage_employees():
 
 @app.route('/api/employees/<int:emp_id>', methods=['DELETE'])
 def delete_employee(emp_id):
+    """직원 비활성화 (소프트 삭제)"""
     if not session.get('is_admin'):
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -279,6 +302,73 @@ def delete_employee(emp_id):
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
+        cursor.execute("UPDATE employees SET status = 0 WHERE id = %s", (emp_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/employees/<int:emp_id>/activate', methods=['PUT'])
+def activate_employee(emp_id):
+    """직원 활성화"""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE employees SET status = 1 WHERE id = %s", (emp_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/employees/<int:emp_id>/reset-password', methods=['PUT'])
+def reset_employee_password(emp_id):
+    """직원 비밀번호 재설정"""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    new_password = data.get('new_password', '1234')
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE employees SET password = %s WHERE id = %s", (new_password, emp_id))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/employees/<int:emp_id>/permanent-delete', methods=['DELETE'])
+def permanent_delete_employee(emp_id):
+    """직원 완전 삭제 (비활성 상태인 경우만)"""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 비활성 상태인지 확인
+        cursor.execute("SELECT status FROM employees WHERE id = %s", (emp_id,))
+        result = cursor.fetchone()
+        if not result or result.get('status') == 1:
+            return jsonify({'success': False, 'message': '활성 상태의 직원은 삭제할 수 없습니다.'}), 400
+        
         cursor.execute("DELETE FROM employees WHERE id = %s", (emp_id,))
         conn.commit()
         return jsonify({'success': True})
@@ -816,6 +906,7 @@ def business_links():
 
         # PostgreSQL 결과 처리
         response_data = dict(new_link_data)
+        response_data['success'] = True  # 프론트엔드가 기대하는 success 필드 추가
 
         return jsonify(response_data), 201
 
@@ -872,9 +963,10 @@ def business_links():
         
         # 데이터 접근 방식을 키(컬럼명)로 변경
         links_list = []
-        for link in links_data:
+        for idx, link in enumerate(links_data):
             links_list.append({
                 'id': link['id'],
+                'number': len(links_data) - idx,  # 역순 번호
                 'url': link['url'],
                 'platform': link['platform'],
                 'added_by': link['added_by'],

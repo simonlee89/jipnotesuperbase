@@ -1484,7 +1484,20 @@
                 }
             });
             
-            inputElement.addEventListener('blur', () => saveCell(false));
+            // select 요소의 경우 blur 이벤트 지연 처리
+            if (type === 'select') {
+                inputElement.addEventListener('change', () => saveCell(false));
+                inputElement.addEventListener('blur', () => {
+                    // select 박스가 너무 빨리 닫히는 것을 방지
+                    setTimeout(() => {
+                        if (cell.contains(inputElement)) {
+                            saveCell(false);
+                        }
+                    }, 200);
+                });
+            } else {
+                inputElement.addEventListener('blur', () => saveCell(false));
+            }
         }
         
         // 셀 편집 취소
