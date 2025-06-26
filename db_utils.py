@@ -183,7 +183,8 @@ def ensure_all_columns():
 
             'office_links': {
                 'is_deleted': 'BOOLEAN DEFAULT FALSE',
-                'unchecked_likes_work': 'INTEGER DEFAULT 0'
+                'unchecked_likes_work': 'INTEGER DEFAULT 0',
+                'is_checked': 'BOOLEAN DEFAULT FALSE'
             }
         }
         
