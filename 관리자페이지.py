@@ -259,14 +259,18 @@ def manage_employees():
         cursor = conn.cursor()
         
         if request.method == 'GET':
-            cursor.execute('SELECT id, employee_id, employee_name, team, created_date, status FROM employees ORDER BY created_date DESC')
+            cursor.execute('SELECT id, name, email, team, position, created_at, role, status FROM employees ORDER BY created_at DESC')
             employees_raw = cursor.fetchall()
             print(f"[직원 목록] 조회된 직원 수: {len(employees_raw)}")
             employees = []
             for emp in employees_raw:
                 emp_dict = db_utils.dict_from_row(emp)
-                # status가 없거나 1이면 활성, 0이면 비활성
-                emp_dict['is_active'] = emp_dict.get('status', 1) == 1
+                # 필드명 통일을 위해 매핑
+                emp_dict['employee_id'] = emp_dict.get('name')  # name을 employee_id로 매핑
+                emp_dict['employee_name'] = emp_dict.get('name')  # name을 employee_name으로도 매핑
+                emp_dict['created_date'] = emp_dict.get('created_at')  # created_at을 created_date로 매핑
+                # status가 'active'면 활성, 그 외는 비활성
+                emp_dict['is_active'] = emp_dict.get('status', 'active') == 'active'
                 employees.append(emp_dict)
                 print(f"[직원 목록] 직원: {emp_dict.get('employee_name')} - 활성: {emp_dict['is_active']}")
             print(f"[직원 목록] 최종 응답: {employees}")
@@ -277,34 +281,40 @@ def manage_employees():
             data = request.get_json()
             print(f"📥 요청 데이터: {data}")
             
-            employee_id = data.get('employee_id')
+            employee_id = data.get('employee_id')  # 실제로는 name으로 사용
             employee_name = data.get('employee_name')
             team = data.get('team', '')
-            password = data.get('password', '1234')  # 기본 비밀번호
+            email = data.get('email', '')
+            position = data.get('position', '')
             
-            print(f"📝 추출된 데이터 - ID: '{employee_id}', 이름: '{employee_name}', 팀: '{team}'")
+            # employee_id와 employee_name 중 하나라도 있으면 name으로 사용
+            name = employee_name if employee_name else employee_id
             
-            if not employee_id or employee_id.strip() == '':
-                print(f"❌ 직원 ID가 비어있음")
-                return jsonify({'success': False, 'message': '직원 ID를 입력해야 합니다.'}), 400
-                
-            if not employee_name or employee_name.strip() == '':
+            print(f"📝 추출된 데이터 - 이름: '{name}', 팀: '{team}', 이메일: '{email}', 직책: '{position}'")
+            
+            if not name or name.strip() == '':
                 print(f"❌ 이름이 비어있음")
                 return jsonify({'success': False, 'message': '이름을 입력해야 합니다.'}), 400
             
-            # 중복 ID 체크
-            cursor.execute("SELECT id FROM employees WHERE employee_id = %s", (employee_id,))
+            # 중복 이름 체크
+            cursor.execute("SELECT id FROM employees WHERE name = %s", (name,))
             if cursor.fetchone():
-                return jsonify({'success': False, 'message': '이미 존재하는 직원 ID입니다.'}), 400
+                return jsonify({'success': False, 'message': '이미 존재하는 직원 이름입니다.'}), 400
             
-            print(f"✅ 직원 추가 중: {employee_name}")
+            print(f"✅ 직원 추가 중: {name}")
             cursor.execute("""
-                INSERT INTO employees (employee_id, employee_name, team, password, status, created_date) 
-                VALUES (%s, %s, %s, %s, 1, %s) RETURNING *
-            """, (employee_id, employee_name, team, password, datetime.now()))
+                INSERT INTO employees (name, email, team, position, created_at, role, status) 
+                VALUES (%s, %s, %s, %s, %s, 'employee', 'active') RETURNING *
+            """, (name, email, team, position, datetime.now()))
             new_employee_raw = cursor.fetchone()
             new_employee = db_utils.dict_from_row(new_employee_raw)
-            new_employee['is_active'] = True
+            
+            # 필드명 통일을 위해 매핑
+            new_employee['employee_id'] = new_employee.get('name')
+            new_employee['employee_name'] = new_employee.get('name')
+            new_employee['created_date'] = new_employee.get('created_at')
+            new_employee['is_active'] = new_employee.get('status') == 'active'
+            
             conn.commit()
             print(f"🎉 직원 추가 성공: {new_employee}")
             return jsonify({'success': True, 'employee': new_employee})
@@ -326,7 +336,7 @@ def delete_employee(emp_id):
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE employees SET status = 0 WHERE id = %s", (emp_id,))
+        cursor.execute("UPDATE employees SET status = 'inactive' WHERE id = %s", (emp_id,))
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -345,7 +355,7 @@ def activate_employee(emp_id):
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE employees SET status = 1 WHERE id = %s", (emp_id,))
+        cursor.execute("UPDATE employees SET status = 'active' WHERE id = %s", (emp_id,))
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -356,25 +366,12 @@ def activate_employee(emp_id):
 
 @app.route('/api/employees/<int:emp_id>/reset-password', methods=['PUT'])
 def reset_employee_password(emp_id):
-    """직원 비밀번호 재설정"""
+    """직원 비밀번호 재설정 (더 이상 사용하지 않는 기능)"""
     if not session.get('is_admin'):
         return jsonify({'error': 'Unauthorized'}), 401
     
-    data = request.get_json()
-    new_password = data.get('new_password', '1234')
-    
-    conn = None
-    try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE employees SET password = %s WHERE id = %s", (new_password, emp_id))
-        conn.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({'error': str(e)}), 500
-    finally:
-        if conn: conn.close()
+    # 새로운 스키마에서는 비밀번호 컬럼이 없으므로 성공만 반환
+    return jsonify({'success': True, 'message': '새로운 시스템에서는 비밀번호가 필요하지 않습니다.'})
 
 @app.route('/api/employees/<int:emp_id>/permanent-delete', methods=['DELETE'])
 def permanent_delete_employee(emp_id):
@@ -390,7 +387,7 @@ def permanent_delete_employee(emp_id):
         # 비활성 상태인지 확인
         cursor.execute("SELECT status FROM employees WHERE id = %s", (emp_id,))
         result = cursor.fetchone()
-        if not result or result.get('status') == 1:
+        if not result or result.get('status') == 'active':
             return jsonify({'success': False, 'message': '활성 상태의 직원은 삭제할 수 없습니다.'}), 400
         
         cursor.execute("DELETE FROM employees WHERE id = %s", (emp_id,))
