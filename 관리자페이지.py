@@ -352,6 +352,7 @@ def manage_customers():
         }
         
         management_site_id = str(uuid.uuid4().hex)[:8]
+        print(f"[고객 추가] 새 management_site_id 생성: {management_site_id}")
         
         conn = None
         try:
@@ -362,6 +363,9 @@ def manage_customers():
             placeholders = ', '.join(['%s'] * len(customer_data))
             query = f"INSERT INTO employee_customers ({columns}, management_site_id) VALUES ({placeholders}, %s) RETURNING *"
             params = list(customer_data.values()) + [management_site_id]
+            
+            print(f"[고객 추가] SQL 쿼리: {query}")
+            print(f"[고객 추가] 파라미터 개수: {len(params)}")
             
             cursor.execute(query, params)
             new_customer_raw = cursor.fetchone()
@@ -376,6 +380,11 @@ def manage_customers():
             print(f"[새 고객 추가] 이름: {new_customer.get('customer_name')}")
             print(f"[새 고객 추가] management_site_id: {new_customer.get('management_site_id')}")
             print(f"[새 고객 추가] 전체 데이터: {new_customer}")
+            
+            # 저장 확인을 위해 다시 조회
+            cursor.execute("SELECT management_site_id FROM employee_customers WHERE id = %s", (new_customer.get('id'),))
+            verify_result = cursor.fetchone()
+            print(f"[새 고객 추가] 저장 확인 - management_site_id: {verify_result}")
             
             return jsonify({'success': True, 'message': '고객이 추가되었습니다.', 'customer': new_customer})
 
@@ -490,11 +499,30 @@ def residence_customer_site(management_site_id):
     """주거용 고객별 사이트"""
     print(f"[주거ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
     
+    # 디버깅: 모든 고객 목록 확인
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, customer_name, management_site_id FROM employee_customers ORDER BY id DESC LIMIT 10")
+        all_customers = cursor.fetchall()
+        print(f"[주거ROUTE] 최근 고객 10명:")
+        for cust in all_customers:
+            print(f"  - ID: {cust.get('id')}, 이름: {cust.get('customer_name')}, management_site_id: {cust.get('management_site_id')}")
+        conn.close()
+    except Exception as e:
+        print(f"[주거ROUTE] 고객 목록 조회 오류: {e}")
+    
     # 공통 get_customer_info 함수 사용
     customer_info = db_utils.get_customer_info(management_site_id)
     if not customer_info:
         print(f"[주거ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
-        return "고객 정보를 찾을 수 없습니다.", 404
+        # 더 자세한 오류 메시지
+        return f"""
+        <h1>고객 정보를 찾을 수 없습니다</h1>
+        <p>요청한 management_site_id: <strong>{management_site_id}</strong></p>
+        <p>데이터베이스에서 해당 고객을 찾을 수 없습니다.</p>
+        <p><a href="/dashboard">대시보드로 돌아가기</a></p>
+        """, 404
     
     customer_name = customer_info.get('customer_name', '고객')
     print(f"[주거ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
@@ -535,11 +563,30 @@ def business_customer_site(management_site_id):
     """업무용 고객별 사이트"""
     print(f"[업무ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
     
+    # 디버깅: 모든 고객 목록 확인
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, customer_name, management_site_id FROM employee_customers ORDER BY id DESC LIMIT 10")
+        all_customers = cursor.fetchall()
+        print(f"[업무ROUTE] 최근 고객 10명:")
+        for cust in all_customers:
+            print(f"  - ID: {cust.get('id')}, 이름: {cust.get('customer_name')}, management_site_id: {cust.get('management_site_id')}")
+        conn.close()
+    except Exception as e:
+        print(f"[업무ROUTE] 고객 목록 조회 오류: {e}")
+    
     # 공통 get_customer_info 함수 사용
     customer_info = db_utils.get_customer_info(management_site_id)
     if not customer_info:
         print(f"[업무ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
-        return "고객 정보를 찾을 수 없습니다.", 404
+        # 더 자세한 오류 메시지
+        return f"""
+        <h1>고객 정보를 찾을 수 없습니다</h1>
+        <p>요청한 management_site_id: <strong>{management_site_id}</strong></p>
+        <p>데이터베이스에서 해당 고객을 찾을 수 없습니다.</p>
+        <p><a href="/dashboard">대시보드로 돌아가기</a></p>
+        """, 404
     
     customer_name = customer_info.get('customer_name', '고객')
     print(f"[업무ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
@@ -883,6 +930,74 @@ def update_business_link(link_id):
         conn.commit()
         conn.close()
         return jsonify({'success': True})
+
+@app.route('/debug/check-customers')
+def debug_check_customers():
+    """디버깅: employee_customers 테이블 확인"""
+    if not session.get('is_admin'):
+        return "관리자만 접근 가능합니다.", 403
+    
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 테이블 구조 확인
+        cursor.execute("""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'employee_customers'
+            ORDER BY ordinal_position
+        """)
+        columns = cursor.fetchall()
+        
+        # 최근 고객 데이터 확인
+        cursor.execute("""
+            SELECT id, employee_id, customer_name, management_site_id, created_date 
+            FROM employee_customers 
+            ORDER BY id DESC 
+            LIMIT 20
+        """)
+        customers = cursor.fetchall()
+        
+        conn.close()
+        
+        html = """
+        <h1>Employee Customers 테이블 디버깅</h1>
+        <h2>테이블 구조:</h2>
+        <table border="1">
+            <tr><th>컬럼명</th><th>데이터타입</th></tr>
+        """
+        
+        for col in columns:
+            html += f"<tr><td>{col['column_name']}</td><td>{col['data_type']}</td></tr>"
+        
+        html += """
+        </table>
+        <h2>최근 고객 20명:</h2>
+        <table border="1">
+            <tr><th>ID</th><th>직원ID</th><th>고객명</th><th>Management Site ID</th><th>생성일</th></tr>
+        """
+        
+        for cust in customers:
+            html += f"""
+            <tr>
+                <td>{cust['id']}</td>
+                <td>{cust['employee_id']}</td>
+                <td>{cust['customer_name']}</td>
+                <td><strong>{cust['management_site_id']}</strong></td>
+                <td>{cust['created_date']}</td>
+            </tr>
+            """
+        
+        html += """
+        </table>
+        <p><a href="/admin">관리자 페이지로 돌아가기</a></p>
+        """
+        
+        return html
+        
+    except Exception as e:
+        return f"오류 발생: {e}", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
