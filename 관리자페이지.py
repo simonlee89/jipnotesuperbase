@@ -170,7 +170,9 @@ def admin_panel():
         cursor.execute('''
             SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
             FROM links l
-            WHERE l.guarantee_insurance = TRUE AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
+            WHERE l.guarantee_insurance = TRUE 
+            AND (l.is_deleted = FALSE OR l.is_deleted IS NULL)
+            AND l.date_added >= CURRENT_DATE - INTERVAL '30 days'
             ORDER BY l.id DESC
         ''')
         
@@ -472,26 +474,10 @@ def update_customer_field(customer_id):
 def residence_index():
     """주거용 메인 페이지"""
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        # customer_info 테이블 제거로 기본값 사용
+        customer_name = '제일좋은집 찾아드릴분'
+        move_in_date = ''
         
-        # 고객 정보 가져오기
-        try:
-            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-            customer_info_raw = cursor.fetchone()
-            
-            if customer_info_raw:
-                customer_name = customer_info_raw.get('customer_name', '제일좋은집 찾아드릴분')
-                move_in_date = customer_info_raw.get('move_in_date', '')
-            else:
-                customer_name = '제일좋은집 찾아드릴분'
-                move_in_date = ''
-        except Exception as e:
-            print(f"[주거용] customer_info 조회 오류: {e}")
-            customer_name = '제일좋은집 찾아드릴분'
-            move_in_date = ''
-        
-        conn.close()
         employee_id = session.get('employee_id', '')
         return render_template('index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
         
@@ -533,26 +519,10 @@ def residence_customer_site(management_site_id):
 def business_index():
     """업무용 메인 페이지"""
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        # customer_info 테이블 제거로 기본값 사용
+        customer_name = '프리미엄등록'
+        move_in_date = ''
         
-        # 고객 정보 가져오기
-        try:
-            cursor.execute('SELECT customer_name, move_in_date FROM customer_info WHERE id = 1')
-            customer_info_raw = cursor.fetchone()
-            
-            if customer_info_raw:
-                customer_name = customer_info_raw.get('customer_name', '프리미엄등록')
-                move_in_date = customer_info_raw.get('move_in_date', '')
-            else:
-                customer_name = '프리미엄등록'
-                move_in_date = ''
-        except Exception as e:
-            print(f"[업무용] customer_info 조회 오류: {e}")
-            customer_name = '프리미엄등록'
-            move_in_date = ''
-        
-        conn.close()
         employee_id = session.get('employee_id', '')
         return render_template('업무용_index.html', customer_name=customer_name, move_in_date=move_in_date, employee_id=employee_id)
         

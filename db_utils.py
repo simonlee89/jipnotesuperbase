@@ -80,11 +80,12 @@ def create_all_tables_postgres(cursor):
             id SERIAL PRIMARY KEY,
             name VARCHAR(200) UNIQUE NOT NULL,
             email VARCHAR(200) NOT NULL DEFAULT '',
-            department VARCHAR(100) NOT NULL DEFAULT '',
+            team VARCHAR(100) NOT NULL DEFAULT '',
             position VARCHAR(100) NOT NULL DEFAULT '',
             created_at TIMESTAMP NOT NULL DEFAULT NOW(),
             last_login TIMESTAMP,
-            role VARCHAR(50) NOT NULL DEFAULT 'employee'
+            role VARCHAR(50) NOT NULL DEFAULT 'employee',
+            status VARCHAR(20) NOT NULL DEFAULT 'active'
         )
     ''')
     # 2. employee_customers
@@ -123,8 +124,7 @@ def create_all_tables_postgres(cursor):
             management_site_id VARCHAR(50),
             guarantee_insurance BOOLEAN DEFAULT FALSE,
             is_deleted BOOLEAN DEFAULT FALSE,
-            is_checked BOOLEAN DEFAULT FALSE,
-            residence_extra TEXT
+            is_checked BOOLEAN DEFAULT FALSE
         )
     ''')
     # 4. office_links
@@ -156,19 +156,6 @@ def create_all_tables_postgres(cursor):
             timestamp TIMESTAMP
         )
     ''')
-    # 6. customer_info
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS customer_info (
-            id SERIAL PRIMARY KEY,
-            customer_name VARCHAR(200) DEFAULT '제일좋은집 찾아드릴분',
-            move_in_date VARCHAR(50) DEFAULT '',
-            phone VARCHAR(50),
-            email VARCHAR(200),
-            preferred_contact VARCHAR(20) DEFAULT 'phone',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
 
 
 
@@ -186,15 +173,14 @@ def ensure_all_columns():
                 'id': 'SERIAL PRIMARY KEY',
                 'name': 'VARCHAR(200) UNIQUE NOT NULL',
                 'email': 'VARCHAR(200) NOT NULL DEFAULT \'\'',
-                'department': 'VARCHAR(100) NOT NULL DEFAULT \'\'',
+                'team': 'VARCHAR(100) NOT NULL DEFAULT \'\'',
                 'position': 'VARCHAR(100) NOT NULL DEFAULT \'\'',
                 'created_at': 'TIMESTAMP NOT NULL DEFAULT NOW()',
                 'last_login': 'TIMESTAMP',
-                'role': 'VARCHAR(50) NOT NULL DEFAULT \'employee\''
+                'role': 'VARCHAR(50) NOT NULL DEFAULT \'employee\'',
+                'status': 'VARCHAR(20) NOT NULL DEFAULT \'active\''
             },
-            'links': {
-                'residence_extra': 'TEXT DEFAULT \'\''
-            },
+
             'office_links': {
                 'is_deleted': 'BOOLEAN DEFAULT FALSE',
                 'unchecked_likes_work': 'INTEGER DEFAULT 0'
