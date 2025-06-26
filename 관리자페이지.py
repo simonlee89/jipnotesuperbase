@@ -884,6 +884,34 @@ def update_business_link(link_id):
         conn.close()
         return jsonify({'success': True})
 
+@app.route('/admin/update-database', methods=['GET'])
+def update_database():
+    """데이터베이스 스키마 업데이트 (임시 라우트)"""
+    try:
+        import subprocess
+        import sys
+        
+        # run_db_update.py 실행
+        result = subprocess.run([sys.executable, 'run_db_update.py'], 
+                              capture_output=True, text=True, cwd='.')
+        
+        output = result.stdout
+        error = result.stderr
+        
+        return f"""
+        <h1>데이터베이스 업데이트 결과</h1>
+        <h2>출력:</h2>
+        <pre>{output}</pre>
+        <h2>오류:</h2>
+        <pre>{error}</pre>
+        <h2>반환 코드:</h2>
+        <p>{result.returncode}</p>
+        <a href="/admin">관리자 페이지로 돌아가기</a>
+        """
+        
+    except Exception as e:
+        return f"<h1>오류 발생</h1><p>{e}</p><a href='/admin'>관리자 페이지로 돌아가기</a>"
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=True)
