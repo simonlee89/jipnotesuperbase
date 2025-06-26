@@ -2495,7 +2495,38 @@
 
         function toggleLike(id) {
             const likeBtn = document.querySelector(`button[onclick="toggleLike(${id})"]`);
+            const propertyItem = likeBtn.closest('.property-item');
             const isCurrentlyLiked = likeBtn.classList.contains('active');
+            
+            // 즉각적인 UI 업데이트
+            if (!isCurrentlyLiked) {
+                likeBtn.classList.add('active');
+                likeBtn.innerHTML = '❤️';
+                propertyItem.classList.add('liked');
+                propertyItem.classList.remove('disliked');
+                
+                // 싫어요 버튼 비활성화
+                const dislikeBtn = propertyItem.querySelector('.dislike-btn');
+                if (dislikeBtn.classList.contains('active')) {
+                    dislikeBtn.classList.remove('active');
+                }
+                
+                // 애니메이션 효과
+                likeBtn.style.transform = 'scale(1.5)';
+                setTimeout(() => {
+                    likeBtn.style.transform = 'scale(1.15)';
+                }, 200);
+            } else {
+                likeBtn.classList.remove('active');
+                likeBtn.innerHTML = '🤍';
+                propertyItem.classList.remove('liked');
+                
+                // 애니메이션 효과
+                likeBtn.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    likeBtn.style.transform = 'scale(1)';
+                }, 200);
+            }
             
             fetch(`/api/office-links/${id}`, {
                 method: 'PUT',
@@ -2507,19 +2538,61 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    loadLinks();
                     if (!isCurrentlyLiked) {
                         showNotification('매물을 좋아요 했습니다! ❤️', 'success');
                     } else {
                         showNotification('좋아요를 취소했습니다.', 'info');
                     }
+                    // 서버 응답 후 전체 목록 새로고침
+                    setTimeout(() => {
+                        loadLinks();
+                    }, 500);
+                } else {
+                    // 실패 시 원래 상태로 복구
+                    loadLinks();
+                    showNotification('작업 중 오류가 발생했습니다.', 'error');
                 }
+            })
+            .catch(error => {
+                // 오류 시 원래 상태로 복구
+                loadLinks();
+                showNotification('네트워크 오류가 발생했습니다.', 'error');
             });
         }
 
         function toggleDislike(id) {
             const dislikeBtn = document.querySelector(`button[onclick="toggleDislike(${id})"]`);
+            const propertyItem = dislikeBtn.closest('.property-item');
             const isCurrentlyDisliked = dislikeBtn.classList.contains('active');
+            
+            // 즉각적인 UI 업데이트
+            if (!isCurrentlyDisliked) {
+                dislikeBtn.classList.add('active');
+                propertyItem.classList.add('disliked');
+                propertyItem.classList.remove('liked');
+                
+                // 좋아요 버튼 비활성화
+                const likeBtn = propertyItem.querySelector('.like-btn');
+                if (likeBtn.classList.contains('active')) {
+                    likeBtn.classList.remove('active');
+                    likeBtn.innerHTML = '🤍';
+                }
+                
+                // 애니메이션 효과
+                dislikeBtn.style.transform = 'scale(1.5)';
+                setTimeout(() => {
+                    dislikeBtn.style.transform = 'scale(1.15)';
+                }, 200);
+            } else {
+                dislikeBtn.classList.remove('active');
+                propertyItem.classList.remove('disliked');
+                
+                // 애니메이션 효과
+                dislikeBtn.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    dislikeBtn.style.transform = 'scale(1)';
+                }, 200);
+            }
             
             fetch(`/api/office-links/${id}`, {
                 method: 'PUT',
@@ -2531,13 +2604,25 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    loadLinks();
                     if (!isCurrentlyDisliked) {
                         showNotification('매물을 싫어요 했습니다. 👎', 'warning');
                     } else {
                         showNotification('싫어요를 취소했습니다.', 'info');
                     }
+                    // 서버 응답 후 전체 목록 새로고침
+                    setTimeout(() => {
+                        loadLinks();
+                    }, 500);
+                } else {
+                    // 실패 시 원래 상태로 복구
+                    loadLinks();
+                    showNotification('작업 중 오류가 발생했습니다.', 'error');
                 }
+            })
+            .catch(error => {
+                // 오류 시 원래 상태로 복구
+                loadLinks();
+                showNotification('네트워크 오류가 발생했습니다.', 'error');
             });
         }
 
