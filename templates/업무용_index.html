@@ -2127,6 +2127,15 @@
             color: var(--text-secondary);
             border-left: 3px solid var(--hermes-orange);
             font-style: italic;
+            transition: all 0.3s var(--ease-luxury);
+            cursor: pointer;
+        }
+        
+        .property-memo:hover {
+            background: rgba(255, 248, 220, 0.8);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 140, 0, 0.2);
+            border-left-color: var(--hermes-orange-dark);
         }
     </style>
 </head>
@@ -2496,8 +2505,8 @@
                     <button class="memo-toggle" onclick="toggleMemo(${link.id})">메모</button>
                 </div>
                 ${link.memo ? `
-                    <div class="property-memo">${link.memo}</div>
-                    <div class="memo-section" id="memo-${link.id}" style="display: block;">
+                    <div class="property-memo" onclick="editMemo(${link.id})" style="cursor: pointer;" title="클릭하여 메모 수정">${link.memo}</div>
+                    <div class="memo-section" id="memo-${link.id}" style="display: none;">
                         <textarea class="memo-input" onchange="updateMemo(${link.id}, this.value)">${link.memo}</textarea>
                     </div>
                 ` : `
@@ -2783,6 +2792,23 @@
             }
         }
         
+        // 메모 편집 함수 - 메모를 클릭했을 때 호출
+        function editMemo(linkId) {
+            const memoSection = document.getElementById(`memo-${linkId}`);
+            const memoInput = memoSection.querySelector('.memo-input');
+            
+            // 메모 섹션 표시
+            memoSection.style.display = 'block';
+            memoSection.style.opacity = '0';
+            setTimeout(() => {
+                memoSection.style.opacity = '1';
+                // 입력창에 포커스
+                memoInput.focus();
+                // 커서를 텍스트 끝으로 이동
+                memoInput.setSelectionRange(memoInput.value.length, memoInput.value.length);
+            }, 10);
+        }
+        
         // 메모 업데이트 함수
         function updateMemo(linkId, memo) {
             fetch(`/api/office-links/${linkId}`, {
@@ -2808,6 +2834,9 @@
                             // property-memo가 없으면 생성
                             propertyMemo = document.createElement('div');
                             propertyMemo.className = 'property-memo';
+                            propertyMemo.style.cursor = 'pointer';
+                            propertyMemo.title = '클릭하여 메모 수정';
+                            propertyMemo.onclick = function() { editMemo(linkId); };
                             const memoToggle = propertyItem.querySelector('.memo-toggle').parentElement;
                             memoToggle.insertAdjacentElement('afterend', propertyMemo);
                         }
