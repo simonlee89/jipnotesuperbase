@@ -2064,6 +2064,70 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
+        /* 메모 스타일 수정 - 주거용 페이지처럼 */
+        .memo-section {
+            margin-top: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: var(--bg-section);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-luxury);
+            display: none;
+            animation: luxury-entrance 0.3s var(--ease-luxury);
+        }
+        
+        .memo-input {
+            width: 100%;
+            padding: var(--spacing-sm);
+            border: 2px solid rgba(255, 140, 0, 0.2);
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: all 0.3s var(--ease-luxury);
+        }
+        
+        .memo-input:focus {
+            outline: none;
+            border-color: var(--hermes-orange);
+            box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.15);
+            background: rgba(255, 248, 220, 0.5);
+        }
+        
+        .memo-toggle {
+            background: var(--gradient-secondary);
+            color: var(--text-white);
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-luxury);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(139, 69, 19, 0.2);
+        }
+        
+        .memo-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+            background: var(--gradient-elegant);
+        }
+        
+        .property-memo {
+            margin-top: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: rgba(255, 248, 220, 0.5);
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-left: 3px solid var(--hermes-orange);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -2191,36 +2255,7 @@
         </div>
     </div>
 
-    <!-- 고급 메모 모달 -->
-    <div id="memoModal" class="rating-modal">
-        <div class="memo-modal-content">
-            <div class="memo-modal-header">
-                <h3>📝 프리미엄 메모 작성</h3>
-                <button class="close-btn" onclick="closeMemoModal()">×</button>
-            </div>
-            <div class="memo-modal-body">
-                <div class="memo-input-container">
-                    <label for="memoTextarea">매물에 대한 상세한 메모를 작성해주세요</label>
-                    <textarea id="memoTextarea" placeholder="• 매물의 장단점&#10;• 위치 및 교통편&#10;• 시설 및 편의사항&#10;• 가격 협상 가능성&#10;• 기타 특이사항" rows="8"></textarea>
-                    <div class="memo-counter">
-                        <span id="memoCharCount">0</span> / 500자
-                    </div>
-                </div>
-                <div class="memo-tips">
-                    <h4>💡 메모 작성 팁</h4>
-                    <ul>
-                        <li>구체적이고 객관적인 정보를 기록하세요</li>
-                        <li>향후 비교 검토에 도움이 될 내용을 포함하세요</li>
-                        <li>중요한 포인트는 • 기호로 정리해보세요</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="memo-modal-footer">
-                <button class="btn btn-secondary" onclick="closeMemoModal()">취소</button>
-                <button class="btn btn-primary" onclick="confirmMemo()">저장</button>
-            </div>
-        </div>
-    </div>
+
 
     <script>
         let currentEditId = null;
@@ -2233,33 +2268,7 @@
             loadLinks();
             initializeRatingModal();
             initializeDateModal();
-            initializeMemoModal();
         });
-        
-        // 메모 모달 초기화
-        function initializeMemoModal() {
-            const memoModal = document.getElementById('memoModal');
-            const memoTextarea = document.getElementById('memoTextarea');
-            
-            // 모달 외부 클릭 시 닫기
-            memoModal.addEventListener('click', (e) => {
-                if (e.target === memoModal) {
-                    closeMemoModal();
-                }
-            });
-            
-            // 글자 수 카운터 이벤트
-            memoTextarea.addEventListener('input', updateMemoCounter);
-            
-            // 최대 글자 수 제한
-            memoTextarea.addEventListener('input', function() {
-                if (this.value.length > 500) {
-                    this.value = this.value.substring(0, 500);
-                    updateMemoCounter();
-                    showNotification('메모는 최대 500자까지 입력 가능합니다.', 'warning');
-                }
-            });
-        }
 
         // 평점 모달 초기화
         function initializeRatingModal() {
@@ -2475,7 +2484,6 @@
                         <button class="action-btn dislike-btn ${link.disliked ? 'active' : ''}" onclick="toggleDislike(${link.id})" title="비추천">
                             👎
                         </button>
-                        <button class="action-btn edit-btn" onclick="editMemo(${link.id}, '${link.memo ? link.memo.replace(/'/g, "\\'") : ''}')" title="메모 수정">📝</button>
                         <button class="action-btn delete-btn" onclick="deleteLink(${link.id})" title="삭제">🗑️</button>
                     </div>
                 </div>
@@ -2484,7 +2492,19 @@
                     <span class="stars">${stars}</span>
                     <span onclick="changeRating(${link.id}, ${link.rating})" style="cursor: pointer; margin-left: 12px; color: var(--hermes-orange); font-weight: 600;">평점 변경</span>
                 </div>
-                ${link.memo ? `<div class="memo">${link.memo}</div>` : ''}
+                <div style="margin-top: 8px;">
+                    <button class="memo-toggle" onclick="toggleMemo(${link.id})">메모</button>
+                </div>
+                ${link.memo ? `
+                    <div class="property-memo">${link.memo}</div>
+                    <div class="memo-section" id="memo-${link.id}" style="display: block;">
+                        <textarea class="memo-input" onchange="updateMemo(${link.id}, this.value)">${link.memo}</textarea>
+                    </div>
+                ` : `
+                    <div class="memo-section" id="memo-${link.id}" style="display: none;">
+                        <textarea class="memo-input" onchange="updateMemo(${link.id}, this.value)" placeholder="메모를 입력하세요..."></textarea>
+                    </div>
+                `}
                 <div class="property-meta">
                     <span><strong>등록일:</strong> ${link.date_added}</span>
                 </div>
@@ -2748,71 +2768,62 @@
             });
         }
 
-        let currentMemoId = null;
-        
-        function editMemo(id, currentMemo) {
-            currentMemoId = id;
-            const memoTextarea = document.getElementById('memoTextarea');
-            memoTextarea.value = currentMemo || '';
-            updateMemoCounter();
-            
-            const memoModal = document.getElementById('memoModal');
-            memoModal.classList.add('show');
-            
-            // 포커스 설정
-            setTimeout(() => {
-                memoTextarea.focus();
-            }, 300);
-        }
-        
-        function closeMemoModal() {
-            const memoModal = document.getElementById('memoModal');
-            memoModal.classList.remove('show');
-            currentMemoId = null;
-            document.getElementById('memoTextarea').value = '';
-            updateMemoCounter();
-        }
-        
-        function confirmMemo() {
-            const memoText = document.getElementById('memoTextarea').value;
-            
-            if (currentMemoId) {
-                fetch(`/api/office-links/${currentMemoId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({action: 'memo', memo: memoText})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        loadLinks();
-                        showNotification('프리미엄 메모가 저장되었습니다! 📝✨', 'success');
-                        closeMemoModal();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showNotification('메모 저장 중 오류가 발생했습니다.', 'error');
-                });
-            }
-        }
-        
-        function updateMemoCounter() {
-            const textarea = document.getElementById('memoTextarea');
-            const counter = document.getElementById('memoCharCount');
-            const length = textarea.value.length;
-            counter.textContent = length;
-            
-            // 글자 수에 따른 색상 변경
-            if (length > 450) {
-                counter.style.color = '#EF4444';
-            } else if (length > 350) {
-                counter.style.color = '#F59E0B';
+        // 메모 토글 함수
+        function toggleMemo(linkId) {
+            const memoSection = document.getElementById(`memo-${linkId}`);
+            if (memoSection.style.display === 'none') {
+                memoSection.style.display = 'block';
+                // 애니메이션 효과
+                memoSection.style.opacity = '0';
+                setTimeout(() => {
+                    memoSection.style.opacity = '1';
+                }, 10);
             } else {
-                counter.style.color = 'var(--text-muted)';
+                memoSection.style.display = 'none';
             }
+        }
+        
+        // 메모 업데이트 함수
+        function updateMemo(linkId, memo) {
+            fetch(`/api/office-links/${linkId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'memo',
+                    memo: memo
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('메모가 저장되었습니다! 📝✨', 'success');
+                    // 메모가 있으면 property-memo 표시
+                    const propertyItem = document.querySelector(`#memo-${linkId}`).closest('.property-item');
+                    let propertyMemo = propertyItem.querySelector('.property-memo');
+                    
+                    if (memo.trim()) {
+                        if (!propertyMemo) {
+                            // property-memo가 없으면 생성
+                            propertyMemo = document.createElement('div');
+                            propertyMemo.className = 'property-memo';
+                            const memoToggle = propertyItem.querySelector('.memo-toggle').parentElement;
+                            memoToggle.insertAdjacentElement('afterend', propertyMemo);
+                        }
+                        propertyMemo.textContent = memo;
+                    } else {
+                        // 메모가 비어있으면 property-memo 제거
+                        if (propertyMemo) {
+                            propertyMemo.remove();
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('메모 저장 중 오류가 발생했습니다.', 'error');
+            });
         }
         
         // 필터 기능
