@@ -25,7 +25,7 @@ print(f"🏠 주거 사이트 URL: {RESIDENCE_SITE_URL}")
 print(f"💼 업무 사이트 URL: {BUSINESS_SITE_URL}")
 
 # 테스트 모드 강제 활성화 (개발/테스트용)
-FORCE_TEST_MODE = True  # True로 설정하면 항상 테스트 모드
+FORCE_TEST_MODE = False  # False로 설정하면 실제 데이터베이스 사용
 print(f"🧪 테스트 모드 강제 활성화: {FORCE_TEST_MODE}")
 
 app = Flask(__name__)
