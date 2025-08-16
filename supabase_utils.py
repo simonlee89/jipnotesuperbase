@@ -98,6 +98,68 @@ def create_customer(customer_data: Dict[str, Any]) -> bool:
         supabase = get_supabase()
         if not supabase:
             return False
+
+def get_employees_with_pagination(page: int, per_page: int) -> Optional[Dict[str, Any]]:
+    """페이지네이션을 적용하여 직원 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return None
+            
+        # 전체 개수 조회
+        count_response = supabase.table('employees').select('id', count='exact').execute()
+        total_count = count_response.count if count_response.count is not None else 0
+        
+        # 페이지네이션 적용한 데이터 조회
+        offset = (page - 1) * per_page
+        response = supabase.table('employees').select('*').order('created_at', desc=True).range(offset, offset + per_page - 1).execute()
+        
+        if response.data is not None:
+            total_pages = (total_count + per_page - 1) // per_page
+            return {
+                'employees': response.data,
+                'total_count': total_count,
+                'total_pages': total_pages
+            }
+        return None
+    except Exception as e:
+        logger.error(f"직원 목록 페이지네이션 조회 실패: {e}")
+        return None
+
+def add_employee(name: str, email: str, team: str, position: str, role: str) -> Optional[Dict[str, Any]]:
+    """새 직원을 추가합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return None
+            
+        # 중복 이름 체크
+        existing = supabase.table('employees').select('id').eq('name', name).execute()
+        if existing.data:
+            logger.warning(f"이미 존재하는 직원 이름: {name}")
+            return None
+            
+        # 새 직원 데이터
+        employee_data = {
+            'name': name,
+            'email': email,
+            'team': team,
+            'position': position,
+            'role': role,
+            'status': 'active',
+            'created_at': 'now()'
+        }
+        
+        # 직원 추가
+        response = supabase.table('employees').insert(employee_data).execute()
+        
+        if response.data:
+            logger.info(f"직원 추가 성공: {name}")
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"직원 추가 실패: {e}")
+        return None
             
         supabase.table('employee_customers').insert(customer_data).execute()
         return True
@@ -297,3 +359,55 @@ def get_dashboard_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"대시보드 통계 조회 실패: {e}")
         return {}
+
+def get_customers_with_pagination(page: int, per_page: int, employee_id: str = None, all_employees: bool = False) -> Optional[Dict[str, Any]]:
+    """페이지네이션을 적용하여 고객 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return None
+            
+        # 전체 개수 조회
+        if all_employees:
+            count_response = supabase.table('employee_customers').select('id', count='exact').execute()
+        else:
+            count_response = supabase.table('employee_customers').select('id', count='exact').eq('employee_id', employee_id).execute()
+        
+        total_count = count_response.count if count_response.count is not None else 0
+        
+        # 페이지네이션 적용한 데이터 조회
+        offset = (page - 1) * per_page
+        if all_employees:
+            response = supabase.table('employee_customers').select('*').order('created_date', desc=True).range(offset, offset + per_page - 1).execute()
+        else:
+            response = supabase.table('employee_customers').select('*').eq('employee_id', employee_id).order('created_date', desc=True).range(offset, offset + per_page - 1).execute()
+        
+        if response.data is not None:
+            total_pages = (total_count + per_page - 1) // per_page
+            return {
+                'customers': response.data,
+                'total_count': total_count,
+                'total_pages': total_pages
+            }
+        return None
+    except Exception as e:
+        logger.error(f"고객 목록 페이지네이션 조회 실패: {e}")
+        return None
+
+def add_customer(customer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """새 고객을 추가합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return None
+            
+        # 고객 추가
+        response = supabase.table('employee_customers').insert(customer_data).execute()
+        
+        if response.data:
+            logger.info(f"고객 추가 성공: {customer_data.get('customer_name', 'Unknown')}")
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"고객 추가 실패: {e}")
+        return None

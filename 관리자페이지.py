@@ -432,9 +432,9 @@ def manage_employees():
         per_page = int(request.args.get('per_page', 20))
         offset = (page - 1) * per_page
     
-    # DATABASE_URL이 없으면 테스트용 빈 목록 반환
-    if not os.environ.get('DATABASE_URL'):
-        print("⚠️ 테스트 모드 - 빈 직원 목록 반환")
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
+        print("⚠️ Supabase 환경변수가 설정되지 않음 - 테스트 모드로 동작")
         if request.method == 'GET':
             return jsonify({
                 'employees': [],
@@ -444,53 +444,56 @@ def manage_employees():
                 'total_pages': 0
             })
         elif request.method == 'POST':
-            return jsonify({'success': False, 'message': '테스트 모드에서는 직원 추가가 지원되지 않습니다.'})
+            return jsonify({'success': False, 'message': 'Supabase 연결이 설정되지 않아 직원 추가가 불가능합니다.'})
     
-    conn = None
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
         if request.method == 'GET':
-            # 전체 개수 조회
-            cursor.execute('SELECT COUNT(*) FROM employees')
-            total_count = cursor.fetchone()[0]
+            # Supabase에서 직원 목록 조회
+            employees_data = supabase_utils.get_employees_with_pagination(page, per_page)
             
-            # 페이지네이션 적용한 데이터 조회
-            cursor.execute('SELECT id, name, email, team, position, created_at, role, status FROM employees ORDER BY created_at DESC LIMIT %s OFFSET %s', (per_page, offset))
-            employees_raw = cursor.fetchall()
-            print(f"[직원 목록] 조회된 직원 수: {len(employees_raw)} (페이지 {page}/{(total_count + per_page - 1) // per_page})")
-            employees = []
-            for emp in employees_raw:
-                emp_dict = db_utils.dict_from_row(emp)
+            if employees_data:
+                employees = employees_data.get('employees', [])
+                total_count = employees_data.get('total_count', 0)
+                total_pages = employees_data.get('total_pages', 0)
+                
+                print(f"[직원 목록] 조회된 직원 수: {len(employees)} (페이지 {page}/{total_pages})")
+                
                 # 필드명 통일을 위해 매핑
-                emp_dict['employee_id'] = emp_dict.get('name')  # name을 employee_id로 매핑
-                emp_dict['employee_name'] = emp_dict.get('name')  # name을 employee_name으로도 매핑
-                emp_dict['created_date'] = emp_dict.get('created_at')  # created_at을 created_date로 매핑
-                # status가 'active'면 활성, 그 외는 비활성
-                emp_dict['is_active'] = emp_dict.get('status', 'active') == 'active'
-                employees.append(emp_dict)
-                print(f"[직원 목록] 직원: {emp_dict.get('employee_name')} - 활성: {emp_dict['is_active']}")
-            print(f"[직원 목록] 최종 응답: {employees}")
-            return jsonify({
-                'employees': employees,
-                'total_count': total_count,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': (total_count + per_page - 1) // per_page
-            })
+                for emp in employees:
+                    emp['employee_id'] = emp.get('name')
+                    emp['employee_name'] = emp.get('name')
+                    emp['created_date'] = emp.get('created_at')
+                    emp['is_active'] = emp.get('status', 'active') == 'active'
+                
+                print(f"[직원 목록] 최종 응답: {employees}")
+                return jsonify({
+                    'employees': employees,
+                    'total_count': total_count,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': total_pages
+                })
+            else:
+                print("⚠️ 직원 목록 조회 실패")
+                return jsonify({
+                    'employees': [],
+                    'total_count': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
+                })
 
         if request.method == 'POST':
             print("🔄 직원 추가 요청 받음")
             data = request.get_json()
             print(f"📥 요청 데이터: {data}")
             
-            employee_id = data.get('employee_id')  # 실제로는 name으로 사용
+            employee_id = data.get('employee_id')
             employee_name = data.get('employee_name')
             team = data.get('team', '')
             email = data.get('email', '')
             position = data.get('position', '')
-            role = data.get('role', '직원')  # 새로 추가된 역할 필드
+            role = data.get('role', '직원')
             
             # employee_id와 employee_name 중 하나라도 있으면 name으로 사용
             name = employee_name if employee_name else employee_id
@@ -501,32 +504,25 @@ def manage_employees():
                 print(f"❌ 이름이 비어있음")
                 return jsonify({'success': False, 'message': '이름을 입력해야 합니다.'}), 400
             
-            # 중복 이름 체크
-            cursor.execute("SELECT id FROM employees WHERE name = %s", (name,))
-            if cursor.fetchone():
-                return jsonify({'success': False, 'message': '이미 존재하는 직원 이름입니다.'}), 400
+            # Supabase에 직원 추가
+            new_employee = supabase_utils.add_employee(name, email, team, position, role)
             
-            print(f"✅ 직원 추가 중: {name}")
-            cursor.execute("""
-                INSERT INTO employees (name, email, team, position, created_at, role, status) 
-                VALUES (%s, %s, %s, %s, %s, %s, 'active') RETURNING *
-            """, (name, email, team, position, datetime.now(), role))
-            new_employee_raw = cursor.fetchone()
-            new_employee = db_utils.dict_from_row(new_employee_raw)
-            
-            # 필드명 통일을 위해 매핑
-            new_employee['employee_id'] = new_employee.get('name')
-            new_employee['employee_name'] = new_employee.get('name')
-            new_employee['created_date'] = new_employee.get('created_at')
-            new_employee['is_active'] = new_employee.get('status') == 'active'
-            
-            conn.commit()
-            print(f"🎉 직원 추가 성공: {new_employee}")
-            return jsonify({'success': True, 'employee': new_employee})
+            if new_employee:
+                # 필드명 통일을 위해 매핑
+                new_employee['employee_id'] = new_employee.get('name')
+                new_employee['employee_name'] = new_employee.get('name')
+                new_employee['created_date'] = new_employee.get('created_at')
+                new_employee['is_active'] = new_employee.get('status') == 'active'
+                
+                print(f"🎉 직원 추가 성공: {new_employee}")
+                return jsonify({'success': True, 'employee': new_employee})
+            else:
+                print("❌ 직원 추가 실패")
+                return jsonify({'success': False, 'message': '직원 추가 중 오류가 발생했습니다.'})
             
     except Exception as e:
-        print(f"❌ 직원 추가 오류: {e}")
-        if conn: conn.rollback()
+        print(f"❌ 직원 API 오류: {e}")
+        return jsonify({'success': False, 'message': f'서버 오류가 발생했습니다: {str(e)}'})
         return jsonify({'error': str(e)}), 500
     finally:
         if conn: conn.close()
@@ -624,9 +620,9 @@ def manage_customers():
         per_page = int(request.args.get('per_page', 20))
         offset = (page - 1) * per_page
         
-        # DATABASE_URL이 없으면 테스트용 샘플 고객 목록 반환
-        if not os.environ.get('DATABASE_URL'):
-            print("⚠️ 테스트 모드 - 샘플 고객 목록 반환")
+        # Supabase 연결 확인
+        if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
+            print("⚠️ Supabase 환경변수가 설정되지 않음 - 테스트 모드로 동작")
             sample_customers = [
                 {
                     'id': 1,
@@ -698,109 +694,45 @@ def manage_customers():
                     'per_page': per_page,
                     'total_pages': (total_count + per_page - 1) // per_page
                 })
-            
-        conn = None
+        
         try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
+            # Supabase에서 고객 목록 조회
+            customers_data = supabase_utils.get_customers_with_pagination(page, per_page, employee_id, all_employees)
             
-            # 전체 개수 조회
-            if session.get('is_admin') and all_employees:
-                count_query = "SELECT COUNT(*) FROM employee_customers"
-                cursor.execute(count_query)
-                total_count = cursor.fetchone()[0]
+            if customers_data:
+                customers_list = customers_data.get('customers', [])
+                total_count = customers_data.get('total_count', 0)
+                total_pages = customers_data.get('total_pages', 0)
                 
-                query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
-                cursor.execute(query, (per_page, offset))
-            elif employee_id == 'admin':
-                count_query = "SELECT COUNT(*) FROM employee_customers"
-                cursor.execute(count_query)
-                total_count = cursor.fetchone()[0]
-                
-                query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
-                cursor.execute(query, (per_page, offset))
-            else:
-                count_query = "SELECT COUNT(*) FROM employee_customers WHERE employee_id = %s"
-                cursor.execute(count_query, (employee_id,))
-                total_count = cursor.fetchone()[0]
-                
-                query = "SELECT * FROM employee_customers WHERE employee_id = %s ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
-                cursor.execute(query, (employee_id, per_page, offset))
-            
-            customers_raw = cursor.fetchall()
-            customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
-            
-            # employee_name 필드 추가 (employee_id와 동일하게 설정)
-            for customer in customers_list:
-                customer['employee_name'] = customer.get('employee_id', '')
-            
-            # LEFT JOIN을 사용한 효율적인 미확인 좋아요 수 계산
-            try:
-                # 모든 고객의 미확인 좋아요 수를 한 번에 가져오기
-                query = """
-                    SELECT 
-                        ec.id,
-                        COALESCE(residence_likes.count, 0) as unchecked_likes_residence,
-                        COALESCE(business_likes.count, 0) as unchecked_likes_business
-                    FROM employee_customers ec
-                    LEFT JOIN (
-                        SELECT management_site_id, COUNT(*) as count 
-                        FROM links 
-                        WHERE liked = TRUE AND COALESCE(is_checked, FALSE) = FALSE 
-                        GROUP BY management_site_id
-                    ) residence_likes ON ec.management_site_id = residence_likes.management_site_id
-                    LEFT JOIN (
-                        SELECT management_site_id, COUNT(*) as count 
-                        FROM office_links 
-                        WHERE liked = TRUE AND COALESCE(is_checked, FALSE) = FALSE 
-                        GROUP BY management_site_id
-                    ) business_likes ON ec.management_site_id = business_likes.management_site_id
-                """
-                
-                if employee_id != 'admin':
-                    query += " WHERE ec.employee_id = %s"
-                    cursor.execute(query, (employee_id,))
-                else:
-                    cursor.execute(query)
-                
-                likes_data = cursor.fetchall()
-                likes_dict = {row['id']: row for row in likes_data}
-                
-                # 고객 목록에 미확인 좋아요 수 추가
+                # employee_name 필드 추가 (employee_id와 동일하게 설정)
                 for customer in customers_list:
-                    customer_id = customer.get('id')
-                    if customer_id in likes_dict:
-                        customer['unchecked_likes_residence'] = likes_dict[customer_id]['unchecked_likes_residence']
-                        customer['unchecked_likes_business'] = likes_dict[customer_id]['unchecked_likes_business']
-                    else:
-                        customer['unchecked_likes_residence'] = 0
-                        customer['unchecked_likes_business'] = 0
-                    
-                    # 디버깅 로그
-                    if customer['unchecked_likes_residence'] > 0 or customer['unchecked_likes_business'] > 0:
-                        print(f"[미확인 좋아요] {customer.get('customer_name')}: 주거용 {customer['unchecked_likes_residence']}개, 업무용 {customer['unchecked_likes_business']}개")
-                        
-            except Exception as e:
-                print(f"[미확인 좋아요 계산 오류] {e}")
-                # 오류가 발생해도 고객 목록은 정상적으로 반환
-                for customer in customers_list:
+                    customer['employee_name'] = customer.get('employee_id', '')
+                    # 미확인 좋아요 수는 현재 0으로 설정 (나중에 구현 가능)
                     customer['unchecked_likes_residence'] = 0
                     customer['unchecked_likes_business'] = 0
-            
-            return jsonify({
-                'customers': customers_list,
-                'total_count': total_count,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': (total_count + per_page - 1) // per_page
-            })
+                
+                print(f"[고객 목록] 조회된 고객 수: {len(customers_list)} (페이지 {page}/{total_pages})")
+                
+                return jsonify({
+                    'customers': customers_list,
+                    'total_count': total_count,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': total_pages
+                })
+            else:
+                print("⚠️ 고객 목록 조회 실패")
+                return jsonify({
+                    'customers': [],
+                    'total_count': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
+                })
 
         except Exception as e:
             print(f"고객 목록 조회 오류: {e}")
             return jsonify({'error': f'고객 목록 조회 실패: {e}'}), 500
-        finally:
-            if conn:
-                conn.close()
         
     # --- POST 요청: 새 고객 추가 ---
     if request.method == 'POST':
