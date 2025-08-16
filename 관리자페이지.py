@@ -1848,93 +1848,47 @@ def maeiple_api():
             })
         
         try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
-            
-            # 정렬 조건 설정
-            valid_sort_fields = ['check_date', 'building_number', 'room_number', 'status', 'jeonse_price', 'monthly_rent', 'sale_price']
-            if sort_by not in valid_sort_fields:
-                sort_by = 'check_date'
-            
-            sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
-            
-            # 현재 사용자의 매물만 조회 (개인 메이플관리)
+            # Supabase에서 매물 목록 조회
             current_user = session.get('employee_id', '')
-            current_team = session.get('employee_team', '')
             
             # 관리자인 경우 모든 매물, 일반 직원인 경우 개인 매물만
             if session.get('is_admin'):
-                # 전체 개수 조회 (모든 매물)
-                count_query = "SELECT COUNT(*) FROM maeiple_properties"
-                cursor.execute(count_query)
-                total_count = cursor.fetchone()[0]
-                
-                # 매물 목록 조회 (모든 매물, 정렬 및 페이지네이션 적용)
-                query = f'''
-                    SELECT id, check_date, building_number, room_number, status,
-                           jeonse_price, monthly_rent, sale_price, is_occupied,
-                           phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
-                           created_at, updated_at
-                    FROM maeiple_properties
-                    ORDER BY {sort_by} {sort_direction}, building_number, room_number
-                    LIMIT %s OFFSET %s
-                '''
-                
-                cursor.execute(query, (per_page, offset))
+                properties_data = supabase_utils.get_maeiple_properties_with_pagination(
+                    page, per_page, None, sort_by, sort_order
+                )
             else:
-                # 전체 개수 조회 (개인 매물만)
-                count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_id = %s"
-                cursor.execute(count_query, (current_user,))
-                total_count = cursor.fetchone()[0]
-                
-                # 매물 목록 조회 (개인 매물만, 정렬 및 페이지네이션 적용)
-                query = f'''
-                    SELECT id, check_date, building_number, room_number, status,
-                           jeonse_price, monthly_rent, sale_price, is_occupied,
-                           phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
-                           created_at, updated_at
-                    FROM maeiple_properties
-                    WHERE employee_id = %s
-                    ORDER BY {sort_by} {sort_direction}, building_number, room_number
-                    LIMIT %s OFFSET %s
-                '''
-                
-                cursor.execute(query, (current_user, per_page, offset))
+                properties_data = supabase_utils.get_maeiple_properties_with_pagination(
+                    page, per_page, current_user, sort_by, sort_order
+                )
             
-            properties = []
-            for row in cursor.fetchall():
-                properties.append({
-                    'id': row['id'],
-                    'check_date': row['check_date'].strftime('%Y-%m-%d') if row['check_date'] else '',
-                    'building_number': row['building_number'],
-                    'room_number': row['room_number'],
-                    'status': row['status'],
-                    'jeonse_price': row['jeonse_price'],
-                    'monthly_rent': row['monthly_rent'],
-                    'sale_price': row['sale_price'],
-                    'is_occupied': row['is_occupied'],
-                    'phone': row['phone'] or '',
-                    'memo': row['memo'] or '',
-                    'likes': row['likes'],
-                    'dislikes': row['dislikes'],
-                    'employee_id': row['employee_id'] or '',
-                    'employee_name': row['employee_name'] or '',
-                    'employee_team': row['employee_team'] or ''
+            if properties_data:
+                properties = properties_data.get('properties', [])
+                total_count = properties_data.get('total_count', 0)
+                total_pages = properties_data.get('total_pages', 0)
+                
+                print(f"[매물 목록] 조회된 매물 수: {len(properties)} (페이지 {page}/{total_pages})")
+                
+                return jsonify({
+                    'success': True, 
+                    'properties': properties,
+                    'total_count': total_count,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': total_pages
+                })
+            else:
+                print("⚠️ 매물 목록 조회 실패")
+                return jsonify({
+                    'success': False,
+                    'properties': [],
+                    'total_count': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
                 })
             
-            conn.close()
-            return jsonify({
-                'success': True, 
-                'properties': properties,
-                'total_count': total_count,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': (total_count + per_page - 1) // per_page
-            })
-            
         except Exception as e:
-            if 'conn' in locals():
-                conn.close()
+            print(f"❌ 매물 목록 조회 중 오류: {e}")
             return jsonify({'error': str(e)}), 500
     
     elif request.method == 'POST':

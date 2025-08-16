@@ -209,6 +209,65 @@ def get_maeiple_properties() -> List[Dict[str, Any]]:
         logger.error(f"매물 목록 조회 실패: {e}")
         return []
 
+def get_maeiple_properties_with_pagination(page: int, per_page: int, employee_id: str = None, sort_by: str = 'check_date', sort_order: str = 'desc') -> Optional[Dict[str, Any]]:
+    """페이지네이션을 적용하여 매물 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return None
+            
+        # 정렬 방향 설정
+        order_direction = 'desc' if sort_order == 'desc' else 'asc'
+        
+        # 기본 쿼리 구성
+        query = supabase.table('maeiple_properties').select('*')
+        
+        # 직원 ID가 지정된 경우 필터링
+        if employee_id:
+            query = query.eq('employee_id', employee_id)
+        
+        # 정렬 적용
+        if sort_by == 'check_date':
+            query = query.order('check_date', desc=(order_direction == 'desc'))
+        elif sort_by == 'building_number':
+            query = query.order('building_number', desc=(order_direction == 'desc'))
+        elif sort_by == 'room_number':
+            query = query.order('room_number', desc=(order_direction == 'desc'))
+        elif sort_by == 'status':
+            query = query.order('status', desc=(order_direction == 'desc'))
+        elif sort_by == 'jeonse_price':
+            query = query.order('jeonse_price', desc=(order_direction == 'desc'))
+        elif sort_by == 'monthly_rent':
+            query = query.order('monthly_rent', desc=(order_direction == 'desc'))
+        elif sort_by == 'sale_price':
+            query = query.order('sale_price', desc=(order_direction == 'desc'))
+        else:
+            # 기본 정렬
+            query = query.order('check_date', desc=True)
+        
+        # 전체 개수 조회
+        count_query = supabase.table('maeiple_properties').select('id', count='exact')
+        if employee_id:
+            count_query = count_query.eq('employee_id', employee_id)
+        count_response = count_query.execute()
+        total_count = count_response.count if count_response.count is not None else 0
+        
+        # 페이지네이션 적용
+        offset = (page - 1) * per_page
+        response = query.range(offset, offset + per_page - 1).execute()
+        
+        if response.data is not None:
+            total_pages = (total_count + per_page - 1) // per_page
+            return {
+                'properties': response.data,
+                'total_count': total_count,
+                'total_pages': total_pages
+            }
+        return None
+    except Exception as e:
+        logger.error(f"매물 목록 페이지네이션 조회 실패: {e}")
+        return None
+
 def get_maeiple_property(property_id: int) -> Optional[Dict[str, Any]]:
     """특정 매물을 조회합니다."""
     try:
