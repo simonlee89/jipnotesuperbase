@@ -3,4 +3,4 @@ Werkzeug==2.3.7
 gunicorn==21.2.0
 supabase==2.0.2
 python-dotenv==1.0.0
-requests
+requests==2.31.0
