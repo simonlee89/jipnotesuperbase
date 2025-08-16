@@ -1,6 +1,7 @@
 # Git 관련
 .git
 .gitignore
+.gitattributes
 
 # Python 관련
 __pycache__
@@ -23,12 +24,15 @@ coverage.xml
 .mypy_cache
 .pytest_cache
 .hypothesis
+.pytest_cache/
 
 # 가상환경
 venv/
 ENV/
 env/
 .venv/
+env.bak/
+venv.bak/
 
 # IDE 관련
 .vscode/
@@ -36,6 +40,9 @@ env/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.settings/
 
 # OS 관련
 .DS_Store
@@ -45,10 +52,34 @@ env/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
 # 로그 파일
 *.log
+logs/
 
 # 임시 파일
 *.tmp
 *.temp
+*.bak
+*.orig
+
+# 문서 파일
+*.md
+*.txt
+!requirements.txt
+!runtime.txt
+!Procfile
+
+# 테스트 파일
+tests/
+test_*
+*_test.py
+
+# 개발 도구
+.flake8
+.pylintrc
+.mypy.ini
+setup.py
+setup.cfg
+MANIFEST.in
