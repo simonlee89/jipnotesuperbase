@@ -59,7 +59,10 @@ def update_employee_last_login(name: str) -> bool:
         if not supabase:
             return False
             
-        supabase.table('employees').update({'last_login': 'now()'}).eq('name', name).execute()
+        from datetime import datetime
+        current_time = datetime.utcnow().isoformat()
+        
+        supabase.table('employees').update({'last_login': current_time}).eq('name', name).execute()
         return True
     except Exception as e:
         logger.error(f"마지막 로그인 업데이트 실패: {e}")
@@ -145,15 +148,14 @@ def add_employee(name: str, email: str, team: str, position: str, role: str) -> 
             logger.warning(f"이미 존재하는 직원 이름: {name}")
             return None
             
-        # 새 직원 데이터
+        # 새 직원 데이터 (created_at은 Supabase에서 자동 설정)
         employee_data = {
             'name': name,
             'email': email,
             'team': team,
             'position': position,
             'role': role,
-            'status': 'active',
-            'created_at': 'now()'
+            'status': 'active'
         }
         
         # 직원 추가
