@@ -2474,5 +2474,17 @@ def get_guarantee_list():
         return jsonify({'error': f'보증보험 목록 조회 실패: {e}'}), 500
 
 if __name__ == '__main__':
+    # PORT 환경변수 처리 개선
     port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    print(f"🚀 서버 시작 - 포트: {port}")
+    print(f"🌍 환경변수 PORT: {os.environ.get('PORT', '설정되지 않음')}")
+    
+    try:
+        app.run(host='0.0.0.0', port=port, debug=True)
+    except Exception as e:
+        print(f"❌ 서버 시작 실패: {e}")
+        # 포트가 사용 중인 경우 다른 포트 시도
+        if "Address already in use" in str(e):
+            fallback_port = 8081
+            print(f"🔄 포트 {port}가 사용 중입니다. 포트 {fallback_port}로 시도합니다.")
+            app.run(host='0.0.0.0', port=fallback_port, debug=True)
