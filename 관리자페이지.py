@@ -228,51 +228,19 @@ def employee_dashboard():
     
     employee_name = session.get('employee_name', '직원')
     
-    # DATABASE_URL이 없으면 테스트 모드로 처리
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 대시보드 접근 허용")
         guarantee_list = []  # 빈 리스트로 처리
     else:
         # 관리자가 아닌 경우 직원이 여전히 존재하는지 확인
         if not session.get('is_admin'):
-            conn = None
-            try:
-                conn, _ = db_utils.get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute('SELECT id, name FROM employees WHERE name = %s', (employee_name,))
-                employee = cursor.fetchone()
-                
-                if not employee:
-                    # 직원이 삭제된 경우 오류 페이지 표시
-                    return render_template('employee_error.html')
-            except Exception as e:
-                print(f"직원 존재 확인 오류: {e}")
+            if not supabase_utils.check_employee_exists(employee_name):
+                # 직원이 삭제된 경우 오류 페이지 표시
                 return render_template('employee_error.html')
-            finally:
-                if conn:
-                    conn.close()
         
         # 보증보험 매물 목록 조회
-        conn = None
-        guarantee_list = []
-        try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-                FROM links l
-                WHERE l.guarantee_insurance = TRUE 
-                ORDER BY l.id DESC
-                LIMIT 20
-            ''')
-            
-            guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"보증보험 목록 조회 오류: {e}")
-        finally:
-            if conn:
-                conn.close()
+        guarantee_list = supabase_utils.get_guarantee_insurance_links(20)
     
     # 디버깅: URL 확인
     print(f"[대시보드] 주거 사이트 URL: {RESIDENCE_SITE_URL}")
@@ -298,32 +266,13 @@ def team_leader_panel():
     employee_name = session.get('employee_name', '팀장')
     print(f"✅ 팀장 패널 접근 허용 - {employee_name}")
     
-    # DATABASE_URL이 없으면 테스트용 빈 목록 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 팀장 패널 빈 보증보험 목록 반환")
         guarantee_list = []
     else:
         # 보증보험 매물 목록 조회
-        conn = None
-        guarantee_list = []
-        try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-                FROM links l
-                WHERE l.guarantee_insurance = TRUE 
-                ORDER BY l.id DESC
-                LIMIT 20
-            ''')
-            
-            guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"팀장 패널 보증보험 목록 조회 오류: {e}")
-        finally:
-            if conn:
-                conn.close()
+        guarantee_list = supabase_utils.get_guarantee_insurance_links(20)
     
     return render_template('team_leader_panel.html', 
                          employee_name=employee_name,
@@ -341,8 +290,8 @@ def admin_panel():
     
     print(f"✅ 관리자 패널 접근 허용 - is_admin: {session.get('is_admin')}, employee_role: {session.get('employee_role')}")
 
-    # DATABASE_URL이 없으면 테스트용 빈 목록 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 빈 보증보험 목록 반환")
         guarantee_list = []
         return render_template('admin_panel.html', 
@@ -350,56 +299,34 @@ def admin_panel():
                              residence_site_url=RESIDENCE_SITE_URL,
                              business_site_url=BUSINESS_SITE_URL)
 
-    conn = None
-    try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo, l.management_site_id
-            FROM links l
-            WHERE l.guarantee_insurance = TRUE 
-            ORDER BY l.id DESC
-        ''')
-        
-        guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
-
-        return render_template('admin_panel.html', 
-                             guarantee_list=guarantee_list,
-                             residence_site_url=RESIDENCE_SITE_URL,
-                             business_site_url=BUSINESS_SITE_URL)
-    except Exception as e:
-        print(f"보증보험 목록 조회 오류: {e}")
-        return "보증보험 목록을 불러오는 중 오류가 발생했습니다.", 500
-    finally:
-        if conn:
-            conn.close()
+    # 보증보험 매물 목록 조회
+    guarantee_list = supabase_utils.get_guarantee_insurance_links(50)
+    
+    return render_template('admin_panel.html', 
+                         guarantee_list=guarantee_list,
+                         residence_site_url=RESIDENCE_SITE_URL,
+                         business_site_url=BUSINESS_SITE_URL)
 
 @app.route('/admin/guarantee-delete/<int:id>', methods=['POST'])
 def guarantee_delete(id):
     if not session.get('is_admin') and session.get('employee_role') != '팀장':
         return redirect(url_for('index'))
     
-    conn = None
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
+        flash('데이터베이스 연결이 설정되지 않았습니다.', 'error')
+        return redirect(url_for('admin_panel'))
+    
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
         # 보증보험 상태를 FALSE로 변경 (매물은 유지하되 보증보험 리스트에서만 제거)
-        cursor.execute('UPDATE links SET guarantee_insurance = FALSE WHERE id = %s', (id,))
-        
-        # 선택적: 완전 삭제를 원하면 아래 주석을 해제
-        # cursor.execute('DELETE FROM links WHERE id = %s', (id,))
-        
-        conn.commit()
-        flash('보증보험 매물이 리스트에서 제거되었습니다.', 'success')
+        if supabase_utils.update_guarantee_insurance_status(id, False):
+            flash('보증보험 매물이 리스트에서 제거되었습니다.', 'success')
+        else:
+            flash('매물 상태 변경 중 오류가 발생했습니다.', 'error')
         return redirect(url_for('admin_panel'))
     except Exception as e:
-        if conn: conn.rollback()
         flash(f'삭제 중 오류가 발생했습니다: {str(e)}', 'error')
         return redirect(url_for('admin_panel'))
-    finally:
-        if conn: conn.close()
 
 @app.route('/admin/guarantee-edit/<int:id>', methods=['POST'])
 def guarantee_edit(id):
@@ -407,18 +334,18 @@ def guarantee_edit(id):
         return redirect(url_for('index'))
     
     memo = request.form.get('memo', '')
-    conn = None
+    
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
+        return "데이터베이스 연결이 설정되지 않았습니다.", 500
+    
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('UPDATE links SET memo = %s WHERE id = %s', (memo, id))
-        conn.commit()
-        return redirect(url_for('admin_panel'))
+        if supabase_utils.update_link_memo(id, memo):
+            return redirect(url_for('admin_panel'))
+        else:
+            return "메모 수정 중 오류 발생", 500
     except Exception as e:
-        if conn: conn.rollback()
-        return "수정 중 오류 발생", 500
-    finally:
-        if conn: conn.close()
+        return f"수정 중 오류 발생: {str(e)}", 500
 
 # 직원 관리 API
 @app.route('/api/employees', methods=['GET', 'POST'])
@@ -973,8 +900,8 @@ def team_leader_maeiple():
     per_page = int(request.args.get('per_page', 20))
     offset = (page - 1) * per_page
     
-    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 팀장 본인 매물 샘플 데이터 반환")
         sample_properties = [
             {
@@ -1008,62 +935,23 @@ def team_leader_maeiple():
             'total_pages': (total_count + per_page - 1) // per_page
         })
     
-    conn = None
+    # Supabase에서 팀장 본인의 매물 조회
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        properties = supabase_utils.get_team_maeiple_properties(team_leader_id, per_page)
         
-        # 팀장 본인의 매물만 조회
-        count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_id = %s"
-        cursor.execute(count_query, (team_leader_id,))
-        total_count = cursor.fetchone()[0]
+        # 페이지네이션 처리
+        total_count = len(properties)
+        paginated_properties = properties[offset:offset + per_page]
         
-        query = '''
-            SELECT id, check_date, building_number, room_number, status,
-                   jeonse_price, monthly_rent, sale_price, is_occupied,
-                   phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
-                   created_at, updated_at
-            FROM maeiple_properties
-            WHERE employee_id = %s
-            ORDER BY check_date DESC, building_number, room_number
-            LIMIT %s OFFSET %s
-        '''
-        
-        cursor.execute(query, (team_leader_id, per_page, offset))
-        properties = []
-        for row in cursor.fetchall():
-            properties.append({
-                'id': row['id'],
-                'check_date': row['check_date'].strftime('%Y-%m-%d') if row['check_date'] else '',
-                'building_number': row['building_number'],
-                'room_number': row['room_number'],
-                'status': row['status'],
-                'jeonse_price': row['jeonse_price'],
-                'monthly_rent': row['monthly_rent'],
-                'sale_price': row['sale_price'],
-                'is_occupied': row['is_occupied'],
-                'phone': row['phone'] or '',
-                'memo': row['memo'] or '',
-                'likes': row['likes'],
-                'dislikes': row['dislikes'],
-                'employee_id': row['employee_id'] or '',
-                'employee_name': row['employee_name'] or '',
-                'employee_team': row['employee_team'] or ''
-            })
-        
-        conn.close()
         return jsonify({
             'success': True,
-            'properties': properties,
+            'properties': paginated_properties,
             'total_count': total_count,
             'page': page,
             'per_page': per_page,
             'total_pages': (total_count + per_page - 1) // per_page
         })
-        
     except Exception as e:
-        if 'conn' in locals():
-            conn.close()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/team/customers', methods=['GET'])
@@ -1077,8 +965,8 @@ def team_customers():
     per_page = int(request.args.get('per_page', 20))
     offset = (page - 1) * per_page
     
-    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 팀 전체 고객 샘플 데이터 반환")
         sample_customers = [
             {
@@ -1125,38 +1013,20 @@ def team_customers():
             'total_pages': (total_count + per_page - 1) // per_page
         })
     
-    conn = None
+    # Supabase에서 팀 전체 고객 조회
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        customers = supabase_utils.get_team_all_customers(team_name, per_page)
         
-        # 팀 전체 고객 조회 (팀장 + 팀원)
-        count_query = """
-            SELECT COUNT(*) FROM employee_customers ec
-            JOIN employees e ON ec.employee_id = e.name
-            WHERE e.team = %s
-        """
-        cursor.execute(count_query, (team_name,))
-        total_count = cursor.fetchone()[0]
-        
-        query = """
-            SELECT ec.*, e.team FROM employee_customers ec
-            JOIN employees e ON ec.employee_id = e.name
-            WHERE e.team = %s
-            ORDER BY ec.inquiry_date DESC, ec.id DESC
-            LIMIT %s OFFSET %s
-        """
-        cursor.execute(query, (team_name, per_page, offset))
-        
-        customers_raw = cursor.fetchall()
-        customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+        # 페이지네이션 처리
+        total_count = len(customers)
+        paginated_customers = customers[offset:offset + per_page]
         
         # employee_name 필드 추가
-        for customer in customers_list:
+        for customer in paginated_customers:
             customer['employee_name'] = customer.get('employee_id', '')
         
         return jsonify({
-            'customers': customers_list,
+            'customers': paginated_customers,
             'total_count': total_count,
             'page': page,
             'per_page': per_page,
@@ -1166,9 +1036,6 @@ def team_customers():
     except Exception as e:
         print(f"팀 전체 고객 조회 오류: {e}")
         return jsonify({'error': f'팀 전체 고객 조회 실패: {e}'}), 500
-    finally:
-        if conn:
-            conn.close()
 
 @app.route('/api/team/maeiple', methods=['GET'])
 def team_maeiple():
@@ -1181,8 +1048,8 @@ def team_maeiple():
     per_page = int(request.args.get('per_page', 20))
     offset = (page - 1) * per_page
     
-    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 팀 전체 매물 샘플 데이터 반환")
         sample_properties = [
             {
@@ -1234,53 +1101,17 @@ def team_maeiple():
             'total_pages': (total_count + per_page - 1) // per_page
         })
     
-    conn = None
+    # Supabase에서 팀 전체 매물 조회
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        properties = supabase_utils.get_team_all_maeiple_properties(team_name, per_page)
         
-        # 팀 전체 매물 조회 (팀장 + 팀원)
-        count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_team = %s"
-        cursor.execute(count_query, (team_name,))
-        total_count = cursor.fetchone()[0]
+        # 페이지네이션 처리
+        total_count = len(properties)
+        paginated_properties = properties[offset:offset + per_page]
         
-        query = '''
-            SELECT id, check_date, building_number, room_number, status,
-                   jeonse_price, monthly_rent, sale_price, is_occupied,
-                   phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
-                   created_at, updated_at
-            FROM maeiple_properties
-            WHERE employee_team = %s
-            ORDER BY check_date DESC, building_number, room_number
-            LIMIT %s OFFSET %s
-        '''
-        
-        cursor.execute(query, (team_name, per_page, offset))
-        properties = []
-        for row in cursor.fetchall():
-            properties.append({
-                'id': row['id'],
-                'check_date': row['check_date'].strftime('%Y-%m-%d') if row['check_date'] else '',
-                'building_number': row['building_number'],
-                'room_number': row['room_number'],
-                'status': row['status'],
-                'jeonse_price': row['jeonse_price'],
-                'monthly_rent': row['monthly_rent'],
-                'sale_price': row['sale_price'],
-                'is_occupied': row['is_occupied'],
-                'phone': row['phone'] or '',
-                'memo': row['memo'] or '',
-                'likes': row['likes'],
-                'dislikes': row['dislikes'],
-                'employee_id': row['employee_id'] or '',
-                'employee_name': row['employee_name'] or '',
-                'employee_team': row['employee_team'] or ''
-            })
-        
-        conn.close()
         return jsonify({
             'success': True,
-            'properties': properties,
+            'properties': paginated_properties,
             'total_count': total_count,
             'page': page,
             'per_page': per_page,
@@ -1288,8 +1119,6 @@ def team_maeiple():
         })
         
     except Exception as e:
-        if 'conn' in locals():
-            conn.close()
         return jsonify({'error': str(e)}), 500
 
 # ==================== 주거용 사이트 라우트 ====================

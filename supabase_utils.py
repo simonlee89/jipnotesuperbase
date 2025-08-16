@@ -98,6 +98,12 @@ def create_customer(customer_data: Dict[str, Any]) -> bool:
         supabase = get_supabase()
         if not supabase:
             return False
+            
+        supabase.table('employee_customers').insert(customer_data).execute()
+        return True
+    except Exception as e:
+        logger.error(f"고객 생성 실패: {e}")
+        return False
 
 def get_employees_with_pagination(page: int, per_page: int) -> Optional[Dict[str, Any]]:
     """페이지네이션을 적용하여 직원 목록을 조회합니다."""
@@ -160,12 +166,6 @@ def add_employee(name: str, email: str, team: str, position: str, role: str) -> 
     except Exception as e:
         logger.error(f"직원 추가 실패: {e}")
         return None
-            
-        supabase.table('employee_customers').insert(customer_data).execute()
-        return True
-    except Exception as e:
-        logger.error(f"고객 생성 실패: {e}")
-        return False
 
 def update_customer(customer_id: int, customer_data: Dict[str, Any]) -> bool:
     """고객 정보를 업데이트합니다."""
@@ -411,3 +411,192 @@ def add_customer(customer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"고객 추가 실패: {e}")
         return None
+
+def get_guarantee_insurance_links(limit: int = 20) -> List[Dict[str, Any]]:
+    """보증보험 매물 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"보증보험 매물 목록 조회 실패: {e}")
+        return []
+
+def check_employee_exists(name: str) -> bool:
+    """직원이 존재하는지 확인합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        response = supabase.table('employees').select('id, name').eq('name', name).execute()
+        return len(response.data) > 0
+    except Exception as e:
+        logger.error(f"직원 존재 확인 실패: {e}")
+        return False
+
+def get_maeiple_properties(limit: int = 50) -> List[Dict[str, Any]]:
+    """메이플 아파트 매물 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('maeiple_properties').select('*').order('id', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"메이플 아파트 매물 목록 조회 실패: {e}")
+        return []
+
+def get_team_customers(team_leader_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """팀장의 고객 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('employee_customers').select('*').eq('employee_id', team_leader_id).order('created_date', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"팀 고객 목록 조회 실패: {e}")
+        return []
+
+def get_team_maeiple_properties(team_leader_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """팀장의 메이플 아파트 매물 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('maeiple_properties').select('*').eq('added_by', team_leader_id).order('id', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"팀 메이플 아파트 매물 목록 조회 실패: {e}")
+        return []
+
+def update_maeiple_property(property_id: int, update_data: Dict[str, Any]) -> bool:
+    """메이플 아파트 매물을 업데이트합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        supabase.table('maeiple_properties').update(update_data).eq('id', property_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"메이플 아파트 매물 업데이트 실패: {e}")
+        return False
+
+def add_maeiple_memo(property_id: int, memo: str) -> bool:
+    """메이플 아파트 매물에 메모를 추가합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        supabase.table('maeiple_properties').update({'memo': memo}).eq('id', property_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"메이플 아파트 매물 메모 추가 실패: {e}")
+        return False
+
+def delete_maeiple_property(property_id: int) -> bool:
+    """메이플 아파트 매물을 삭제합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        supabase.table('maeiple_properties').delete().eq('id', property_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"메이플 아파트 매물 삭제 실패: {e}")
+        return False
+
+def get_guarantee_list(limit: int = 50) -> List[Dict[str, Any]]:
+    """보증보험 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('guarantee_list').select('*').order('id', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"보증보험 목록 조회 실패: {e}")
+        return []
+
+def update_guarantee_insurance_status(link_id: int, status: bool) -> bool:
+    """보증보험 매물 상태를 변경합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        supabase.table('links').update({'guarantee_insurance': status}).eq('id', link_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"보증보험 매물 상태 변경 실패: {e}")
+        return False
+
+def update_link_memo(link_id: int, memo: str) -> bool:
+    """링크 메모를 업데이트합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        supabase.table('links').update({'memo': memo}).eq('id', link_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"링크 메모 업데이트 실패: {e}")
+        return False
+
+def get_team_all_customers(team_name: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """팀 전체 고객 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        # 팀 전체 고객 조회 (팀장 + 팀원)
+        response = supabase.table('employee_customers').select('*, employees!inner(team)').eq('employees.team', team_name).order('inquiry_date', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"팀 전체 고객 목록 조회 실패: {e}")
+        return []
+
+def get_team_all_maeiple_properties(team_name: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """팀 전체 메이플 아파트 매물 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('maeiple_properties').select('*').eq('employee_team', team_name).order('check_date', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"팀 전체 메이플 아파트 매물 목록 조회 실패: {e}")
+        return []
+
+def get_personal_maeiple_properties(employee_id: str = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """개인용 메이플 아파트 매물 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        if employee_id:
+            # 특정 직원의 매물만 조회
+            response = supabase.table('maeiple_properties').select('*').eq('employee_id', employee_id).order('check_date', desc=True).limit(limit).execute()
+        else:
+            # 모든 매물 조회
+            response = supabase.table('maeiple_properties').select('*').order('check_date', desc=True).limit(limit).execute()
+        
+        return response.data
+    except Exception as e:
+        logger.error(f"개인용 메이플 아파트 매물 목록 조회 실패: {e}")
+        return []
