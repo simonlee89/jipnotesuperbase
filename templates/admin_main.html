@@ -320,7 +320,20 @@
                 
                 if (result.success) {
                     alert.style.display = 'none';
-                    window.location.href = '/dashboard';
+                    // 서버 응답의 리다이렉트 정보 사용
+                    if (result.redirect) {
+                        console.log(`🎯 로그인 성공 - ${result.role}으로 ${result.redirect}로 이동`);
+                        window.location.href = result.redirect;
+                    } else {
+                        // 기존 로직 (하위 호환성)
+                        if (formData.employee_id === '수정') {
+                            console.log('🎯 팀장 로그인 - 팀장 패널로 이동');
+                            window.location.href = '/team-leader';
+                        } else {
+                            console.log('👤 일반 직원 로그인 - 직원 대시보드로 이동');
+                            window.location.href = '/dashboard';
+                        }
+                    }
                 } else {
                     alert.textContent = result.message || '로그인에 실패했습니다.';
                     alert.style.display = 'block';

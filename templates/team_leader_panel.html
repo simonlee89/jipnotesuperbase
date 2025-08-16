@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>직원 대시보드 - 집노트</title>
+    <title>팀장 대시보드 - 집노트</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
@@ -142,7 +142,68 @@
             display: block;
         }
         
-
+        .add-employee-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 16px;
+            align-items: end;
+            margin-bottom: 24px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        
+        .form-input, .form-select {
+            padding: 14px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: #ffffff;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .employees-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .employees-table th {
+            background: #f8fafc;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .employees-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #475569;
+        }
+        
+        .employees-table tr:hover {
+            background: #f8fafc;
+        }
         
         /* 메이플자이 섹션 스타일 */
         .maeiple-section {
@@ -1073,7 +1134,7 @@
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-icon">🏠</div>
-                    <div class="logo-text">집노트</div>
+                    <div class="logo-text">팀장 패널</div>
                 </div>
             </div>
             
@@ -1113,7 +1174,7 @@
                         <div class="user-avatar" id="user-avatar" {% if employee_name == '관리자' %}style="background: linear-gradient(135deg, #ef4444, #dc2626);"{% endif %}>{{ employee_name[0] if employee_name else '직' }}</div>
                         <div class="user-info">
                             <div class="user-name" id="user-name">{{ employee_name or '직원' }}</div>
-                            <div class="user-role">{% if employee_name == '관리자' %}관리자 모드{% else %}직원{% endif %}</div>
+                            <div class="user-role">팀장</div>
                         </div>
                     </div>
                     {% if employee_name == '관리자' %}
@@ -1130,8 +1191,8 @@
                 <div class="page-header">
                     <div class="header-content">
                         <div class="header-text">
-                            <h1 class="page-title">대시보드</h1>
-                            <p class="page-subtitle">고객 관리 및 현황 조회</p>
+                                                <h1 class="page-title">팀장 대시보드</h1>
+                    <p class="page-subtitle">팀 전체 현황과 개인 업무를 한눈에 확인하세요</p>
                         </div>
                         <!-- 명언 위젯 -->
                         <div class="quote-container">
@@ -1204,6 +1265,7 @@
                 <!-- 탭 네비게이션 -->
                 <div class="tab-navigation">
                     <button class="tab-btn active" onclick="showTab('dashboard')">대시보드</button>
+                    <button class="tab-btn" onclick="showTab('employees')">직원관리</button>
                     <button class="tab-btn" onclick="showTab('customers')">고객목록</button>
                 </div>
                 
@@ -1312,7 +1374,121 @@
                     </div>
                 </div>
                 
-
+                <!-- 직원관리 탭 -->
+                <div id="employees-tab" class="tab-content">
+                    <!-- 직원 관리 카드 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <span>👥</span>
+                                팀 직원 관리
+                            </h2>
+                            <button class="btn btn-primary" onclick="toggleAddEmployee()">
+                                <span>➕</span>
+                                새 직원 추가
+                            </button>
+                        </div>
+                        
+                        <!-- 새 직원 추가 카드 (기본 숨김) -->
+                        <div class="card" id="add-employee-card" style="display:none; transition: max-height 0.3s; overflow:hidden;">
+                            <div class="card-header">
+                                <h2 class="card-title">
+                                    <span>➕</span>
+                                    새 직원 추가
+                                </h2>
+                            </div>
+                            <form id="add-employee-form" class="add-employee-form">
+                                <div class="form-group">
+                                    <label class="form-label">직원 아이디</label>
+                                    <input type="text" id="employee_id" class="form-input" placeholder="직원 아이디" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">직원 이름</label>
+                                    <input type="text" id="employee_name" class="form-input" placeholder="직원 이름" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">팀</label>
+                                    <select id="team" class="form-input" required style="background: white; cursor: pointer;">
+                                        <option value="">팀 선택</option>
+                                        <option value="빈시트">빈시트</option>
+                                        <option value="위플러스">위플러스</option>
+                                        <option value="반클리셰">반클리셰</option>
+                                        <option value="대표">대표</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">역할</label>
+                                    <select id="employee_role" class="form-input" required style="background: white; cursor: pointer;">
+                                        <option value="">역할 선택</option>
+                                        <option value="팀장">팀장</option>
+                                        <option value="직원">직원</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-primary" id="add-btn">
+                                        <span>➕</span>
+                                        직원 추가
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- 직원 목록 카드 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">
+                                    <span>👥</span>
+                                    팀 직원 목록
+                                </h2>
+                            </div>
+                            <!-- 필터 섹션 -->
+                            <div class="filter-section" style="display: flex; align-items: flex-end; gap: 20px; background: #f4f6fb; border-radius: 16px; border: 1px solid #e0e7ef; margin-bottom: 18px; padding: 18px 24px; box-shadow: 0 2px 8px rgba(99,102,241,0.04);">
+                                <div class="filter-group" style="min-width: 80px;">
+                                    <label class="filter-label" style="font-size:13px; font-weight:600; color:#6366f1; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                        <span style="font-size:16px;">🔎</span> 상태
+                                    </label>
+                                    <select id="status-filter" class="form-select" style="width:80px; border-radius: 10px; border: 1.5px solid #c7d2fe; background: #fff; font-size:14px; padding:10px 14px;">
+                                        <option value="">전체</option>
+                                        <option value="1">활성</option>
+                                        <option value="0">비활성</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group" style="min-width: 80px;">
+                                    <label class="filter-label" style="font-size:13px; font-weight:600; color:#6366f1; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                        <span style="font-size:16px;">👥</span> 팀
+                                    </label>
+                                    <select id="team-filter" class="form-select" style="width:80px; border-radius: 10px; border: 1.5px solid #c7d2fe; background: #fff; font-size:14px; padding:10px 14px;">
+                                        <option value="">전체 팀</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-left:auto;">
+                                    <button type="button" class="btn btn-secondary" style="border-radius:10px; font-size:14px; padding:10px 18px; background:#e0e7ff; color:#3730a3; border:1.5px solid #c7d2fe; font-weight:600; display:flex; align-items:center; gap:6px;" onclick="loadEmployees()">
+                                        <span style="font-size:16px;">🔄</span>
+                                        새로고침
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table class="employees-table">
+                                    <thead>
+                                        <tr>
+                                            <th>직원 아이디</th>
+                                            <th>이름</th>
+                                            <th>팀</th>
+                                            <th>역할</th>
+                                            <th>등록일</th>
+                                            <th>상태</th>
+                                            <th>작업</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="employees-list">
+                                        <!-- 직원 목록이 여기에 동적으로 추가됩니다 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- 고객목록 탭 -->
                 <div id="customers-tab" class="tab-content">
@@ -1321,11 +1497,11 @@
                         <div class="card-header">
                             <h2 class="card-title">
                                 <span>👥</span>
-                                고객 목록
+                                팀 전체 고객 목록
                             </h2>
                             <button class="btn btn-primary" onclick="addNewRow()">
                                 <span>➕</span>
-                                고객추가
+                                팀 고객추가
                             </button>
                         </div>
                         
@@ -1440,7 +1616,10 @@
                 loadCustomers();
             }
             
-
+            // 직원관리 탭으로 이동할 때 직원 목록 새로고침
+            if (tabName === 'employees') {
+                loadEmployees();
+            }
             
             // 대시보드 탭으로 이동할 때 메이플자이 데이터 새로고침
             if (tabName === 'dashboard') {
@@ -1500,7 +1679,164 @@
             console.log('메이플자이 통계 업데이트 완료:', statusCounts);
         }
         
-
+        // ==================== 직원 관리 관련 함수들 ====================
+        
+        // 직원 추가 토글
+        function toggleAddEmployee() {
+            const card = document.getElementById('add-employee-card');
+            if (card.style.display === 'none' || card.style.display === '') {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        }
+        
+        // 직원 목록 로드
+        async function loadEmployees() {
+            try {
+                const response = await fetch('/api/employees');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        displayEmployees(data.employees || []);
+                        updateEmployeeFilters(data.employees || []);
+                    } else {
+                        showAlert('직원 목록을 불러오는데 실패했습니다.', 'error');
+                    }
+                } else {
+                    showAlert('직원 목록을 불러오는데 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 직원 목록 표시
+        function displayEmployees(employees) {
+            const tbody = document.getElementById('employees-list');
+            
+            if (!employees || employees.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:center; color:#64748b; padding:40px;">
+                            <div class="empty-state-title">등록된 직원이 없습니다</div>
+                            <div class="empty-state-description">새 직원을 추가해보세요</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = employees.map((employee, index) => {
+                const statusBadge = employee.status === 'active' ? 
+                    '<span class="badge" style="background:#dcfce7; color:#16a34a; padding:4px 8px; border-radius:4px; font-size:12px;">활성</span>' :
+                    '<span class="badge" style="background:#fef2f2; color:#dc2626; padding:4px 8px; border-radius:4px; font-size:12px;">비활성</span>';
+                
+                const roleBadge = employee.role === '팀장' ? 
+                    '<span class="badge" style="background:#eef2ff; color:#6366f1; padding:4px 8px; border-radius:4px; font-size:12px;">팀장</span>' :
+                    '<span class="badge" style="background:#f0fdf4; color:#16a34a; padding:4px 8px; border-radius:4px; font-size:12px;">직원</span>';
+                
+                return `
+                    <tr>
+                        <td>${employee.name}</td>
+                        <td>${employee.name}</td>
+                        <td>${employee.team || '-'}</td>
+                        <td>${roleBadge}</td>
+                        <td>${new Date(employee.created_at).toLocaleDateString()}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${employee.status === 'active' ? 
+                                    `<button class="btn btn-danger btn-sm" onclick="deactivateEmployee(${employee.id})">비활성화</button>` :
+                                    `<button class="btn btn-success btn-sm" onclick="activateEmployee(${employee.id})">활성화</button>`
+                                }
+                                <button class="btn btn-secondary btn-sm" onclick="resetPassword(${employee.id})">비밀번호 재설정</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // 직원 필터 업데이트
+        function updateEmployeeFilters(employees) {
+            const teamFilter = document.getElementById('team-filter');
+            if (teamFilter) {
+                const teams = [...new Set(employees.map(emp => emp.team).filter(Boolean))];
+                teamFilter.innerHTML = '<option value="">전체 팀</option>' + 
+                    teams.map(team => `<option value="${team}">${team}</option>`).join('');
+            }
+        }
+        
+        // 직원 비활성화
+        async function deactivateEmployee(empId) {
+            if (!confirm('이 직원을 비활성화하시겠습니까?')) return;
+            
+            try {
+                const response = await fetch(`/api/employees/${empId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('직원이 비활성화되었습니다.', 'success');
+                    loadEmployees();
+                } else {
+                    showAlert('비활성화에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 직원 활성화
+        async function activateEmployee(empId) {
+            try {
+                const response = await fetch(`/api/employees/${empId}/activate`, {
+                    method: 'PUT'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('직원이 활성화되었습니다.', 'success');
+                    loadEmployees();
+                } else {
+                    showAlert('활성화에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 비밀번호 재설정
+        async function resetPassword(empId) {
+            const newPassword = prompt('새 비밀번호를 입력하세요 (기본값: 1234):', '1234');
+            if (!newPassword) return;
+            
+            try {
+                const response = await fetch(`/api/employees/${empId}/reset-password`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ new_password: newPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('비밀번호가 재설정되었습니다.', 'success');
+                } else {
+                    showAlert('비밀번호 재설정에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
         
 
         
@@ -1514,7 +1850,50 @@
             updateStats();
             loadMaeipleData(); // 메이플자이 데이터 로드 추가
             
-
+            // 직원 추가 폼 이벤트 리스너
+            const addEmployeeForm = document.getElementById('add-employee-form');
+            if (addEmployeeForm) {
+                addEmployeeForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const btn = document.getElementById('add-btn');
+                    btn.classList.add('loading');
+                    btn.disabled = true;
+                    
+                    const formData = {
+                        employee_id: document.getElementById('employee_id').value,
+                        employee_name: document.getElementById('employee_name').value,
+                        team: document.getElementById('team').value,
+                        role: document.getElementById('employee_role').value,
+                        password: '1234'
+                    };
+                    
+                    try {
+                        const response = await fetch('/api/employees', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showAlert('직원이 성공적으로 추가되었습니다.', 'success');
+                            document.getElementById('add-employee-form').reset();
+                            loadEmployees();
+                        } else {
+                            showAlert(result.message || '직원 추가에 실패했습니다.', 'error');
+                        }
+                    } catch (error) {
+                        showAlert('서버 오류가 발생했습니다.', 'error');
+                    } finally {
+                        btn.classList.remove('loading');
+                        btn.disabled = false;
+                    }
+                });
+            }
 
             const navItems = document.querySelectorAll('.nav-item');
             // 페이지 로드 시 URL에 따라 active 자동 적용
@@ -1587,9 +1966,9 @@
                     <tr>
                         <td colspan="14">
                             <div class="empty-state">
-                                <div class="empty-state-icon">👥</div>
-                                <div class="empty-state-title">등록된 고객이 없습니다</div>
-                                <div class="empty-state-description">새 고객을 추가해보세요</div>
+                                                        <div class="empty-state-icon">👥</div>
+                        <div class="empty-state-title">등록된 팀 고객이 없습니다</div>
+                        <div class="empty-state-description">새 팀 고객을 추가해보세요</div>
                             </div>
                         </td>
                     </tr>

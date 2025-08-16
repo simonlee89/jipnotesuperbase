@@ -4,15 +4,18 @@ from datetime import datetime
 import os
 import requests
 import time
-import db_utils
-from psycopg2.extras import RealDictCursor
+import supabase_utils
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
 
 # 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
 # Railway 환경에서는 환경변수로, 로컬에서는 기본값 사용
 if os.environ.get('RAILWAY_ENVIRONMENT'):
     # Railway 배포 환경
     RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'https://xn--2e0b220bo4n.com')
-    BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'https://xn--2e0bx78aevc.com')
+    BUSINESS_SITE_URL = os.environ.get('BUSINESS_SITE_URL', 'https://xn--bx78aevc.com')
 else:
     # 로컬 개발 환경
     RESIDENCE_SITE_URL = os.environ.get('RESIDENCE_SITE_URL', 'http://localhost:5000')
@@ -21,108 +24,173 @@ else:
 print(f"🏠 주거 사이트 URL: {RESIDENCE_SITE_URL}")
 print(f"💼 업무 사이트 URL: {BUSINESS_SITE_URL}")
 
+# 테스트 모드 강제 활성화 (개발/테스트용)
+FORCE_TEST_MODE = True  # True로 설정하면 항상 테스트 모드
+print(f"🧪 테스트 모드 강제 활성화: {FORCE_TEST_MODE}")
+
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # 세션용 비밀키
 
-# Railway에서 gunicorn 실행 시에도 DB 초기화가 되도록 앱 생성 직후 호출
+# Supabase 초기화
 try:
-    db_utils.init_database()
-    db_utils.ensure_all_columns()
-    print("✅ 관리자 DB 초기화 성공")
-    
-    # office_links 테이블 스키마 수정 (is_checked 컬럼 추가)
-    try:
-        from fix_office_links_schema import fix_office_links_schema
-        fix_office_links_schema()
-        print("✅ office_links 스키마 수정 완료")
-    except Exception as schema_error:
-        print(f"⚠️ office_links 스키마 수정 실패 (무시하고 계속): {schema_error}")
-        
+    supabase_utils.init_supabase()
+    print("✅ Supabase 초기화 성공")
 except Exception as e:
-    print(f"❌ 관리자 DB 초기화 실패: {e}")
+    print(f"❌ Supabase 초기화 실패: {e}")
     # 실패해도 앱은 계속 실행
 
 @app.route('/')
 def index():
     """메인 페이지 - 로그인 또는 직원 관리"""
-    if 'employee_id' in session:
-        return redirect(url_for('employee_dashboard'))
-    elif 'is_admin' in session:
+    if 'is_admin' in session:
         return redirect(url_for('admin_panel'))
+    elif 'employee_id' in session:
+        # 팀장인 경우 팀장 패널로, 일반 직원인 경우 직원 대시보드로
+        if session.get('employee_role') == '팀장':
+            print(f"🎯 팀장 '{session.get('employee_name')}' - 팀장 패널로 리다이렉트")
+            return redirect(url_for('team_leader_panel'))
+        else:
+            print(f"👤 직원 '{session.get('employee_name')}' - 직원 대시보드로 리다이렉트")
+            return redirect(url_for('employee_dashboard'))
     return render_template('admin_main.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """직원 로그인 (새로운 테이블 구조에 맞게 수정)"""
+    """직원 로그인 (비밀번호 확인 포함)"""
     data = request.get_json()
     employee_id = data.get('employee_id')  # 실제로는 name으로 검색
-    password = data.get('password')  # password 컬럼이 없으므로 무시
+    password = data.get('password')  # 비밀번호 확인
     
     print(f"🔍 직원 로그인 시도: '{employee_id}'")  # 디버깅 로그
     
     if not employee_id or employee_id.strip() == '':
         return jsonify({'success': False, 'message': '직원 이름을 입력해주세요.'})
     
-    conn = None
+    if not password or password.strip() == '':
+        return jsonify({'success': False, 'message': '비밀번호를 입력해주세요.'})
+    
+    # Supabase에서 직원 정보 조회
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        employee = supabase_utils.get_employee_by_name(employee_id)
         
-        # 새로운 테이블 구조: name으로 검색, password와 is_active 컬럼 없음
-        cursor.execute('SELECT id, name, role FROM employees WHERE name = %s', (employee_id,))
-        employee = cursor.fetchone()
-        
-        # 디버깅: 전체 직원 목록 조회
-        cursor.execute('SELECT id, name, role FROM employees ORDER BY id')
-        all_employees = cursor.fetchall()
-        print(f"📋 전체 직원 목록 ({len(all_employees)}명):")
-        for emp in all_employees:
-            try:
-                if isinstance(emp, dict):
-                    print(f"  - ID:{emp.get('id')} | 이름:'{emp.get('name')}' | 역할:{emp.get('role')}")
+        if employee and employee.get('password') == password:
+            # 로그인 성공
+            session['employee_id'] = employee['id']
+            session['employee_name'] = employee['name']
+            session['employee_team'] = employee.get('team', '')
+            session['employee_role'] = employee.get('role', 'employee')
+            
+            # 마지막 로그인 시간 업데이트
+            supabase_utils.update_employee_last_login(employee['id'])
+            
+            print(f"✅ 직원 로그인 성공: {employee['name']} ({employee.get('role', 'employee')})")
+            return jsonify({'success': True, 'message': '로그인 성공'})
+        else:
+            # 로그인 실패
+            return jsonify({'success': False, 'message': '직원 이름 또는 비밀번호가 올바르지 않습니다.'})
+            
+    except Exception as e:
+        print(f"❌ 데이터베이스 오류: {e}")
+        # 오류 발생 시 테스트 모드로 폴백
+        if FORCE_TEST_MODE:
+            print("⚠️ 테스트 모드 - 임시 로그인 허용")
+            if employee_id in ['원형', '테스트', 'admin', '관리자', '수정'] and password == '1':
+                session['employee_id'] = employee_id
+                session['employee_name'] = employee_id
+                if employee_id == '수정':
+                    session['employee_team'] = '위플러스'
+                    session['employee_role'] = '팀장'
+                    print(f"🎯 '수정' 사용자 감지 - 팀장으로 설정")
                 else:
-                    print(f"  - ID:{emp[0]} | 이름:'{emp[1]}' | 역할:{emp[2]}")
-            except (KeyError, IndexError) as e:
-                print(f"  - 직원 정보 출력 오류: {e}, 데이터: {emp}")
+                    session['employee_team'] = '관리자'
+                    session['employee_role'] = '직원'
+                return jsonify({'success': True, 'message': '테스트 모드 로그인 성공'})
+        
+        return jsonify({'success': False, 'message': '로그인 중 오류가 발생했습니다.'})
+    
+    # 테스트 모드 로그인 처리
+    if employee_id in ['원형', '테스트', 'admin', '관리자', '수정'] and password == '1':
+        session['employee_id'] = employee_id
+        session['employee_name'] = employee_id
+        if employee_id == '수정':
+            session['employee_team'] = '위플러스'
+            session['employee_role'] = '팀장'
+        else:
+            session['employee_team'] = '관리자'
+            session['employee_role'] = '직원'
+            print(f"👤 '{employee_id}' 사용자 감지 - 직원으로 설정")
+        
+        print(f"✅ 테스트 로그인 성공: {employee_id}")
+        print(f"  - 세션 employee_id: {session['employee_id']}")
+        print(f"  - 세션 employee_name: {session['employee_name']}")
+        print(f"  - 세션 employee_team: {session['employee_team']}")
+        print(f"  - 세션 employee_role: {session['employee_role']}")
+        
+        # 역할에 따른 리다이렉트 정보 포함
+        if employee_id == '수정':
+            return jsonify({
+                'success': True, 
+                'message': '테스트 로그인 성공',
+                'redirect': '/team-leader',
+                'role': '팀장'
+            })
+        else:
+            return jsonify({
+                'success': True, 
+                'message': '테스트 로그인 성공',
+                'redirect': '/dashboard',
+                'role': '직원'
+            })
+    else:
+        print(f"❌ 허용되지 않은 사용자 또는 잘못된 비밀번호")
+        return jsonify({'success': False, 'message': '테스트 모드에서는 지정된 이름과 비밀번호를 사용해주세요.'})
+    
+    # Supabase를 사용한 로그인 처리
+    try:
+        from supabase_utils import get_employee_by_name, update_employee_last_login
+        
+        # 직원 정보 조회
+        employee = get_employee_by_name(employee_id)
         
         if employee:
-            if isinstance(employee, dict):
-                employee_name = employee.get('name')
-                employee_id_val = employee.get('id')
-                employee_role = employee.get('role')
+            # 비밀번호 확인
+            if employee.get('password') != password:
+                print(f"❌ 비밀번호 불일치: '{employee_id}'")
+                return jsonify({'success': False, 'message': '비밀번호가 일치하지 않습니다.'})
+            
+            # 세션 설정
+            session['employee_id'] = employee['name']
+            session['employee_name'] = employee['name']
+            session['employee_role'] = employee.get('role', 'employee')
+            session['employee_team'] = employee.get('team', '미지정')
+            
+            # 마지막 로그인 시간 업데이트
+            update_employee_last_login(employee['name'])
+            
+            print(f"✅ Supabase 로그인 성공: {employee['name']} (팀:{session['employee_team']}, 역할:{session['employee_role']})")
+            
+            # 역할에 따른 리다이렉트 정보 포함
+            if employee['name'] == '수정':
+                return jsonify({
+                    'success': True, 
+                    'message': '로그인 성공',
+                    'redirect': '/team-leader',
+                    'role': '팀장'
+                })
             else:
-                employee_name = employee[1]
-                employee_id_val = employee[0]
-                employee_role = employee[2]
-
-            print(f"✅ 로그인 성공: {employee_name} (ID:{employee_id_val})")
-            session['employee_id'] = employee_name # 로그인 시 사용한 이름
-            session['employee_name'] = employee_name
-            session['employee_role'] = employee_role
-            return jsonify({'success': True})
+                return jsonify({
+                    'success': True, 
+                    'message': '로그인 성공',
+                    'redirect': '/dashboard',
+                    'role': 'employee'
+                })
         else:
             print(f"❌ 로그인 실패: '{employee_id}' 직원을 찾을 수 없음")
+            return jsonify({'success': False, 'message': '존재하지 않는 직원입니다.'})
             
-            available_names = []
-            for emp in all_employees:
-                try:
-                    if isinstance(emp, dict):
-                        available_names.append(emp.get('name'))
-                    else:
-                        available_names.append(emp[1])
-                except (KeyError, IndexError):
-                    continue
-            
-            return jsonify({
-                'success': False, 
-                'message': f"'{employee_id}' 직원을 찾을 수 없습니다.\n\n사용 가능한 직원 이름:\n" + "\n".join([f"• {name}" for name in available_names[:10] if name])
-            })
     except Exception as e:
-        print(f"로그인 중 오류: {e}")
-        return jsonify({'success': False, 'message': '로그인 중 서버 오류가 발생했습니다.'}), 500
-    finally:
-        if conn:
-            conn.close()
+        print(f"❌ Supabase 로그인 처리 중 오류: {e}")
+        return jsonify({'success': False, 'message': '로그인 처리 중 오류가 발생했습니다.'})
 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
@@ -154,48 +222,57 @@ def employee_dashboard():
     if 'employee_id' not in session and 'is_admin' not in session:
         return redirect(url_for('index'))
     
+    # 관리자가 대시보드에 접근하면 관리자 패널로 리다이렉트
+    if session.get('is_admin'):
+        return redirect(url_for('admin_panel'))
+    
     employee_name = session.get('employee_name', '직원')
     
-    # 관리자가 아닌 경우 직원이 여전히 존재하는지 확인
-    if not session.get('is_admin'):
+    # DATABASE_URL이 없으면 테스트 모드로 처리
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 대시보드 접근 허용")
+        guarantee_list = []  # 빈 리스트로 처리
+    else:
+        # 관리자가 아닌 경우 직원이 여전히 존재하는지 확인
+        if not session.get('is_admin'):
+            conn = None
+            try:
+                conn, _ = db_utils.get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('SELECT id, name FROM employees WHERE name = %s', (employee_name,))
+                employee = cursor.fetchone()
+                
+                if not employee:
+                    # 직원이 삭제된 경우 오류 페이지 표시
+                    return render_template('employee_error.html')
+            except Exception as e:
+                print(f"직원 존재 확인 오류: {e}")
+                return render_template('employee_error.html')
+            finally:
+                if conn:
+                    conn.close()
+        
+        # 보증보험 매물 목록 조회
         conn = None
+        guarantee_list = []
         try:
             conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
-            cursor.execute('SELECT id, name FROM employees WHERE name = %s', (employee_name,))
-            employee = cursor.fetchone()
             
-            if not employee:
-                # 직원이 삭제된 경우 오류 페이지 표시
-                return render_template('employee_error.html')
+            cursor.execute('''
+                SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+                FROM links l
+                WHERE l.guarantee_insurance = TRUE 
+                ORDER BY l.id DESC
+                LIMIT 20
+            ''')
+            
+            guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
         except Exception as e:
-            print(f"직원 존재 확인 오류: {e}")
-            return render_template('employee_error.html')
+            print(f"보증보험 목록 조회 오류: {e}")
         finally:
             if conn:
                 conn.close()
-    
-    # 보증보험 매물 목록 조회
-    conn = None
-    guarantee_list = []
-    try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-            FROM links l
-            WHERE l.guarantee_insurance = TRUE 
-            ORDER BY l.id DESC
-            LIMIT 20
-        ''')
-        
-        guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
-    except Exception as e:
-        print(f"보증보험 목록 조회 오류: {e}")
-    finally:
-        if conn:
-            conn.close()
     
     # 디버깅: URL 확인
     print(f"[대시보드] 주거 사이트 URL: {RESIDENCE_SITE_URL}")
@@ -207,11 +284,71 @@ def employee_dashboard():
                          business_site_url=BUSINESS_SITE_URL,
                          guarantee_list=guarantee_list)
 
+@app.route('/team-leader')
+def team_leader_panel():
+    """팀장 전용 패널"""
+    if 'employee_id' not in session:
+        return redirect(url_for('index'))
+    
+    # 팀장만 접근 가능
+    if session.get('employee_role') != '팀장':
+        print(f"❌ 팀장이 아닌 사용자 접근 거부 - employee_role: {session.get('employee_role')}")
+        return redirect(url_for('index'))
+    
+    employee_name = session.get('employee_name', '팀장')
+    print(f"✅ 팀장 패널 접근 허용 - {employee_name}")
+    
+    # DATABASE_URL이 없으면 테스트용 빈 목록 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀장 패널 빈 보증보험 목록 반환")
+        guarantee_list = []
+    else:
+        # 보증보험 매물 목록 조회
+        conn = None
+        guarantee_list = []
+        try:
+            conn, _ = db_utils.get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+                FROM links l
+                WHERE l.guarantee_insurance = TRUE 
+                ORDER BY l.id DESC
+                LIMIT 20
+            ''')
+            
+            guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"팀장 패널 보증보험 목록 조회 오류: {e}")
+        finally:
+            if conn:
+                conn.close()
+    
+    return render_template('team_leader_panel.html', 
+                         employee_name=employee_name,
+                         residence_site_url=RESIDENCE_SITE_URL,
+                         business_site_url=BUSINESS_SITE_URL,
+                         guarantee_list=guarantee_list)
+
 @app.route('/admin')
 def admin_panel():
     """관리자 패널 (직원 관리)"""
-    if not session.get('is_admin'):
+    # 관리자 또는 팀장만 접근 가능
+    if not session.get('is_admin') and session.get('employee_role') != '팀장':
+        print(f"❌ 접근 거부 - is_admin: {session.get('is_admin')}, employee_role: {session.get('employee_role')}")
         return redirect(url_for('index'))
+    
+    print(f"✅ 관리자 패널 접근 허용 - is_admin: {session.get('is_admin')}, employee_role: {session.get('employee_role')}")
+
+    # DATABASE_URL이 없으면 테스트용 빈 목록 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 빈 보증보험 목록 반환")
+        guarantee_list = []
+        return render_template('admin_panel.html', 
+                             guarantee_list=guarantee_list,
+                             residence_site_url=RESIDENCE_SITE_URL,
+                             business_site_url=BUSINESS_SITE_URL)
 
     conn = None
     try:
@@ -240,7 +377,7 @@ def admin_panel():
 
 @app.route('/admin/guarantee-delete/<int:id>', methods=['POST'])
 def guarantee_delete(id):
-    if not session.get('is_admin'):
+    if not session.get('is_admin') and session.get('employee_role') != '팀장':
         return redirect(url_for('index'))
     
     conn = None
@@ -266,7 +403,7 @@ def guarantee_delete(id):
 
 @app.route('/admin/guarantee-edit/<int:id>', methods=['POST'])
 def guarantee_edit(id):
-    if not session.get('is_admin'):
+    if not session.get('is_admin') and session.get('employee_role') != '팀장':
         return redirect(url_for('index'))
     
     memo = request.form.get('memo', '')
@@ -289,15 +426,40 @@ def manage_employees():
     if not session.get('is_admin'):
         return jsonify({'error': 'Unauthorized'}), 401
     
+    # 페이지네이션 파라미터 (GET 요청일 때만)
+    if request.method == 'GET':
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 빈 목록 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 빈 직원 목록 반환")
+        if request.method == 'GET':
+            return jsonify({
+                'employees': [],
+                'total_count': 0,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': 0
+            })
+        elif request.method == 'POST':
+            return jsonify({'success': False, 'message': '테스트 모드에서는 직원 추가가 지원되지 않습니다.'})
+    
     conn = None
     try:
         conn, _ = db_utils.get_db_connection()
         cursor = conn.cursor()
         
         if request.method == 'GET':
-            cursor.execute('SELECT id, name, email, team, position, created_at, role, status FROM employees ORDER BY created_at DESC')
+            # 전체 개수 조회
+            cursor.execute('SELECT COUNT(*) FROM employees')
+            total_count = cursor.fetchone()[0]
+            
+            # 페이지네이션 적용한 데이터 조회
+            cursor.execute('SELECT id, name, email, team, position, created_at, role, status FROM employees ORDER BY created_at DESC LIMIT %s OFFSET %s', (per_page, offset))
             employees_raw = cursor.fetchall()
-            print(f"[직원 목록] 조회된 직원 수: {len(employees_raw)}")
+            print(f"[직원 목록] 조회된 직원 수: {len(employees_raw)} (페이지 {page}/{(total_count + per_page - 1) // per_page})")
             employees = []
             for emp in employees_raw:
                 emp_dict = db_utils.dict_from_row(emp)
@@ -310,7 +472,13 @@ def manage_employees():
                 employees.append(emp_dict)
                 print(f"[직원 목록] 직원: {emp_dict.get('employee_name')} - 활성: {emp_dict['is_active']}")
             print(f"[직원 목록] 최종 응답: {employees}")
-            return jsonify(employees)
+            return jsonify({
+                'employees': employees,
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_count + per_page - 1) // per_page
+            })
 
         if request.method == 'POST':
             print("🔄 직원 추가 요청 받음")
@@ -322,6 +490,7 @@ def manage_employees():
             team = data.get('team', '')
             email = data.get('email', '')
             position = data.get('position', '')
+            role = data.get('role', '직원')  # 새로 추가된 역할 필드
             
             # employee_id와 employee_name 중 하나라도 있으면 name으로 사용
             name = employee_name if employee_name else employee_id
@@ -340,8 +509,8 @@ def manage_employees():
             print(f"✅ 직원 추가 중: {name}")
             cursor.execute("""
                 INSERT INTO employees (name, email, team, position, created_at, role, status) 
-                VALUES (%s, %s, %s, %s, %s, 'employee', 'active') RETURNING *
-            """, (name, email, team, position, datetime.now()))
+                VALUES (%s, %s, %s, %s, %s, %s, 'active') RETURNING *
+            """, (name, email, team, position, datetime.now(), role))
             new_employee_raw = cursor.fetchone()
             new_employee = db_utils.dict_from_row(new_employee_raw)
             
@@ -447,20 +616,123 @@ def manage_customers():
 
     # --- GET 요청: 고객 목록 조회 ---
     if request.method == 'GET':
+        # all_employees 파라미터로 모든 직원의 고객 조회 여부 결정
+        all_employees = request.args.get('all_employees') == 'true'
+        
+        # 페이지네이션 파라미터
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        # DATABASE_URL이 없으면 테스트용 샘플 고객 목록 반환
+        if not os.environ.get('DATABASE_URL'):
+            print("⚠️ 테스트 모드 - 샘플 고객 목록 반환")
+            sample_customers = [
+                {
+                    'id': 1,
+                    'inquiry_date': '2024-08-15',
+                    'customer_name': '김철수',
+                    'customer_phone': '010-1234-5678',
+                    'budget': 5000,
+                    'rooms': '2룸',
+                    'location': '강남구',
+                    'loan_needed': True,
+                    'parking_needed': True,
+                    'memo': '급하게 구하고 있음',
+                    'status': '상담중',
+                    'employee_id': '원형',
+                    'employee_name': '원형'
+                },
+                {
+                    'id': 2,
+                    'inquiry_date': '2024-08-14',
+                    'customer_name': '이영희',
+                    'customer_phone': '010-9876-5432',
+                    'budget': 3000,
+                    'rooms': '1룸',
+                    'location': '서초구',
+                    'loan_needed': False,
+                    'parking_needed': False,
+                    'memo': '펫 가능한 곳 선호',
+                    'status': '계약완료',
+                    'employee_id': '테스트',
+                    'employee_name': '테스트'
+                },
+                {
+                    'id': 3,
+                    'inquiry_date': '2024-08-13',
+                    'customer_name': '박민수',
+                    'customer_phone': '010-5555-1234',
+                    'budget': 7000,
+                    'rooms': '3룸',
+                    'location': '송파구',
+                    'loan_needed': True,
+                    'parking_needed': True,
+                    'memo': '학군 좋은 지역 희망',
+                    'status': '대기중',
+                    'employee_id': 'admin',
+                    'employee_name': '관리자'
+                }
+            ]
+            
+            # 관리자이고 all_employees=true인 경우 모든 샘플 데이터 반환
+            if session.get('is_admin') and all_employees:
+                total_count = len(sample_customers)
+                paginated_customers = sample_customers[offset:offset + per_page]
+                return jsonify({
+                    'customers': paginated_customers,
+                    'total_count': total_count,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': (total_count + per_page - 1) // per_page
+                })
+            # 관리자가 아니거나 all_employees=false인 경우 해당 직원 데이터만 반환
+            else:
+                filtered_customers = [c for c in sample_customers if c['employee_id'] == employee_id]
+                total_count = len(filtered_customers)
+                paginated_customers = filtered_customers[offset:offset + per_page]
+                return jsonify({
+                    'customers': paginated_customers,
+                    'total_count': total_count,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': (total_count + per_page - 1) // per_page
+                })
+            
         conn = None
         try:
             conn, _ = db_utils.get_db_connection()
             cursor = conn.cursor()
             
-            if employee_id == 'admin':
-                query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC"
-                cursor.execute(query)
+            # 전체 개수 조회
+            if session.get('is_admin') and all_employees:
+                count_query = "SELECT COUNT(*) FROM employee_customers"
+                cursor.execute(count_query)
+                total_count = cursor.fetchone()[0]
+                
+                query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
+                cursor.execute(query, (per_page, offset))
+            elif employee_id == 'admin':
+                count_query = "SELECT COUNT(*) FROM employee_customers"
+                cursor.execute(count_query)
+                total_count = cursor.fetchone()[0]
+                
+                query = "SELECT * FROM employee_customers ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
+                cursor.execute(query, (per_page, offset))
             else:
-                query = "SELECT * FROM employee_customers WHERE employee_id = %s ORDER BY inquiry_date DESC, id DESC"
-                cursor.execute(query, (employee_id,))
+                count_query = "SELECT COUNT(*) FROM employee_customers WHERE employee_id = %s"
+                cursor.execute(count_query, (employee_id,))
+                total_count = cursor.fetchone()[0]
+                
+                query = "SELECT * FROM employee_customers WHERE employee_id = %s ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
+                cursor.execute(query, (employee_id, per_page, offset))
             
             customers_raw = cursor.fetchall()
             customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+            
+            # employee_name 필드 추가 (employee_id와 동일하게 설정)
+            for customer in customers_list:
+                customer['employee_name'] = customer.get('employee_id', '')
             
             # LEFT JOIN을 사용한 효율적인 미확인 좋아요 수 계산
             try:
@@ -515,7 +787,13 @@ def manage_customers():
                     customer['unchecked_likes_residence'] = 0
                     customer['unchecked_likes_business'] = 0
             
-            return jsonify(customers_list)
+            return jsonify({
+                'customers': customers_list,
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_count + per_page - 1) // per_page
+            })
 
         except Exception as e:
             print(f"고객 목록 조회 오류: {e}")
@@ -672,6 +950,415 @@ def update_customer_field(customer_id):
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn: conn.close()
+
+# ==================== 팀장 전용 API 라우트 ====================
+@app.route('/api/team-leader/customers', methods=['GET'])
+def team_leader_customers():
+    """팀장 본인의 고객만 조회"""
+    if session.get('employee_role') != '팀장':
+        return jsonify({'error': '팀장만 접근 가능합니다.'}), 403
+    
+    team_leader_id = session.get('employee_id')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀장 본인 고객 샘플 데이터 반환")
+        sample_customers = [
+            {
+                'id': 1,
+                'inquiry_date': '2024-08-15',
+                'customer_name': '김철수',
+                'phone': '010-1234-5678',
+                'amount': 5000,
+                'room_count': '2룸',
+                'location': '강남구',
+                'loan_info': '대출 필요',
+                'parking': '주차 필요',
+                'pets': '펫 불가',
+                'memo': '팀장 본인 고객',
+                'progress_status': '진행중',
+                'employee_id': team_leader_id,
+                'employee_name': team_leader_id
+            }
+        ]
+        
+        total_count = len(sample_customers)
+        paginated_customers = sample_customers[offset:offset + per_page]
+        return jsonify({
+            'customers': paginated_customers,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 팀장 본인의 고객만 조회
+        count_query = "SELECT COUNT(*) FROM employee_customers WHERE employee_id = %s"
+        cursor.execute(count_query, (team_leader_id,))
+        total_count = cursor.fetchone()[0]
+        
+        query = "SELECT * FROM employee_customers WHERE employee_id = %s ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
+        cursor.execute(query, (team_leader_id, per_page, offset))
+        
+        customers_raw = cursor.fetchall()
+        customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+        
+        # employee_name 필드 추가
+        for customer in customers_list:
+            customer['employee_name'] = customer.get('employee_id', '')
+        
+        return jsonify({
+            'customers': customers_list,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+        
+    except Exception as e:
+        print(f"팀장 본인 고객 조회 오류: {e}")
+        return jsonify({'error': f'팀장 본인 고객 조회 실패: {e}'}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/team-leader/maeiple', methods=['GET'])
+def team_leader_maeiple():
+    """팀장 본인의 매물만 조회"""
+    if session.get('employee_role') != '팀장':
+        return jsonify({'error': '팀장만 접근 가능합니다.'}), 403
+    
+    team_leader_id = session.get('employee_id')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀장 본인 매물 샘플 데이터 반환")
+        sample_properties = [
+            {
+                'id': 1,
+                'check_date': '2024-08-12',
+                'building_number': 101,
+                'room_number': 1001,
+                'status': '거래중',
+                'jeonse_price': 50000,
+                'monthly_rent': 0,
+                'sale_price': 0,
+                'is_occupied': False,
+                'phone': '010-1234-5678',
+                'memo': '팀장 본인 매물',
+                'likes': 3,
+                'dislikes': 1,
+                'employee_id': team_leader_id,
+                'employee_name': team_leader_id,
+                'employee_team': session.get('employee_team', '')
+            }
+        ]
+        
+        total_count = len(sample_properties)
+        paginated_properties = sample_properties[offset:offset + per_page]
+        return jsonify({
+            'success': True,
+            'properties': paginated_properties,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 팀장 본인의 매물만 조회
+        count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_id = %s"
+        cursor.execute(count_query, (team_leader_id,))
+        total_count = cursor.fetchone()[0]
+        
+        query = '''
+            SELECT id, check_date, building_number, room_number, status,
+                   jeonse_price, monthly_rent, sale_price, is_occupied,
+                   phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
+                   created_at, updated_at
+            FROM maeiple_properties
+            WHERE employee_id = %s
+            ORDER BY check_date DESC, building_number, room_number
+            LIMIT %s OFFSET %s
+        '''
+        
+        cursor.execute(query, (team_leader_id, per_page, offset))
+        properties = []
+        for row in cursor.fetchall():
+            properties.append({
+                'id': row['id'],
+                'check_date': row['check_date'].strftime('%Y-%m-%d') if row['check_date'] else '',
+                'building_number': row['building_number'],
+                'room_number': row['room_number'],
+                'status': row['status'],
+                'jeonse_price': row['jeonse_price'],
+                'monthly_rent': row['monthly_rent'],
+                'sale_price': row['sale_price'],
+                'is_occupied': row['is_occupied'],
+                'phone': row['phone'] or '',
+                'memo': row['memo'] or '',
+                'likes': row['likes'],
+                'dislikes': row['dislikes'],
+                'employee_id': row['employee_id'] or '',
+                'employee_name': row['employee_name'] or '',
+                'employee_team': row['employee_team'] or ''
+            })
+        
+        conn.close()
+        return jsonify({
+            'success': True,
+            'properties': properties,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/team/customers', methods=['GET'])
+def team_customers():
+    """팀 전체 고객 조회 (팀장 + 팀원)"""
+    if session.get('employee_role') != '팀장':
+        return jsonify({'error': '팀장만 접근 가능합니다.'}), 403
+    
+    team_name = session.get('employee_team')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀 전체 고객 샘플 데이터 반환")
+        sample_customers = [
+            {
+                'id': 1,
+                'inquiry_date': '2024-08-15',
+                'customer_name': '김철수',
+                'phone': '010-1234-5678',
+                'amount': 5000,
+                'room_count': '2룸',
+                'location': '강남구',
+                'loan_info': '대출 필요',
+                'parking': '주차 필요',
+                'pets': '펫 불가',
+                'memo': '팀장 고객',
+                'progress_status': '진행중',
+                'employee_id': '팀장',
+                'employee_name': '팀장'
+            },
+            {
+                'id': 2,
+                'inquiry_date': '2024-08-14',
+                'customer_name': '이영희',
+                'phone': '010-9876-5432',
+                'amount': 3000,
+                'room_count': '1룸',
+                'location': '서초구',
+                'loan_info': '대출 불필요',
+                'parking': '주차 불필요',
+                'pets': '펫 가능',
+                'memo': '팀원 고객',
+                'progress_status': '계약완료',
+                'employee_id': '팀원1',
+                'employee_name': '팀원1'
+            }
+        ]
+        
+        total_count = len(sample_customers)
+        paginated_customers = sample_customers[offset:offset + per_page]
+        return jsonify({
+            'customers': paginated_customers,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 팀 전체 고객 조회 (팀장 + 팀원)
+        count_query = """
+            SELECT COUNT(*) FROM employee_customers ec
+            JOIN employees e ON ec.employee_id = e.name
+            WHERE e.team = %s
+        """
+        cursor.execute(count_query, (team_name,))
+        total_count = cursor.fetchone()[0]
+        
+        query = """
+            SELECT ec.*, e.team FROM employee_customers ec
+            JOIN employees e ON ec.employee_id = e.name
+            WHERE e.team = %s
+            ORDER BY ec.inquiry_date DESC, ec.id DESC
+            LIMIT %s OFFSET %s
+        """
+        cursor.execute(query, (team_name, per_page, offset))
+        
+        customers_raw = cursor.fetchall()
+        customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+        
+        # employee_name 필드 추가
+        for customer in customers_list:
+            customer['employee_name'] = customer.get('employee_id', '')
+        
+        return jsonify({
+            'customers': customers_list,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+        
+    except Exception as e:
+        print(f"팀 전체 고객 조회 오류: {e}")
+        return jsonify({'error': f'팀 전체 고객 조회 실패: {e}'}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/team/maeiple', methods=['GET'])
+def team_maeiple():
+    """팀 전체 매물 조회 (팀장 + 팀원)"""
+    if session.get('employee_role') != '팀장':
+        return jsonify({'error': '팀장만 접근 가능합니다.'}), 403
+    
+    team_name = session.get('employee_team')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀 전체 매물 샘플 데이터 반환")
+        sample_properties = [
+            {
+                'id': 1,
+                'check_date': '2024-08-12',
+                'building_number': 101,
+                'room_number': 1001,
+                'status': '거래중',
+                'jeonse_price': 50000,
+                'monthly_rent': 0,
+                'sale_price': 0,
+                'is_occupied': False,
+                'phone': '010-1234-5678',
+                'memo': '팀장 매물',
+                'likes': 3,
+                'dislikes': 1,
+                'employee_id': '팀장',
+                'employee_name': '팀장',
+                'employee_team': team_name
+            },
+            {
+                'id': 2,
+                'check_date': '2024-08-11',
+                'building_number': 102,
+                'room_number': 1002,
+                'status': '거래완료',
+                'jeonse_price': 0,
+                'monthly_rent': 800,
+                'sale_price': 0,
+                'is_occupied': True,
+                'phone': '010-2345-6789',
+                'memo': '팀원 매물',
+                'likes': 1,
+                'dislikes': 1,
+                'employee_id': '팀원1',
+                'employee_name': '팀원1',
+                'employee_team': team_name
+            }
+        ]
+        
+        total_count = len(sample_properties)
+        paginated_properties = sample_properties[offset:offset + per_page]
+        return jsonify({
+            'success': True,
+            'properties': paginated_properties,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 팀 전체 매물 조회 (팀장 + 팀원)
+        count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_team = %s"
+        cursor.execute(count_query, (team_name,))
+        total_count = cursor.fetchone()[0]
+        
+        query = '''
+            SELECT id, check_date, building_number, room_number, status,
+                   jeonse_price, monthly_rent, sale_price, is_occupied,
+                   phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
+                   created_at, updated_at
+            FROM maeiple_properties
+            WHERE employee_team = %s
+            ORDER BY check_date DESC, building_number, room_number
+            LIMIT %s OFFSET %s
+        '''
+        
+        cursor.execute(query, (team_name, per_page, offset))
+        properties = []
+        for row in cursor.fetchall():
+            properties.append({
+                'id': row['id'],
+                'check_date': row['check_date'].strftime('%Y-%m-%d') if row['check_date'] else '',
+                'building_number': row['building_number'],
+                'room_number': row['room_number'],
+                'status': row['status'],
+                'jeonse_price': row['jeonse_price'],
+                'monthly_rent': row['monthly_rent'],
+                'sale_price': row['sale_price'],
+                'is_occupied': row['is_occupied'],
+                'phone': row['phone'] or '',
+                'memo': row['memo'] or '',
+                'likes': row['likes'],
+                'dislikes': row['dislikes'],
+                'employee_id': row['employee_id'] or '',
+                'employee_name': row['employee_name'] or '',
+                'employee_team': row['employee_team'] or ''
+            })
+        
+        conn.close()
+        return jsonify({
+            'success': True,
+            'properties': properties,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': str(e)}), 500
 
 # ==================== 주거용 사이트 라우트 ====================
 @app.route('/residence')
@@ -1254,6 +1941,878 @@ def customer_info_api():
             if 'conn' in locals():
                 conn.close()
             return jsonify({'error': str(e)}), 500
+
+# ==================== 매이플관리 API 라우트 ====================
+@app.route('/maeiple')
+def maeiple_management():
+    """매이플관리 메인 페이지"""
+    if 'employee_id' not in session and not session.get('is_admin'):
+        return redirect(url_for('index'))
+    
+    employee_name = session.get('employee_name', '관리자' if session.get('is_admin') else '직원')
+    return render_template('maeiple_management.html', 
+                         employee_name=employee_name)
+
+@app.route('/api/maeiple', methods=['GET', 'POST'])
+def maeiple_api():
+    """매이플관리 API - 매물 조회 및 생성"""
+    if 'employee_id' not in session and not session.get('is_admin'):
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    if request.method == 'GET':
+        # 정렬 파라미터 가져오기
+        sort_by = request.args.get('sort_by', 'check_date')  # 기본: 확인날짜
+        sort_order = request.args.get('sort_order', 'desc')  # 기본: 내림차순
+        
+        # 페이지네이션 파라미터
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+        if not os.environ.get('DATABASE_URL'):
+            print("⚠️ 테스트 모드 - 개인용 샘플 매물 데이터 반환")
+            
+            # 현재 사용자 정보 가져오기
+            current_user = session.get('employee_id', '')
+            current_team = session.get('employee_team', '')
+            print(f"🔍 개인 메이플관리 - 사용자: {current_user}, 팀: {current_team}")
+            
+            # 모든 샘플 매물 데이터
+            all_sample_properties = [
+                {
+                    'id': 1,
+                    'check_date': '2024-08-12',
+                    'building_number': 101,
+                    'room_number': 1001,
+                    'status': '거래중',
+                    'jeonse_price': 5000,
+                    'monthly_rent': 50,
+                    'sale_price': 80000,
+                    'is_occupied': False,
+                    'phone': '010-1234-5678',
+                    'memo': '역세권, 교통편리',
+                    'likes': 3,
+                    'dislikes': 1,
+                    'employee_id': '원형',
+                    'employee_name': '원형',
+                    'employee_team': '빈시트'
+                },
+                {
+                    'id': 2,
+                    'check_date': '2024-08-11',
+                    'building_number': 102,
+                    'room_number': 2001,
+                    'status': '거래완료',
+                    'jeonse_price': 6000,
+                    'monthly_rent': 60,
+                    'sale_price': 90000,
+                    'is_occupied': True,
+                    'phone': '010-2345-6789',
+                    'memo': '신축, 주차가능',
+                    'likes': 5,
+                    'dislikes': 0,
+                    'employee_id': '테스트',
+                    'employee_name': '테스트',
+                    'employee_team': '위플러스'
+                },
+                {
+                    'id': 3,
+                    'check_date': '2024-08-10',
+                    'building_number': 103,
+                    'room_number': 3001,
+                    'status': '거래중',
+                    'jeonse_price': 4500,
+                    'monthly_rent': 45,
+                    'sale_price': 75000,
+                    'is_occupied': False,
+                    'phone': '010-3456-7890',
+                    'memo': '조용한 단지',
+                    'likes': 2,
+                    'dislikes': 2,
+                    'employee_id': 'admin',
+                    'employee_name': 'admin',
+                    'employee_team': '관리자'
+                },
+                {
+                    'id': 4,
+                    'check_date': '2024-08-09',
+                    'building_number': 104,
+                    'room_number': 4001,
+                    'status': '거래가능',
+                    'jeonse_price': 5500,
+                    'monthly_rent': 55,
+                    'sale_price': 85000,
+                    'is_occupied': False,
+                    'phone': '010-4567-8901',
+                    'memo': '원형의 개인 매물',
+                    'likes': 4,
+                    'dislikes': 0,
+                    'employee_id': '원형',
+                    'employee_name': '원형',
+                    'employee_team': '빈시트'
+                },
+                {
+                    'id': 5,
+                    'check_date': '2024-08-08',
+                    'building_number': 105,
+                    'room_number': 5001,
+                    'status': '거래가능',
+                    'jeonse_price': 4800,
+                    'monthly_rent': 48,
+                    'sale_price': 78000,
+                    'is_occupied': False,
+                    'phone': '010-5678-9012',
+                    'memo': '수정의 개인 매물',
+                    'likes': 3,
+                    'dislikes': 1,
+                    'employee_id': '수정',
+                    'employee_name': '수정',
+                    'employee_team': '위플러스'
+                }
+            ]
+            
+            # 관리자인 경우 모든 매물, 일반 직원인 경우 개인 매물만
+            if session.get('is_admin'):
+                personal_properties = all_sample_properties
+                print(f"✅ 관리자 - 모든 매물 {len(personal_properties)}개")
+            else:
+                personal_properties = [p for p in all_sample_properties if p['employee_id'] == current_user]
+                print(f"✅ 개인 매물 필터링: {current_user}의 매물 {len(personal_properties)}개")
+            
+            # 테스트 모드에서도 정렬 적용
+            if sort_by == 'check_date':
+                personal_properties.sort(key=lambda x: x['check_date'], reverse=(sort_order == 'desc'))
+            
+            # 페이지네이션 적용
+            total_count = len(personal_properties)
+            paginated_properties = personal_properties[offset:offset + per_page]
+            
+            return jsonify({
+                'success': True, 
+                'properties': paginated_properties,
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_count + per_page - 1) // per_page
+            })
+        
+        try:
+            conn, _ = db_utils.get_db_connection()
+            cursor = conn.cursor()
+            
+            # 정렬 조건 설정
+            valid_sort_fields = ['check_date', 'building_number', 'room_number', 'status', 'jeonse_price', 'monthly_rent', 'sale_price']
+            if sort_by not in valid_sort_fields:
+                sort_by = 'check_date'
+            
+            sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+            
+            # 현재 사용자의 매물만 조회 (개인 메이플관리)
+            current_user = session.get('employee_id', '')
+            current_team = session.get('employee_team', '')
+            
+            # 관리자인 경우 모든 매물, 일반 직원인 경우 개인 매물만
+            if session.get('is_admin'):
+                # 전체 개수 조회 (모든 매물)
+                count_query = "SELECT COUNT(*) FROM maeiple_properties"
+                cursor.execute(count_query)
+                total_count = cursor.fetchone()[0]
+                
+                # 매물 목록 조회 (모든 매물, 정렬 및 페이지네이션 적용)
+                query = f'''
+                    SELECT id, check_date, building_number, room_number, status,
+                           jeonse_price, monthly_rent, sale_price, is_occupied,
+                           phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
+                           created_at, updated_at
+                    FROM maeiple_properties
+                    ORDER BY {sort_by} {sort_direction}, building_number, room_number
+                    LIMIT %s OFFSET %s
+                '''
+                
+                cursor.execute(query, (per_page, offset))
+            else:
+                # 전체 개수 조회 (개인 매물만)
+                count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_id = %s"
+                cursor.execute(count_query, (current_user,))
+                total_count = cursor.fetchone()[0]
+                
+                # 매물 목록 조회 (개인 매물만, 정렬 및 페이지네이션 적용)
+                query = f'''
+                    SELECT id, check_date, building_number, room_number, status,
+                           jeonse_price, monthly_rent, sale_price, is_occupied,
+                           phone, memo, likes, dislikes, employee_id, employee_name, employee_team,
+                           created_at, updated_at
+                    FROM maeiple_properties
+                    WHERE employee_id = %s
+                    ORDER BY {sort_by} {sort_direction}, building_number, room_number
+                    LIMIT %s OFFSET %s
+                '''
+                
+                cursor.execute(query, (current_user, per_page, offset))
+            
+            properties = []
+            for row in cursor.fetchall():
+                properties.append({
+                    'id': row['id'],
+                    'check_date': row['check_date'].strftime('%Y-%m-%d') if row['check_date'] else '',
+                    'building_number': row['building_number'],
+                    'room_number': row['room_number'],
+                    'status': row['status'],
+                    'jeonse_price': row['jeonse_price'],
+                    'monthly_rent': row['monthly_rent'],
+                    'sale_price': row['sale_price'],
+                    'is_occupied': row['is_occupied'],
+                    'phone': row['phone'] or '',
+                    'memo': row['memo'] or '',
+                    'likes': row['likes'],
+                    'dislikes': row['dislikes'],
+                    'employee_id': row['employee_id'] or '',
+                    'employee_name': row['employee_name'] or '',
+                    'employee_team': row['employee_team'] or ''
+                })
+            
+            conn.close()
+            return jsonify({
+                'success': True, 
+                'properties': properties,
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_count + per_page - 1) // per_page
+            })
+            
+        except Exception as e:
+            if 'conn' in locals():
+                conn.close()
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            conn, _ = db_utils.get_db_connection()
+            cursor = conn.cursor()
+            
+            # 현재 로그인한 사용자 정보 가져오기
+            employee_id = session.get('employee_id', 'system')
+            employee_name = session.get('employee_name', '시스템')
+            employee_team = session.get('employee_team', '관리자')
+            
+            # 새 매물 생성
+            cursor.execute('''
+                INSERT INTO maeiple_properties 
+                (check_date, building_number, room_number, status, jeonse_price, 
+                 monthly_rent, sale_price, is_occupied, phone, memo, employee_id, employee_name, employee_team)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (
+                data.get('check_date'),
+                data.get('building_number'),
+                data.get('room_number'),
+                data.get('status', '거래중'),
+                data.get('jeonse_price'),
+                data.get('monthly_rent'),
+                data.get('sale_price'),
+                data.get('is_occupied', False),
+                data.get('phone'),
+                data.get('memo', ''),
+                employee_id,
+                employee_name,
+                employee_team
+            ))
+            
+            new_id = cursor.fetchone()[0]
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'id': new_id})
+            
+        except Exception as e:
+            if 'conn' in locals():
+                conn.close()
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/team-leader/team-maeiple', methods=['GET'])
+def team_leader_team_maeiple():
+    """팀장 전용 팀 통합 메이플관리 API - 팀 전체의 매물 조회 (팀 통합용)"""
+    print(f"🔍 팀장 팀 통합용 API 호출 - 세션 정보:")
+    print(f"  - employee_id: {session.get('employee_id')}")
+    print(f"  - employee_role: {session.get('employee_role')}")
+    print(f"  - employee_team: {session.get('employee_team')}")
+    print(f"  - is_admin: {session.get('is_admin')}")
+    
+    if 'employee_id' not in session and not session.get('is_admin'):
+        print("❌ 로그인이 필요합니다.")
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    # 팀장이 아니면 접근 거부
+    if session.get('employee_role') != '팀장' and not session.get('is_admin'):
+        print(f"❌ 팀장만 접근 가능합니다. 현재 역할: {session.get('employee_role')}")
+        return jsonify({'error': '팀장만 접근 가능합니다.'}), 403
+    
+    # 정렬 파라미터 가져오기
+    sort_by = request.args.get('sort_by', 'check_date')
+    sort_order = request.args.get('sort_order', 'desc')
+    
+    # 페이지네이션 파라미터
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀장 팀 통합용 샘플 매물 데이터 반환")
+        
+        # 현재 사용자의 팀 정보 가져오기
+        current_team = session.get('employee_team', '')
+        print(f"🔍 팀장 팀 통합용 메이플관리 - 팀: {current_team}")
+        
+        # 모든 팀의 샘플 데이터
+        all_sample_properties = [
+            # 빈시트 팀 매물들
+            {
+                'id': 1,
+                'check_date': '2024-08-12',
+                'building_number': 101,
+                'room_number': 1001,
+                'status': '거래가능',
+                'jeonse_price': 50000,
+                'monthly_rent': 0,
+                'sale_price': 0,
+                'is_occupied': False,
+                'phone': '010-1234-5678',
+                'memo': '팀원1 매물 - 역세권',
+                'likes': 2,
+                'dislikes': 0,
+                'employee_id': '팀원1',
+                'employee_name': '팀원1',
+                'employee_team': '빈시트'
+            },
+            {
+                'id': 2,
+                'check_date': '2024-08-11',
+                'building_number': 102,
+                'room_number': 1002,
+                'status': '계약완료',
+                'jeonse_price': 0,
+                'monthly_rent': 800,
+                'sale_price': 0,
+                'is_occupied': True,
+                'phone': '010-2345-6789',
+                'memo': '팀원2 매물 - 신축',
+                'likes': 1,
+                'dislikes': 1,
+                'employee_id': '팀원2',
+                'employee_name': '팀원2',
+                'employee_team': '빈시트'
+            },
+            {
+                'id': 3,
+                'check_date': '2024-08-10',
+                'building_number': 103,
+                'room_number': 1003,
+                'status': '거래가능',
+                'jeonse_price': 0,
+                'monthly_rent': 600,
+                'sale_price': 0,
+                'is_occupied': False,
+                'phone': '010-3456-7890',
+                'memo': '원형 팀장 매물 - 주차가능',
+                'likes': 3,
+                'dislikes': 0,
+                'employee_id': '원형',
+                'employee_name': '원형',
+                'employee_team': '빈시트'
+            },
+            {
+                'id': 4,
+                'check_date': '2024-08-09',
+                'building_number': 104,
+                'room_number': 1004,
+                'status': '거래중',
+                'jeonse_price': 45000,
+                'monthly_rent': 450,
+                'sale_price': 75000,
+                'is_occupied': False,
+                'phone': '010-4567-8901',
+                'memo': '팀원3 매물 - 조용한 단지',
+                'likes': 4,
+                'dislikes': 0,
+                'employee_id': '팀원3',
+                'employee_name': '팀원3',
+                'employee_team': '빈시트'
+            },
+            # 위플러스 팀 매물들
+            {
+                'id': 5,
+                'check_date': '2024-08-08',
+                'building_number': 201,
+                'room_number': 2001,
+                'status': '거래가능',
+                'jeonse_price': 55000,
+                'monthly_rent': 0,
+                'sale_price': 0,
+                'is_occupied': False,
+                'phone': '010-5678-9012',
+                'memo': '수정 팀장 매물 - 교통편리',
+                'likes': 3,
+                'dislikes': 1,
+                'employee_id': '수정',
+                'employee_name': '수정',
+                'employee_team': '위플러스'
+            },
+            {
+                'id': 6,
+                'check_date': '2024-08-07',
+                'building_number': 202,
+                'room_number': 2002,
+                'status': '거래중',
+                'jeonse_price': 0,
+                'monthly_rent': 700,
+                'sale_price': 0,
+                'is_occupied': False,
+                'phone': '010-6789-0123',
+                'memo': '팀원A 매물 - 신축',
+                'likes': 2,
+                'dislikes': 0,
+                'employee_id': '팀원A',
+                'employee_name': '팀원A',
+                'employee_team': '위플러스'
+            },
+            {
+                'id': 7,
+                'check_date': '2024-08-06',
+                'building_number': 203,
+                'room_number': 2003,
+                'status': '계약완료',
+                'jeonse_price': 0,
+                'monthly_rent': 650,
+                'sale_price': 0,
+                'is_occupied': True,
+                'phone': '010-7890-1234',
+                'memo': '팀원B 매물 - 역세권',
+                'likes': 5,
+                'dislikes': 1,
+                'employee_id': '팀원B',
+                'employee_name': '팀원B',
+                'employee_team': '위플러스'
+            }
+        ]
+        
+        # 현재 팀의 매물만 필터링
+        team_properties = [p for p in all_sample_properties if p['employee_team'] == current_team]
+        print(f"✅ 팀별 필터링: {current_team}팀 매물 {len(team_properties)}개")
+        
+        # 페이지네이션 적용
+        total_count = len(team_properties)
+        paginated_properties = team_properties[offset:offset + per_page]
+        
+        return jsonify({
+            'success': True, 
+            'properties': paginated_properties,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page,
+            'type': 'team'  # 팀 통합용임을 명시
+        })
+    
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 현재 사용자의 팀 정보 가져오기
+        current_team = session.get('employee_team', '')
+        
+        # 전체 개수 조회
+        count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_team = %s"
+        cursor.execute(count_query, (current_team,))
+        total_count = cursor.fetchone()[0]
+        
+        # 해당 팀의 매물 조회 (페이지네이션 적용)
+        order_clause = f"ORDER BY {sort_by} {sort_order.upper()}"
+        query = f'''
+            SELECT id, check_date, building_number, room_number, status, 
+                   jeonse_price, monthly_rent, sale_price, is_occupied, 
+                   phone, memo, likes, dislikes, employee_id, employee_name, employee_team
+            FROM maeiple_properties 
+            WHERE employee_team = %s
+            {order_clause}
+            LIMIT %s OFFSET %s
+        '''
+        
+        cursor.execute(query, (current_team, per_page, offset))
+        rows = cursor.fetchall()
+        
+        properties = []
+        for row in rows:
+            if isinstance(row, dict):
+                properties.append(row)
+            else:
+                properties.append({
+                    'id': row[0],
+                    'check_date': str(row[1]) if row[1] else '',
+                    'building_number': row[2],
+                    'room_number': row[3],
+                    'status': row[4] or '',
+                    'jeonse_price': row[5] or 0,
+                    'monthly_rent': row[6] or 0,
+                    'sale_price': row[7] or 0,
+                    'is_occupied': bool(row[8]),
+                    'phone': row[9] or '',
+                    'memo': row[10] or '',
+                    'likes': row[11] or 0,
+                    'dislikes': row[12] or 0,
+                    'employee_id': row[13] or '',
+                    'employee_name': row[14] or '',
+                    'employee_team': row[15] or ''
+                })
+        
+        conn.close()
+        return jsonify({
+            'success': True, 
+            'properties': properties,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page,
+            'type': 'team'  # 팀 통합용임을 명시
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/user-info', methods=['GET'])
+def user_info():
+    """현재 로그인한 사용자 정보 반환"""
+    print(f"🔍 /api/user-info 호출 - 세션 정보:")
+    print(f"  - is_admin: {session.get('is_admin')}")
+    print(f"  - employee_id: {session.get('employee_id')}")
+    print(f"  - employee_name: {session.get('employee_name')}")
+    print(f"  - employee_team: {session.get('employee_team')}")
+    print(f"  - employee_role: {session.get('employee_role')}")
+    
+    if not session.get('is_admin') and 'employee_id' not in session:
+        print("❌ 로그인이 필요합니다.")
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    user_info = {
+        'is_admin': session.get('is_admin', False),
+        'employee_id': session.get('employee_id', ''),
+        'employee_name': session.get('employee_name', ''),
+        'employee_team': session.get('employee_team', ''),
+        'role': session.get('employee_role', '직원'),
+        'employee_role': session.get('employee_role', '직원')  # 중복 필드로 호환성 확보
+    }
+    
+    print(f"✅ 반환할 user_info: {user_info}")
+    return jsonify(user_info)
+
+@app.route('/api/maeiple/update', methods=['POST'])
+def maeiple_update():
+    """매이플관리 매물 업데이트 API"""
+    if 'employee_id' not in session and not session.get('is_admin'):
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    try:
+        data = request.json
+        property_id = data.get('id')
+        field = data.get('field')
+        value = data.get('value')
+        
+        if not all([property_id, field]):
+            return jsonify({'error': '필수 파라미터가 누락되었습니다.'}), 400
+        
+        # DATABASE_URL이 없으면 테스트 모드로 처리
+        if not os.environ.get('DATABASE_URL'):
+            print(f"⚠️ 테스트 모드 - 업데이트 시뮬레이션: {field} = {value}")
+            return jsonify({'success': True, 'message': '테스트 모드 - 업데이트 시뮬레이션 완료'})
+        
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 업데이트 가능한 필드 검증
+        allowed_fields = ['status', 'jeonse_price', 'monthly_rent', 'sale_price', 
+                         'is_occupied', 'phone', 'memo', 'likes', 'dislikes']
+        
+        if field not in allowed_fields:
+            return jsonify({'error': '업데이트할 수 없는 필드입니다.'}), 400
+        
+        # 업데이트 실행
+        cursor.execute(f'''
+            UPDATE maeiple_properties 
+            SET {field} = %s, updated_at = NOW()
+            WHERE id = %s
+        ''', (value, property_id))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': '매물을 찾을 수 없습니다.'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': '업데이트 완료'})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/maeiple/memo', methods=['POST'])
+def maeiple_memo():
+    """매이플관리 메모 저장 API"""
+    if 'employee_id' not in session and not session.get('is_admin'):
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    try:
+        data = request.json
+        property_id = data.get('id')
+        memo = data.get('memo', '')
+        
+        if not property_id:
+            return jsonify({'error': '매물 ID가 필요합니다.'}), 400
+        
+        # DATABASE_URL이 없으면 테스트 모드로 처리
+        if not os.environ.get('DATABASE_URL'):
+            print(f"⚠️ 테스트 모드 - 메모 저장 시뮬레이션: ID {property_id}, 메모: {memo}")
+            return jsonify({'success': True, 'message': '테스트 모드 - 메모 저장 시뮬레이션 완료'})
+        
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE maeiple_properties 
+            SET memo = %s, updated_at = NOW()
+            WHERE id = %s
+        ''', (memo, property_id))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': '매물을 찾을 수 없습니다.'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': '메모 저장 완료'})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/maeiple/<int:property_id>', methods=['DELETE'])
+def maeiple_delete(property_id):
+    """매이플관리 매물 삭제 API"""
+    if 'employee_id' not in session and not session.get('is_admin'):
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    try:
+        # DATABASE_URL이 없으면 테스트 모드로 처리
+        if not os.environ.get('DATABASE_URL'):
+            print(f"⚠️ 테스트 모드 - 매물 삭제 시뮬레이션: ID {property_id}")
+            return jsonify({'success': True, 'message': '테스트 모드 - 매물 삭제 시뮬레이션 완료'})
+        
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM maeiple_properties WHERE id = %s', (property_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': '매물을 찾을 수 없습니다.'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': '매물 삭제 완료'})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== 팀장 전용 API 라우트 ====================
+
+@app.route('/api/team-leader/team-customers', methods=['GET'])
+def team_leader_team_customers():
+    """팀장 전용 팀 통합 고객관리 API - 팀 전체의 고객 조회 (팀 통합용)"""
+    if 'employee_id' not in session and not session.get('is_admin'):
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    # 팀장이 아니면 접근 거부
+    if session.get('employee_role') != '팀장' and not session.get('is_admin'):
+        return jsonify({'error': '팀장만 접근 가능합니다.'}), 403
+    
+    # 페이지네이션 파라미터
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    offset = (page - 1) * per_page
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 팀장 팀 통합용 샘플 고객 데이터 반환")
+        
+        # 현재 팀 정보
+        current_team = session.get('employee_team', '')
+        print(f"🔍 팀장 팀 통합용 고객관리 - 팀: {current_team}")
+        
+        # 팀 전체 고객 샘플 데이터 (팀장 + 팀원)
+        team_customers = [
+            # 팀장 고객
+            {
+                'id': 1,
+                'inquiry_date': '2024-08-15',
+                'customer_name': '김철수',
+                'customer_phone': '010-1234-5678',
+                'budget': 5000,
+                'rooms': '2룸',
+                'location': '강남구',
+                'loan_needed': True,
+                'parking_needed': True,
+                'memo': '팀장 고객 - 급하게 구하고 있음',
+                'status': '상담중',
+                'employee_id': '팀장',
+                'employee_name': '팀장'
+            },
+            # 팀원 고객들
+            {
+                'id': 2,
+                'inquiry_date': '2024-08-14',
+                'customer_name': '이영희',
+                'customer_phone': '010-9876-5432',
+                'budget': 3000,
+                'rooms': '1룸',
+                'location': '서초구',
+                'loan_needed': False,
+                'parking_needed': False,
+                'memo': '팀원1 고객 - 펫 가능한 곳 선호',
+                'status': '계약완료',
+                'employee_id': '팀원1',
+                'employee_name': '팀원1'
+            },
+            {
+                'id': 3,
+                'inquiry_date': '2024-08-13',
+                'customer_name': '박민수',
+                'customer_phone': '010-5555-1234',
+                'budget': 7000,
+                'rooms': '3룸',
+                'location': '송파구',
+                'loan_needed': True,
+                'parking_needed': True,
+                'memo': '팀원2 고객 - 학군 좋은 지역 희망',
+                'status': '대기중',
+                'employee_id': '팀원2',
+                'employee_name': '팀원2'
+            }
+        ]
+        
+        # 페이지네이션 적용
+        total_count = len(team_customers)
+        paginated_customers = team_customers[offset:offset + per_page]
+        
+        return jsonify({
+            'customers': paginated_customers,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page,
+            'type': 'team'  # 팀 통합용임을 명시
+        })
+    
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        # 팀 전체의 고객 조회
+        current_team = session.get('employee_team', '')
+        
+        # 전체 개수 조회
+        count_query = "SELECT COUNT(*) FROM employee_customers WHERE employee_team = %s"
+        cursor.execute(count_query, (current_team,))
+        total_count = cursor.fetchone()[0]
+        
+        # 팀 전체 고객 목록 조회
+        query = "SELECT * FROM employee_customers WHERE employee_team = %s ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
+        cursor.execute(query, (current_team, per_page, offset))
+        
+        customers_raw = cursor.fetchall()
+        customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+        
+        # employee_name 필드 추가
+        for customer in customers_list:
+            customer['employee_name'] = customer.get('employee_id', '')
+        
+        conn.close()
+        
+        return jsonify({
+            'customers': customers_list,
+            'total_count': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page,
+            'type': 'team'  # 팀 통합용임을 명시
+        })
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({'error': f'팀 전체 고객 조회 실패: {e}'}), 500
+
+@app.route('/api/guarantee-list')
+def get_guarantee_list():
+    """보증보험 가능한 매물 목록 조회"""
+    if 'employee_id' not in session and 'is_admin' not in session:
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
+    if not os.environ.get('DATABASE_URL'):
+        print("⚠️ 테스트 모드 - 보증보험 샘플 데이터 반환")
+        return jsonify([
+            {
+                'id': 1,
+                'url': 'https://example.com/property1',
+                'platform': '직방',
+                'added_by': '팀장',
+                'date_added': '2024-08-15',
+                'memo': '보증보험 가능한 매물'
+            },
+            {
+                'id': 2,
+                'url': 'https://example.com/property2',
+                'platform': '네이버',
+                'added_by': '직원',
+                'date_added': '2024-08-14',
+                'memo': '보증보험 가능한 매물'
+            }
+        ])
+    
+    conn = None
+    try:
+        conn, _ = db_utils.get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
+            FROM links l
+            WHERE l.guarantee_insurance = TRUE 
+            ORDER BY l.id DESC
+            LIMIT 50
+        ''')
+        
+        guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify(guarantee_list)
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        print(f"보증보험 목록 조회 오류: {e}")
+        return jsonify({'error': f'보증보험 목록 조회 실패: {e}'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))

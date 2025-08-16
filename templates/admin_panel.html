@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>직원 관리 - 집노트 CRM</title>
+    <title>관리자 패널 - 집노트 CRM</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
@@ -18,6 +18,7 @@
             background: #f8fafc;
             color: #1a202c;
             line-height: 1.6;
+            min-height: 100vh;
         }
         
         .app-container {
@@ -195,6 +196,206 @@
         
         .site-switcher.active .site-switcher-btn::after {
             transform: rotate(180deg);
+        }
+
+        /* 대시보드 통계 카드 스타일 */
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .stat-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #64748b;
+            margin: 0;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .stat-change {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        /* 필터 섹션 스타일 */
+        .filter-section {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            white-space: nowrap;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #64748b;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        .filter-btn.active {
+            background: #6366f1;
+            color: #ffffff;
+            border-color: #6366f1;
+        }
+
+        /* 테이블 컨테이너 스타일 */
+        .table-container {
+            overflow-x: auto;
+            padding: 0 24px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        .data-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        /* 상태 배지 스타일 */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .status-badge.progress {
+            background: #fef3c7;
+            color: #f59e0b;
+        }
+
+        .status-badge.completed {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .status-badge.pending {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        /* 페이지네이션 스타일 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+            padding: 20px;
+        }
+
+        .pagination .btn {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #64748b;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pagination .btn:hover {
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+
+        .pagination .btn.btn-primary {
+            background: #6366f1;
+            color: #ffffff;
+            border-color: #6366f1;
         }
         
         .site-dropdown {
@@ -521,6 +722,36 @@
             font-weight: 500;
         }
         
+        .status-progress {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-complete {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-hold {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        
+        .site-link {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 12px;
+            padding: 2px 6px;
+            border: 1px solid #3b82f6;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .site-link:hover {
+            background: #3b82f6;
+            color: white;
+        }
+        
         .status-active {
             background: #dcfce7;
             color: #166534;
@@ -592,13 +823,29 @@
             </div>
             
             <nav class="sidebar-nav">
-                <a href="/dashboard" class="nav-item">
+                <a href="/admin" class="nav-item">
                     <div class="nav-icon">📊</div>
-                    대시보드
+                    관리자 홈
                 </a>
-                <a href="/admin" class="nav-item active">
+                <a href="#employee-section" class="nav-item active" onclick="activateEmployeeTab(event)">
                     <div class="nav-icon">👥</div>
                     직원 관리
+                </a>
+                <a href="#maeiple-section" class="nav-item" onclick="activateMaeipeTab(event)">
+                    <div class="nav-icon">🏢</div>
+                    메이플관리
+                </a>
+                <a href="#team-leader-maeiple-section" class="nav-item" onclick="activateTeamLeaderMaeipleTab(event)" style="display:none;" id="team-leader-maeiple-nav">
+                    <div class="nav-icon">🏢</div>
+                    팀장메이플관리
+                </a>
+                <a href="#dashboard-section" class="nav-item" onclick="activateDashboardTab(event)">
+                    <div class="nav-icon">👥</div>
+                    고객 관리
+                </a>
+                <a href="#team-leader-customer-section" class="nav-item" onclick="activateTeamLeaderCustomerTab(event)" style="display:none;" id="team-leader-customer-nav">
+                    <div class="nav-icon">💼</div>
+                    팀장고객관리
                 </a>
                 <a href="#guarantee-section" class="nav-item" onclick="activateGuaranteeTab(event)">
                     <div class="nav-icon">🛡️</div>
@@ -651,10 +898,10 @@
                     </div>
                     
                     <div class="user-profile">
-                        <div class="user-avatar">관</div>
+                        <div class="user-avatar" id="user-avatar">관</div>
                         <div class="user-info">
-                            <div class="user-name">관리자</div>
-                            <div class="user-email">admin@zipnote.com</div>
+                            <div class="user-name" id="user-name">관리자</div>
+                            <div class="user-role" id="user-role">관리자</div>
                         </div>
                     </div>
                 </div>
@@ -663,8 +910,8 @@
             <!-- 컨텐츠 -->
             <div class="content">
                 <div class="page-header">
-                    <h1 class="page-title">직원 관리</h1>
-                    <p class="page-subtitle">직원 추가, 수정, 삭제 및 팀 관리</p>
+                    <h1 class="page-title">관리자 패널</h1>
+                    <p class="page-subtitle">직원 관리, 보증보험 매물 및 시스템 관리</p>
                 </div>
                 
                 <!-- Flask Flash 메시지 표시 -->
@@ -686,11 +933,7 @@
                 
                 <div id="alert-container"></div>
 
-                <!-- 탭 버튼 -->
-                <div style="display: flex; gap: 12px; margin-bottom: 24px;">
-                    <button id="tab-employee" class="btn btn-primary" onclick="showTab('employee')">직원 관리</button>
-                    <button id="tab-guarantee" class="btn btn-secondary" onclick="showTab('guarantee')">보증보험 매물</button>
-                </div>
+                <!-- 사이드바 메뉴로 탭 기능 대체 -->
 
                 <!-- 직원관리 카드 (탭) -->
                 <div id="employee-section">
@@ -717,7 +960,21 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">팀</label>
-                                <input type="text" id="team" class="form-input" placeholder="소속 팀" required>
+                                <select id="team" class="form-input" required style="background: white; cursor: pointer;">
+                                    <option value="">팀 선택</option>
+                                    <option value="빈시트">빈시트</option>
+                                    <option value="위플러스">위플러스</option>
+                                    <option value="반클리셰">반클리셰</option>
+                                    <option value="대표">대표</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">역할</label>
+                                <select id="employee_role" class="form-input" required style="background: white; cursor: pointer;">
+                                    <option value="">역할 선택</option>
+                                    <option value="팀장">팀장</option>
+                                    <option value="직원">직원</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <button type="submit" class="btn btn-primary" id="add-btn">
@@ -769,6 +1026,7 @@
                                         <th>직원 아이디</th>
                                         <th>이름</th>
                                         <th>팀</th>
+                                        <th>역할</th>
                                         <th>등록일</th>
                                         <th>상태</th>
                                         <th>작업</th>
@@ -778,10 +1036,15 @@
                                     <!-- 직원 목록이 여기에 동적으로 추가됩니다 -->
                                 </tbody>
                             </table>
+                                                </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="employee-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
                         </div>
                     </div>
                 </div>
-
+                
                 <!-- 보증보험 매물 카드 (탭) -->
                 <div id="guarantee-section" style="display:none;">
                     <div class="card">
@@ -867,12 +1130,655 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 메이플관리 섹션 (탭) -->
+                <div id="maeiple-section" style="display:none;">
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">
+                                <span>🏢</span>
+                                메이플관리 - 아파트목록
+                            </h2>
+                            <button class="btn btn-primary" onclick="addNewPropertyRow()">+ 새 매물 추가</button>
+                        </div>
+                        
+                        <!-- 필터 섹션 -->
+                        <div class="filter-section" style="padding: 12px 24px; border-bottom: 1px solid #e2e8f0; background: #ffffff; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+                            <!-- 호수 검색 -->
+                            <div class="filter-group">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">호수 검색:</span>
+                                <input type="text" id="room-search-admin" placeholder="호수 입력 (예: 101, 102)" 
+                                       style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; width: 120px;"
+                                       oninput="filterByRoomAdmin(this.value)">
+                            </div>
+                            
+                            <!-- 거래 유형 필터 -->
+                            <div class="filter-group" id="deal-type-filter-group-admin">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">거래유형:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setDealTypeFilterAdmin('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-value="전세" onclick="setDealTypeFilterAdmin('전세', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">전세</button>
+                                    <button class="filter-btn" data-value="월세" onclick="setDealTypeFilterAdmin('월세', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">월세</button>
+                                    <button class="filter-btn" data-value="매매" onclick="setDealTypeFilterAdmin('매매', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">매매</button>
+                                </div>
+                            </div>
+                            
+                            <div class="filter-group" id="status-filter-group">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">현황:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setStatusFilter('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-value="거래가능" onclick="setStatusFilter('거래가능', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">거래가능</button>
+                                    <button class="filter-btn" data-value="계약완료" onclick="setStatusFilter('계약완료', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">계약완료</button>
+                                    <button class="filter-btn" data-value="보류" onclick="setStatusFilter('보류', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">보류</button>
+                                    <button class="filter-btn" data-value="부재" onclick="setStatusFilter('부재', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">부재</button>
+                                </div>
+                            </div>
+                            <div class="filter-group" id="occupied-filter-group">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">실거주:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setOccupiedFilter('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-value="O" onclick="setOccupiedFilter('O', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">O</button>
+                                    <button class="filter-btn" data-value="X" onclick="setOccupiedFilter('X', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">X</button>
+                                </div>
+                            </div>
+                            
+                            <!-- 담당자 검색 -->
+                            <div class="filter-group">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">담당자 검색:</span>
+                                <input type="text" id="employee-search-admin" placeholder="담당자 이름 입력" 
+                                       style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; width: 120px;"
+                                       oninput="filterByEmployeeAdmin(this.value)">
+                            </div>
+                            
+                            <!-- 팀 필터 -->
+                            <div class="filter-group" id="team-filter-group-admin">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">팀:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setTeamFilterAdmin('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="maeiple-table-content">
+                            <div class="loading" style="text-align: center; padding: 40px; color: #64748b;">로딩 중...</div>
+                        </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="maeiple-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 팀장메이플관리 섹션 (탭) -->
+                <div id="team-maeiple-section" style="display:none;">
+                    <!-- 메이플자이 현황 섹션 -->
+                    <div class="maeiple-section" style="margin-top: 20px; padding: 16px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); margin-bottom: 24px;">
+                        <h3 class="section-title" style="font-size: 16px; font-weight: 600; color: #1a202c; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">메이플자이</h3>
+                        
+                        <!-- 메이플자이 통계 카드 -->
+                        <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                                <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">총 아파트</h3>
+                                    <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #f0f9ff; color: #0ea5e9;">🏢</div>
+                                </div>
+                                <div id="total-maeiple-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                                <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">전체 등록</div>
+                            </div>
+                            <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                                <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">거래중</h3>
+                                    <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fefce8; color: #ca8a04;">🔄</div>
+                                </div>
+                                <div id="available-maeiple-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                                <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">진행중</div>
+                            </div>
+                            <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                                <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">거래완료</h3>
+                                    <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #dcfce7; color: #16a34a;">✅</div>
+                                </div>
+                                <div id="completed-maeiple-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                                <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">완료</div>
+                            </div>
+                            <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                                <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">이번 주 신규</h3>
+                                    <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fce7f3; color: #ec4899;">📈</div>
+                                </div>
+                                <div id="new-maeiple-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                                <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">신규 등록</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">
+                                <span>👥🏢</span>
+                                팀장메이플관리 - 우리팀 매물목록
+                            </h2>
+                            <button class="btn btn-primary" onclick="addNewTeamPropertyRow()">+ 새 매물 추가</button>
+                        </div>
+                        
+                        <!-- 필터 섹션 -->
+                        <div class="filter-section" style="padding: 12px 24px; border-bottom: 1px solid #e2e8f0; background: #ffffff; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+                            <!-- 호수 검색 -->
+                            <div class="filter-group">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">호수 검색:</span>
+                                <input type="text" id="room-search-team" placeholder="호수 입력 (예: 101, 102)" 
+                                       style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; width: 120px;"
+                                       oninput="filterByRoomTeam(this.value)">
+                            </div>
+                            
+                            <!-- 담당자 검색 -->
+                            <div class="filter-group">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">담당자 검색:</span>
+                                <input type="text" id="employee-search-team" placeholder="담당자 이름 입력" 
+                                       style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; width: 120px;"
+                                       oninput="filterByEmployeeTeam(this.value)">
+                            </div>
+                            
+                            <!-- 거래 유형 필터 -->
+                            <div class="filter-group" id="deal-type-filter-group-team">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">거래유형:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setDealTypeFilterTeam('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-value="전세" onclick="setDealTypeFilterTeam('전세', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">전세</button>
+                                    <button class="filter-btn" data-value="월세" onclick="setDealTypeFilterTeam('월세', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">월세</button>
+                                    <button class="filter-btn" data-value="매매" onclick="setDealTypeFilterTeam('매매', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">매매</button>
+                                </div>
+                            </div>
+                            
+                            <div class="filter-group" id="status-filter-group-team">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">현황:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setStatusFilterTeam('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-value="거래가능" onclick="setStatusFilterTeam('거래가능', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">거래가능</button>
+                                    <button class="filter-btn" data-value="계약완료" onclick="setStatusFilterTeam('계약완료', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">계약완료</button>
+                                    <button class="filter-btn" data-value="보류" onclick="setStatusFilterTeam('보류', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">보류</button>
+                                    <button class="filter-btn" data-value="부재" onclick="setStatusFilterTeam('부재', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">부재</button>
+                                </div>
+                            </div>
+                            <div class="filter-group" id="occupied-filter-group-team">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">실거주:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-value="all" onclick="setOccupiedFilterTeam('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-value="O" onclick="setOccupiedFilterTeam('O', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">O</button>
+                                    <button class="filter-btn" data-value="X" onclick="setOccupiedFilterTeam('X', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">X</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 테이블 컨테이너 -->
+                        <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                            <table class="maeiple-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">
+                                            <div class="sort-header" onclick="sortTable('check_date', 'team')" style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                                                확인일
+                                                <span class="sort-icon" style="font-size: 12px; color: #9ca3af; transition: color 0.2s ease;">↕️</span>
+                                            </div>
+                                        </th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">
+                                            <div class="sort-header" onclick="sortTable('building_number', 'team')" style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                                                동
+                                                <span class="sort-icon" style="font-size: 12px; color: #9ca3af; transition: color 0.2s ease;">↕️</span>
+                                            </div>
+                                        </th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">
+                                            <div class="sort-header" onclick="sortTable('room_number', 'team')" style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                                                호수
+                                                <span class="sort-icon" style="font-size: 12px; color: #9ca3af; transition: color 0.2s ease;">↕️</span>
+                                            </div>
+                                        </th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">상태</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">전세가</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">월세</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">매매가</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">입주여부</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">연락처</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">메모</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">좋아요</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">싫어요</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">담당자</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="team-maeiple-table-body">
+                                    <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="team-maeiple-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 직원 대시보드 섹션 (고객 관리) -->
+                <div id="dashboard-section" style="display:none;">
+                    <!-- 통계 카드 -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 32px;">
+                        <div class="card" style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="font-size: 16px; font-weight: 600; color: #64748b;">총고객</h3>
+                                <div style="width: 40px; height: 40px; background: #eef2ff; color: #6366f1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👥</div>
+                            </div>
+                            <div id="total-customers-admin" style="font-size: 32px; font-weight: 700; color: #1a202c; margin-bottom: 8px;">0</div>
+                            <div style="font-size: 14px; color: #64748b;">전체 직원 고객</div>
+                        </div>
+                        <div class="card" style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="font-size: 16px; font-weight: 600; color: #64748b;">진행중</h3>
+                                <div style="width: 40px; height: 40px; background: #fef3c7; color: #f59e0b; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">⏳</div>
+                            </div>
+                            <div id="progress-customers-admin" style="font-size: 32px; font-weight: 700; color: #1a202c; margin-bottom: 8px;">0</div>
+                            <div style="font-size: 14px; color: #64748b;">진행 중인 고객</div>
+                        </div>
+                        <div class="card" style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="font-size: 16px; font-weight: 600; color: #64748b;">계약</h3>
+                                <div style="width: 40px; height: 40px; background: #dcfce7; color: #16a34a; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">✅</div>
+                            </div>
+                            <div id="completed-customers-admin" style="font-size: 32px; font-weight: 700; color: #1a202c; margin-bottom: 8px;">0</div>
+                            <div style="font-size: 14px; color: #64748b;">계약 완료 고객</div>
+                        </div>
+                        <div class="card" style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="font-size: 16px; font-weight: 600; color: #64748b;">이번 주 신규</h3>
+                                <div style="width: 40px; height: 40px; background: #fce7f3; color: #ec4899; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📈</div>
+                            </div>
+                            <div id="new-customers-admin" style="font-size: 32px; font-weight: 700; color: #1a202c; margin-bottom: 8px;">0</div>
+                            <div style="font-size: 14px; color: #64748b;">신규 고객</div>
+                        </div>
+                    </div>
+
+                    <!-- 고객 목록 카드 -->
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">
+                                <span>👥</span>
+                                전체 고객 목록 (모든 직원)
+                            </h2>
+                            <button class="btn btn-primary" onclick="addNewCustomerRow()">+ 고객 추가</button>
+                        </div>
+                        
+                        <!-- 필터 섹션 -->
+                        <div style="padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 14px; font-weight: 600; color: #64748b;">상태:</span>
+                                <div style="display: flex; gap: 6px;">
+                                    <button class="customer-filter-btn active" data-status="all" onclick="setCustomerFilter('all', this)" style="padding: 6px 12px; border: 1px solid #e2e8f0; background: #6366f1; color: white; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 500;">전체</button>
+                                    <button class="customer-filter-btn" data-status="상담중" onclick="setCustomerFilter('상담중', this)" style="padding: 6px 12px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 20px; font-size: 12px; cursor: pointer;">상담중</button>
+                                    <button class="customer-filter-btn" data-status="계약" onclick="setCustomerFilter('계약', this)" style="padding: 6px 12px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 20px; font-size: 12px; cursor: pointer;">계약</button>
+                                    <button class="customer-filter-btn" data-status="보류" onclick="setCustomerFilter('보류', this)" style="padding: 6px 12px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 20px; font-size: 12px; cursor: pointer;">보류</button>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 14px; font-weight: 600; color: #64748b;">담당자:</span>
+                                <select id="employee-filter" onchange="filterByEmployee()" style="padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; background: white;">
+                                    <option value="all">전체 직원</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="customer-table-content">
+                            <div class="loading" style="text-align: center; padding: 40px; color: #64748b;">로딩 중...</div>
+                        </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="customer-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 팀장 본인 고객관리 섹션 -->
+                <div id="team-leader-customer-section" style="display:none;">
+                    <!-- 통계 카드 -->
+                    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">총 고객</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #eef2ff; color: #6366f1;">👤</div>
+                            </div>
+                            <div id="total-customers-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">내 담당 고객</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">진행중</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fef3c7; color: #f59e0b;">⏳</div>
+                            </div>
+                            <div id="progress-customers-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">진행 중인 고객</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">계약</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #dcfce7; color: #16a34a;">✅</div>
+                            </div>
+                            <div id="completed-customers-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">계약 완료 고객</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">이번 주 신규</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fce7f3; color: #ec4899;">📈</div>
+                            </div>
+                            <div id="new-customers-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">신규 고객</div>
+                        </div>
+                    </div>
+
+                    <!-- 팀장 본인 고객 목록 카드 -->
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">
+                                <span>💼</span>
+                                팀장 본인 고객 목록
+                            </h2>
+                            <button class="btn btn-primary" onclick="addNewTeamLeaderCustomerRow()">+ 고객 추가</button>
+                        </div>
+                        
+                        <!-- 필터 섹션 -->
+                        <div class="filter-section" style="padding: 12px 24px; border-bottom: 1px solid #e2e8f0; background: #ffffff; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+                            <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">상태:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-status="all" onclick="setTeamLeaderCustomerFilter('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-status="진행중" onclick="setTeamLeaderCustomerFilter('진행중', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">진행중</button>
+                                    <button class="filter-btn" data-status="계약" onclick="setTeamLeaderCustomerFilter('계약', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">계약</button>
+                                    <button class="filter-btn" data-status="보류" onclick="setTeamLeaderCustomerFilter('보류', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">보류</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 테이블 컨테이너 -->
+                        <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                            <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">문의일</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">고객명</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">연락처</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">예산</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">방 개수</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">위치</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">대출</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">주차</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">펫</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">메모</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">진행상태</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">담당자</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="team-leader-customer-table-body">
+                                    <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="team-leader-customer-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 팀장 본인 메이플관리 섹션 -->
+                <div id="team-leader-maeiple-section" style="display:none;">
+                    <!-- 통계 카드 -->
+                    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">총 아파트</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #f0f9ff; color: #0ea5e9;">🏢</div>
+                            </div>
+                            <div id="total-maeiple-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">내 담당 매물</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">거래중</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fef3c7; color: #f59e0b;">⏳</div>
+                            </div>
+                            <div id="available-maeiple-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">진행 중인 거래</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">거래완료</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #dcfce7; color: #16a34a;">✅</div>
+                            </div>
+                            <div id="completed-maeiple-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">완료된 거래</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">이번 주 신규</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fce7f3; color: #ec4899;">📈</div>
+                            </div>
+                            <div id="new-maeiple-team-leader" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">신규 등록</div>
+                        </div>
+                    </div>
+
+                    <!-- 팀장 본인 매물 목록 카드 -->
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">
+                                <span>🏢</span>
+                                팀장 본인 매물 목록
+                            </h2>
+                            <button class="btn btn-primary" onclick="addNewTeamLeaderMaeipleRow()">+ 매물 추가</button>
+                        </div>
+                        
+                        <!-- 필터 섹션 -->
+                        <div class="filter-section" style="padding: 12px 24px; border-bottom: 1px solid #e2e8f0; background: #ffffff; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+                            <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">상태:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-status="all" onclick="setTeamLeaderMaeipleFilter('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-status="거래중" onclick="setTeamLeaderMaeipleFilter('거래중', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">거래중</button>
+                                    <button class="filter-btn" data-status="거래완료" onclick="setTeamLeaderMaeipleFilter('거래완료', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">거래완료</button>
+                                    <button class="filter-btn" data-status="보류" onclick="setTeamLeaderMaeipleFilter('보류', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">보류</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 테이블 컨테이너 -->
+                        <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                            <table class="maeiple-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">확인일</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">동</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">호수</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">상태</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">전세가</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">월세</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">매매가</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">입주여부</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">연락처</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">메모</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">좋아요</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">싫어요</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">담당자</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="team-leader-maeiple-table-body">
+                                    <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="team-leader-maeiple-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 팀 전체 고객관리 섹션 -->
+                <div id="team-customer-section" style="display:none;">
+                    <!-- 통계 카드 -->
+                    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">총 고객</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #eef2ff; color: #6366f1;">👥</div>
+                            </div>
+                            <div id="total-customers-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">팀 전체 고객</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">진행중</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fef3c7; color: #f59e0b;">⏳</div>
+                            </div>
+                            <div id="progress-customers-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">진행 중인 고객</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">계약</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #dcfce7; color: #16a34a;">✅</div>
+                            </div>
+                            <div id="completed-customers-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">계약 완료 고객</div>
+                        </div>
+                        <div class="stat-card" style="background: #ffffff; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <div class="stat-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <h3 class="stat-title" style="font-size: 12px; font-weight: 500; color: #64748b;">이번 주 신규</h3>
+                                <div class="stat-icon" style="width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #fce7f3; color: #ec4899;">📈</div>
+                            </div>
+                            <div id="new-customers-team" class="stat-value" style="font-size: 20px; font-weight: 700; color: #1a202c; margin-bottom: 4px;">0</div>
+                            <div class="stat-change" style="font-size: 11px; font-weight: 500; color: #64748b;">신규 고객</div>
+                        </div>
+                    </div>
+
+                    <!-- 팀 전체 고객 목록 카드 -->
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="card-title">
+                                <span>👥</span>
+                                팀 전체 고객 목록 (팀장 + 팀원)
+                            </h2>
+                            <button class="btn btn-primary" onclick="addNewTeamCustomerRow()">+ 고객 추가</button>
+                        </div>
+                        
+                        <!-- 필터 섹션 -->
+                        <div class="filter-section" style="padding: 12px 24px; border-bottom: 1px solid #e2e8f0; background: #ffffff; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;">
+                            <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                                <span class="filter-label" style="color: #64748b; font-size: 13px; font-weight: 600; margin-right: 4px;">상태:</span>
+                                <div class="filter-buttons" style="display: flex; gap: 6px;">
+                                    <button class="filter-btn active" data-status="all" onclick="setTeamCustomerFilter('all', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600;">전체</button>
+                                    <button class="filter-btn" data-status="진행중" onclick="setTeamCustomerFilter('진행중', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">진행중</button>
+                                    <button class="filter-btn" data-status="계약" onclick="setTeamCustomerFilter('계약', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">계약</button>
+                                    <button class="filter-btn" data-status="보류" onclick="setTeamCustomerFilter('보류', this)" style="padding: 6px 10px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; border-radius: 20px; font-size: 12px; cursor: pointer;">보류</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 테이블 컨테이너 -->
+                        <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                            <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">문의일</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">고객명</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">연락처</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">예산</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">방 개수</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">위치</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">대출</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">주차</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">펫</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">메모</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">진행상태</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">담당자</th>
+                                        <th style="background: #f8fafc; padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e2e8f0; font-size: 14px;">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="team-customer-table-body">
+                                    <!-- 데이터가 여기에 동적으로 로드됩니다 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 페이지네이션 -->
+                        <div id="team-customer-pagination" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px;">
+                            <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메모 모달 -->
+    <div id="memoModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 24px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="modal-title" style="font-size: 20px; font-weight: 600; color: #1a202c;">특이사항 메모</h3>
+                <button class="close" onclick="closeMemoModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+            </div>
+            <textarea id="memoTextarea" class="memo-textarea" placeholder="메모를 입력하세요..." style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeMemoModal()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">취소</button>
+                <button class="btn btn-primary" onclick="saveMemo()" style="padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">저장</button>
             </div>
         </div>
     </div>
 
     <script>
         let employees = [];
+        let currentEmployeePage = 1;
+        let employeePerPage = 20;
+        let employeeTotalPages = 0;
+        
+        // 메이플관리 관련 변수들
+        let properties = [];
+        let statusFilter = 'all';
+        let occupiedFilter = 'all';
+        let currentMaeiplePage = 1;
+        let maeipePerPage = 20;
+        let maeipleTotalPages = 0;
+        let dealTypeFilterAdmin = 'all';
+        let roomSearchFilterAdmin = '';
+        let employeeSearchFilterAdmin = '';
+        let teamFilterAdmin = 'all';
+        let currentMemoId = null;
+        let currentSortBy = 'check_date';
+        let currentSortOrder = 'desc';
+        let currentTeamSortBy = 'check_date';
+        let currentTeamSortOrder = 'desc';
+        
+        // 팀장메이플관리 관련 변수들
+        let teamProperties = [];
+        let statusFilterTeam = 'all';
+        let occupiedFilterTeam = 'all';
+        let dealTypeFilterTeam = 'all';
+        let roomSearchFilterTeam = '';
+        let employeeSearchFilterTeam = '';
+        let currentTeamMaeiplePage = 1;
+        let teamMaeipePerPage = 20;
+        let teamMaeipleTotalPages = 0;
+        
+        // 팀장고객관리 관련 변수들
+        let teamCustomers = [];
+        let currentTeamCustomerPage = 1;
+        let teamCustomerPerPage = 20;
+        let teamCustomerTotalPages = 0;
+        let teamCustomerStatusFilter = 'all';
         
         // 사이트 전환 드롭다운 토글
         function toggleSiteSwitcher() {
@@ -891,28 +1797,158 @@
         // 페이지 로드 시 직원 목록 불러오기
         document.addEventListener('DOMContentLoaded', function() {
             showTab('employee');
+            updateUserInfo();
             loadEmployees();
+            
+            // 사용자 역할 확인하여 팀장 탭 표시
+            checkUserRoleAndShowTabs();
         });
         
-        // 직원 목록 불러오기
-        async function loadEmployees() {
+        // 사용자 정보 업데이트
+        async function updateUserInfo() {
             try {
-                const response = await fetch('/api/employees');
-                employees = await response.json();
+                const response = await fetch('/api/user-info');
+                if (response.ok) {
+                    const userInfo = await response.json();
+                    
+                    // 사용자 이름과 역할 업데이트
+                    const userNameElement = document.getElementById('user-name');
+                    const userRoleElement = document.getElementById('user-role');
+                    const userAvatarElement = document.getElementById('user-avatar');
+                    
+                    if (userNameElement) {
+                        userNameElement.textContent = userInfo.name || '사용자';
+                    }
+                    
+                    if (userRoleElement) {
+                        userRoleElement.textContent = userInfo.role || '직원';
+                    }
+                    
+                    if (userAvatarElement) {
+                        userAvatarElement.textContent = (userInfo.name || '사').charAt(0);
+                    }
+                }
+            } catch (error) {
+                console.error('사용자 정보 업데이트 오류:', error);
+            }
+        }
+        
+        // 사용자 역할 확인하여 탭 표시
+        async function checkUserRoleAndShowTabs() {
+            try {
+                // 세션 정보를 확인하기 위해 API 호출
+                const response = await fetch('/api/user-info');
+                if (response.ok) {
+                    const userInfo = await response.json();
+                    console.log('🔍 사용자 정보 확인:', userInfo);
+                    console.log('🔍 userInfo.role:', userInfo.role);
+                    console.log('🔍 userInfo.employee_role:', userInfo.employee_role);
+                    console.log('🔍 userInfo.role === "팀장":', userInfo.role === '팀장');
+                    console.log('🔍 userInfo.employee_role === "팀장":', userInfo.employee_role === '팀장');
+                    console.log('🔍 팀장 권한 확인 결과:', userInfo.role === '팀장' || userInfo.employee_role === '팀장');
+                    
+                    // 팀장인 경우에만 팀장메이플관리와 팀장고객관리 탭과 섹션 표시
+                    if (userInfo.role === '팀장' || userInfo.employee_role === '팀장') {
+                        const teamLeaderMaeipleNav = document.getElementById('team-leader-maeiple-nav');
+                        const teamLeaderCustomerNav = document.getElementById('team-leader-customer-nav');
+                        
+                        if (teamLeaderMaeipleNav) {
+                            teamLeaderMaeipleNav.style.display = 'flex';
+                        }
+                        if (teamLeaderCustomerNav) {
+                            teamLeaderCustomerNav.style.display = 'flex';
+                        }
+                    } else {
+                        // 관리자나 일반 직원인 경우 팀장 탭과 섹션들 숨김
+                        const teamLeaderMaeipleNav = document.getElementById('team-leader-maeiple-nav');
+                        const teamLeaderCustomerNav = document.getElementById('team-leader-customer-nav');
+                        
+                        if (teamLeaderMaeipleNav) {
+                            teamLeaderMaeipleNav.style.display = 'none';
+                        }
+                        if (teamLeaderCustomerNav) {
+                            teamLeaderCustomerNav.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('사용자 정보 확인 오류:', error);
+                // 오류 시에도 팀장 탭과 섹션들은 숨김 상태 유지
+                const teamLeaderMaeipleNav = document.getElementById('team-leader-maeiple-nav');
+                const teamLeaderCustomerNav = document.getElementById('team-leader-customer-nav');
+                
+                if (teamLeaderMaeipleNav) {
+                    teamLeaderMaeipleNav.style.display = 'none';
+                }
+                if (teamLeaderCustomerNav) {
+                    teamLeaderCustomerNav.style.display = 'none';
+                }
+            }
+        }
+        
+        // 직원 목록 불러오기
+        async function loadEmployees(page = 1) {
+            try {
+                currentEmployeePage = page;
+                const response = await fetch(`/api/employees?page=${page}&per_page=${employeePerPage}`);
+                const data = await response.json();
+                
+                employees = Array.isArray(data.employees) ? data.employees : [];
+                employeeTotalPages = data.total_pages || 0;
+                console.log(`직원 목록 로드: ${employees.length}개 (페이지 ${page}/${employeeTotalPages})`);
                 
                 displayEmployees(employees);
                 updateTeamFilter();
+                renderEmployeePagination();
             } catch (error) {
                 showAlert('직원 목록을 불러오는데 실패했습니다.', 'error');
             }
         }
         
+        // 역할별 배지 색상 설정
+        function getRoleBadgeColor(role) {
+            switch(role) {
+                case '팀장': return '#dcfce7';
+                case '직원': return '#f1f5f9';
+                default: return '#f1f5f9';
+            }
+        }
+
+        function getRoleTextColor(role) {
+            switch(role) {
+                case '팀장': return '#166534';
+                case '직원': return '#475569';
+                default: return '#475569';
+            }
+        }
+
+        // 팀별 배지 색상 설정
+        function getTeamBadgeColor(team) {
+            switch(team) {
+                case '빈시트': return '#e0f2fe';
+                case '위플러스': return '#f0fdf4';
+                case '반클리셰': return '#fef7cd';
+                case '대표': return '#fce7f3';
+                default: return '#f1f5f9';
+            }
+        }
+
+        function getTeamTextColor(team) {
+            switch(team) {
+                case '빈시트': return '#0c4a6e';
+                case '위플러스': return '#166534';
+                case '반클리셰': return '#a16207';
+                case '대표': return '#be185d';
+                default: return '#475569';
+            }
+        }
+
         // 직원 목록 표시
         function displayEmployees(employeeList) {
             const tbody = document.getElementById('employees-list');
             
             if (employeeList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">등록된 직원이 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">등록된 직원이 없습니다.</td></tr>';
                 return;
             }
             
@@ -920,7 +1956,16 @@
                 <tr>
                     <td><strong>${emp.employee_id}</strong></td>
                     <td>${emp.employee_name}</td>
-                    <td><span class="status-badge" style="background: #e0e7ff; color: #3730a3;">${emp.team}</span></td>
+                    <td>
+                        <span class="status-badge" style="background: ${getTeamBadgeColor(emp.team)}; color: ${getTeamTextColor(emp.team)};">
+                            ${emp.team || '미지정'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge" style="background: ${getRoleBadgeColor(emp.role)}; color: ${getRoleTextColor(emp.role)};">
+                            ${emp.role || '직원'}
+                        </span>
+                    </td>
                     <td>${emp.created_date}</td>
                     <td>
                         <span class="status-badge ${emp.is_active ? 'status-active' : 'status-inactive'}">
@@ -985,6 +2030,7 @@
                 employee_id: document.getElementById('employee_id').value,
                 employee_name: document.getElementById('employee_name').value,
                 team: document.getElementById('team').value,
+                role: document.getElementById('employee_role').value,
                 password: '1234'
             };
             
@@ -1119,9 +2165,130 @@
             }, 5000);
         }
 
+        function activateEmployeeTab(e) {
+            e.preventDefault();
+            showTab('employee');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('employee-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function activateMaeipeTab(e) {
+            e.preventDefault();
+            showTab('maeiple');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('maeiple-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // 메이플관리 데이터 로드
+            loadMaeipeProperties();
+        }
+
+        function activateTeamMaeipeTab(e) {
+            e.preventDefault();
+            showTab('team-maeiple');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('team-maeiple-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // 팀장메이플관리 데이터 로드
+            loadTeamMaeipeProperties();
+        }
+
+        function activateDashboardTab(e) {
+            e.preventDefault();
+            showTab('dashboard');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('dashboard-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // 고객 데이터 로드
+            loadAllCustomers();
+        }
+
+        function activateTeamLeaderCustomerTab(e) {
+            e.preventDefault();
+            showTab('team-leader-customer');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('team-leader-customer-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // 팀장 본인 고객 데이터 로드
+            loadTeamLeaderCustomers();
+        }
+
+        function activateTeamLeaderMaeipleTab(e) {
+            e.preventDefault();
+            showTab('team-leader-maeiple');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('team-leader-maeiple-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // 팀장 본인 매물 데이터 로드
+            loadTeamLeaderMaeiple();
+        }
+
+        function activateTeamCustomerTab(e) {
+            e.preventDefault();
+            showTab('team-customer');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
+            const section = document.getElementById('team-customer-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // 팀 전체 고객 데이터 로드
+            loadTeamCustomers();
+        }
+
         function activateGuaranteeTab(e) {
             e.preventDefault();
             showTab('guarantee');
+            
+            // 사이드바 active 상태 업데이트
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            e.target.closest('.nav-item').classList.add('active');
+            
             const section = document.getElementById('guarantee-section');
             if (section) {
                 section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1131,22 +2298,40 @@
         function showTab(tab) {
             const emp = document.getElementById('employee-section');
             const guar = document.getElementById('guarantee-section');
-            const tabEmp = document.getElementById('tab-employee');
-            const tabGuar = document.getElementById('tab-guarantee');
+            const maeiple = document.getElementById('maeiple-section');
+            const teamMaeiple = document.getElementById('team-maeiple-section');
+            const dashboard = document.getElementById('dashboard-section');
+            const teamCustomer = document.getElementById('team-customer-section');
+            const teamLeaderCustomer = document.getElementById('team-leader-customer-section');
+            const teamLeaderMaeiple = document.getElementById('team-leader-maeiple-section');
+            
+            // 모든 섹션 숨기기
+            emp.style.display = 'none';
+            guar.style.display = 'none';
+            maeiple.style.display = 'none';
+            teamMaeiple.style.display = 'none';
+            dashboard.style.display = 'none';
+            teamCustomer.style.display = 'none';
+            teamLeaderCustomer.style.display = 'none';
+            teamLeaderMaeiple.style.display = 'none';
+            
+            // 선택된 탭만 표시
             if(tab === 'employee') {
                 emp.style.display = '';
-                guar.style.display = 'none';
-                tabEmp.classList.add('btn-primary');
-                tabEmp.classList.remove('btn-secondary');
-                tabGuar.classList.add('btn-secondary');
-                tabGuar.classList.remove('btn-primary');
-            } else {
-                emp.style.display = 'none';
+            } else if(tab === 'guarantee') {
                 guar.style.display = '';
-                tabEmp.classList.remove('btn-primary');
-                tabEmp.classList.add('btn-secondary');
-                tabGuar.classList.remove('btn-secondary');
-                tabGuar.classList.add('btn-primary');
+            } else if(tab === 'maeiple') {
+                maeiple.style.display = '';
+            } else if(tab === 'team-maeiple') {
+                teamMaeiple.style.display = '';
+            } else if(tab === 'dashboard') {
+                dashboard.style.display = '';
+            } else if(tab === 'team-customer') {
+                teamCustomer.style.display = '';
+            } else if(tab === 'team-leader-customer') {
+                teamLeaderCustomer.style.display = '';
+            } else if(tab === 'team-leader-maeiple') {
+                teamLeaderMaeiple.style.display = '';
             }
         }
 
@@ -1158,6 +2343,1486 @@
                 card.style.display = 'none';
             }
         }
+
+        // ==================== 메이플관리 관련 함수들 ====================
+        
+        // 매물 목록 조회
+        async function loadMaeipeProperties(page = 1) {
+            try {
+                currentMaeiplePage = page;
+                const url = `/api/maeiple?sort_by=${currentSortBy}&sort_order=${currentSortOrder}&page=${page}&per_page=${maeipePerPage}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    properties = data.properties;
+                    maeipleTotalPages = data.total_pages || 0;
+                    console.log(`메이플관리 매물 로드: ${properties.length}개 (페이지 ${page}/${maeipleTotalPages})`);
+                    updateAdminFilters(); // 담당자 및 팀 필터 업데이트
+                    renderMaeipeProperties();
+                    renderMaeipePagination();
+                } else {
+                    showMaeipeError('매물 목록을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMaeipeError('매물 목록을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 매물 목록 렌더링
+        function renderMaeipeProperties() {
+            const tableContent = document.getElementById('maeiple-table-content');
+            
+            // 필터 적용
+            let list = Array.isArray(properties) ? properties.slice() : [];
+            
+            // 현황 필터
+            if (statusFilter !== 'all') {
+                list = list.filter(p => (p.status || '') === statusFilter);
+            }
+            
+            // 실거주 필터
+            if (occupiedFilter !== 'all') {
+                const want = occupiedFilter === 'O';
+                list = list.filter(p => !!p.is_occupied === want);
+            }
+            
+            // 거래유형 필터 (관리자용)
+            if (dealTypeFilterAdmin !== 'all') {
+                list = list.filter(p => {
+                    if (dealTypeFilterAdmin === '전세') {
+                        const jeonsePrice = parseInt(String(p.jeonse_price || '0').replace(/[^\d]/g, '')) || 0;
+                        return jeonsePrice > 0;
+                    } else if (dealTypeFilterAdmin === '월세') {
+                        const monthlyRent = parseInt(String(p.monthly_rent || '0').replace(/[^\d]/g, '')) || 0;
+                        return monthlyRent > 0;
+                    } else if (dealTypeFilterAdmin === '매매') {
+                        const salePrice = parseInt(String(p.sale_price || '0').replace(/[^\d]/g, '')) || 0;
+                        return salePrice > 0;
+                    }
+                    return true;
+                });
+            }
+            
+            // 호수 검색 필터 (관리자용)
+            if (roomSearchFilterAdmin.trim()) {
+                const searchTerm = roomSearchFilterAdmin.trim().toLowerCase();
+                list = list.filter(p => {
+                    const roomNumber = String(p.room_number || '').toLowerCase();
+                    return roomNumber.includes(searchTerm);
+                });
+            }
+            
+            // 담당자 검색 필터 (관리자용)
+            if (employeeSearchFilterAdmin.trim()) {
+                const searchTerm = employeeSearchFilterAdmin.trim().toLowerCase();
+                list = list.filter(p => {
+                    const employeeName = String(p.employee_name || '').toLowerCase();
+                    return employeeName.includes(searchTerm);
+                });
+            }
+            
+            // 팀 필터 (관리자용)
+            if (teamFilterAdmin !== 'all') {
+                list = list.filter(p => (p.employee_team || '') === teamFilterAdmin);
+            }
+            
+            if (list.length === 0) {
+                tableContent.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">🏢</div>
+                        <p>조건에 맞는 매물이 없습니다.</p>
+                        <p>필터를 변경하거나 새 매물을 추가해보세요.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let tableHTML = `
+                <table class="employees-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <div style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;" onclick="toggleSort('check_date')">
+                                    확인날짜
+                                    <span style="font-size: 12px; color: #9ca3af;">${currentSortBy === 'check_date' ? (currentSortOrder === 'desc' ? '▼' : '▲') : '↕️'}</span>
+                                </div>
+                            </th>
+                            <th>동</th>
+                            <th>호수</th>
+                            <th>현황</th>
+                            <th>전세 (만원)</th>
+                            <th>월세보증금 (만원)</th>
+                            <th>월세 (만원)</th>
+                            <th>매매 (만원)</th>
+                            <th>실거주 여부</th>
+                            <th>전화번호</th>
+                            <th>특이사항</th>
+                            <th>담당자</th>
+                            <th>팀</th>
+                            <th>좋아요</th>
+                            <th>싫어요</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            list.forEach(property => {
+                const memoPreview = property.memo ? (property.memo.length > 20 ? property.memo.substring(0, 20) + '...' : property.memo) : '';
+                
+                tableHTML += `
+                    <tr data-property-id="${property.id}">
+                        <td style="cursor: pointer;" onclick="editDate(${property.id}, '${property.check_date || ''}', this)">${property.check_date || ''}</td>
+                        <td style="cursor: pointer;" onclick="editNumber(${property.id}, 'building_number', '${property.building_number || ''}', this)">${property.building_number || ''}</td>
+                        <td style="cursor: pointer;" onclick="editNumber(${property.id}, 'room_number', '${property.room_number || ''}', this)">${property.room_number || ''}</td>
+                        <td>
+                            <button style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; ${property.status === '계약완료' ? 'background: #d1fae5; color: #065f46;' : property.status === '보류' ? 'background: #fef3c7; color: #92400e;' : property.status === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 'background: #e0f2fe; color: #0369a1;'}" 
+                                    onclick="showStatusOptions(${property.id}, '${property.status || '거래가능'}', this)">
+                                ${property.status || '거래가능'}
+                            </button>
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editPrice(${property.id}, 'jeonse_price', '${property.jeonse_price || ''}', this)">
+                            ${property.jeonse_price ? formatNumber(property.jeonse_price) + ' 만원' : '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editPrice(${property.id}, 'deposit', '${property.deposit || ''}', this)">
+                            ${property.deposit ? formatNumber(property.deposit) + ' 만원' : '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editPrice(${property.id}, 'monthly_rent', '${property.monthly_rent || ''}', this)">
+                            ${property.monthly_rent ? formatNumber(property.monthly_rent) + ' 만원' : '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editPrice(${property.id}, 'sale_price', '${property.sale_price || ''}', this)">
+                            ${property.sale_price ? formatNumber(property.sale_price) + ' 만원' : '-'}
+                        </td>
+                        <td>
+                            <button style="background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px; border-radius: 4px; color: ${property.is_occupied ? '#059669' : '#dc2626'};" 
+                                    onclick="toggleOccupied(${property.id}, ${property.is_occupied})">
+                                ${property.is_occupied ? 'O' : 'X'}
+                            </button>
+                        </td>
+                        <td style="cursor: pointer; font-family: monospace; letter-spacing: 0.5px; max-width: 120px; overflow: hidden; text-overflow: ellipsis;" onclick="editPhone(${property.id}, '${property.phone || ''}', this)">
+                            ${property.phone || '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #64748b; font-style: italic; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="showMemoModal(${property.id}, '${property.memo || ''}')">
+                            ${memoPreview || '메모 추가...'}
+                        </td>
+                        <td>
+                            <span style="color: #4f46e5; font-weight: 500;">
+                                ${property.employee_name || '미지정'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge" style="background: ${getTeamBadgeColor(property.employee_team)}; color: ${getTeamTextColor(property.employee_team)};">
+                                ${property.employee_team || '미지정'}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="cursor: pointer;" onclick="showLikeOptions(${property.id}, ${property.likes}, this)">
+                                ${'❤️'.repeat(property.likes)}${property.likes === 0 ? '🤍' : ''}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="cursor: pointer;" onclick="showDislikeOptions(${property.id}, ${property.dislikes}, this)">
+                                ${'👎'.repeat(property.dislikes)}${property.dislikes === 0 ? '🤍' : ''}
+                            </div>
+                        </td>
+
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            tableContent.innerHTML = tableHTML;
+        }
+
+        // 정렬 기능
+        async function toggleSort(field) {
+            if (currentSortBy === field) {
+                currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSortBy = field;
+                currentSortOrder = 'desc';
+            }
+            await loadMaeipeProperties();
+        }
+        
+        // 팀장용 정렬 기능
+        async function toggleTeamSort(field) {
+            if (currentTeamSortBy === field) {
+                currentTeamSortOrder = currentTeamSortOrder === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentTeamSortBy = field;
+                currentTeamSortOrder = 'desc';
+            }
+            await loadTeamMaeipeProperties();
+        }
+
+        // 숫자 3자리 콤마
+        function formatNumber(val) {
+            const n = typeof val === 'number' ? val : parseInt(String(val).replace(/[^\d-]/g, ''), 10);
+            if (isNaN(n)) return '';
+            return n.toLocaleString('ko-KR');
+        }
+
+        // 필터 핸들러
+        function setStatusFilter(value, btn) {
+            statusFilter = value;
+            document.querySelectorAll('#status-filter-group .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderMaeipeProperties();
+        }
+
+        function setOccupiedFilter(value, btn) {
+            occupiedFilter = value;
+            document.querySelectorAll('#occupied-filter-group .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderMaeipeProperties();
+        }
+        
+        // 관리자용 거래유형 필터
+        function setDealTypeFilterAdmin(value, btn) {
+            dealTypeFilterAdmin = value;
+            document.querySelectorAll('#deal-type-filter-group-admin .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderMaeipeProperties();
+        }
+        
+        // 관리자용 호수 검색 필터
+        function filterByRoomAdmin(searchValue) {
+            roomSearchFilterAdmin = searchValue;
+            renderMaeipeProperties();
+        }
+        
+        // 관리자용 담당자 검색 필터
+        function filterByEmployeeAdmin(searchValue) {
+            employeeSearchFilterAdmin = searchValue;
+            renderMaeipeProperties();
+        }
+        
+        // 관리자용 팀 필터
+        function setTeamFilterAdmin(value, btn) {
+            teamFilterAdmin = value;
+            document.querySelectorAll('#team-filter-group-admin .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderMaeipeProperties();
+        }
+        
+        // 관리자용 팀 필터 업데이트
+        function updateAdminFilters() {
+            // 팀 필터 업데이트
+            const teamFilterGroup = document.getElementById('team-filter-group-admin');
+            const teamFilterButtons = teamFilterGroup.querySelector('.filter-buttons');
+            
+            // 현재 매물 목록에서 팀들 추출
+            const teams = [...new Set(properties.map(p => p.employee_team).filter(team => team))];
+            
+            // 전체 버튼 + 개별 팀 버튼들
+            let teamButtonsHTML = `
+                <button class="filter-btn ${teamFilterAdmin === 'all' ? 'active' : ''}" data-value="all" onclick="setTeamFilterAdmin('all', this)" 
+                        style="padding: 6px 10px; border: 1px solid #e2e8f0; background: ${teamFilterAdmin === 'all' ? '#e0e7ff' : '#ffffff'}; color: ${teamFilterAdmin === 'all' ? '#4338ca' : '#334155'}; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: ${teamFilterAdmin === 'all' ? '600' : 'normal'};">전체</button>
+            `;
+            
+            teams.forEach(team => {
+                const isActive = teamFilterAdmin === team;
+                teamButtonsHTML += `
+                    <button class="filter-btn ${isActive ? 'active' : ''}" data-value="${team}" onclick="setTeamFilterAdmin('${team}', this)"
+                            style="padding: 6px 10px; border: 1px solid #e2e8f0; background: ${isActive ? '#e0e7ff' : '#ffffff'}; color: ${isActive ? '#4338ca' : '#334155'}; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: ${isActive ? '600' : 'normal'};">${team}</button>
+                `;
+            });
+            
+            teamFilterButtons.innerHTML = teamButtonsHTML;
+        }
+        
+        // 팀장용 매물 로드
+        async function loadTeamMaeipeProperties(page = 1) {
+            try {
+                currentTeamMaeiplePage = page;
+                const url = `/api/maeiple/team?sort_by=${currentTeamSortBy}&sort_order=${currentTeamSortOrder}&page=${page}&per_page=${teamMaeipePerPage}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    teamProperties = data.properties;
+                    teamMaeipleTotalPages = data.total_pages || 0;
+                    console.log(`팀장용 매물 로드: ${teamProperties.length}개 (페이지 ${page}/${teamMaeipleTotalPages})`);
+                    
+                    // 팀장용 메이플관리 통계 업데이트
+                    updateTeamMaeipleStats(data);
+                    
+                    renderTeamMaeipeProperties();
+                    updateTeamEmployeeFilter(); // 담당자 필터 업데이트
+                    renderTeamMaeipePagination();
+                } else {
+                    showTeamMaeipeError('팀 매물 목록을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showTeamMaeipeError('팀 매물 목록을 불러오는데 실패했습니다.');
+            }
+        }
+        
+        // 팀장용 매물 렌더링
+        function renderTeamMaeipeProperties() {
+            const tableContent = document.getElementById('team-maeiple-table-content');
+            
+            // 필터 적용
+            let list = Array.isArray(teamProperties) ? teamProperties.slice() : [];
+            
+            // 현황 필터
+            if (statusFilterTeam !== 'all') {
+                list = list.filter(p => (p.status || '') === statusFilterTeam);
+            }
+            
+            // 실거주 필터
+            if (occupiedFilterTeam !== 'all') {
+                const want = occupiedFilterTeam === 'O';
+                list = list.filter(p => !!p.is_occupied === want);
+            }
+            
+            // 거래유형 필터
+            if (dealTypeFilterTeam !== 'all') {
+                list = list.filter(p => {
+                    if (dealTypeFilterTeam === '전세') {
+                        const jeonsePrice = parseInt(String(p.jeonse_price || '0').replace(/[^\d]/g, '')) || 0;
+                        return jeonsePrice > 0;
+                    } else if (dealTypeFilterTeam === '월세') {
+                        const monthlyRent = parseInt(String(p.monthly_rent || '0').replace(/[^\d]/g, '')) || 0;
+                        return monthlyRent > 0;
+                    } else if (dealTypeFilterTeam === '매매') {
+                        const salePrice = parseInt(String(p.sale_price || '0').replace(/[^\d]/g, '')) || 0;
+                        return salePrice > 0;
+                    }
+                    return true;
+                });
+            }
+            
+            // 호수 검색 필터
+            if (roomSearchFilterTeam.trim()) {
+                const searchTerm = roomSearchFilterTeam.trim().toLowerCase();
+                list = list.filter(p => {
+                    const roomNumber = String(p.room_number || '').toLowerCase();
+                    return roomNumber.includes(searchTerm);
+                });
+            }
+            
+            // 담당자 검색 필터
+            if (employeeSearchFilterTeam.trim()) {
+                const searchTerm = employeeSearchFilterTeam.trim().toLowerCase();
+                list = list.filter(p => {
+                    const employeeName = String(p.employee_name || '').toLowerCase();
+                    return employeeName.includes(searchTerm);
+                });
+            }
+            
+            if (list.length === 0) {
+                tableContent.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">👥🏢</div>
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">우리팀 매물이 없습니다</div>
+                        <div style="font-size: 14px; opacity: 0.7;">새 매물을 추가해보세요.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let tableHTML = `
+                <table class="employees-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <div style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;" onclick="toggleTeamSort('check_date')">
+                                    확인날짜
+                                    <span style="font-size: 12px; color: #9ca3af;">${currentTeamSortBy === 'check_date' ? (currentTeamSortOrder === 'desc' ? '▼' : '▲') : '↕️'}</span>
+                                </div>
+                            </th>
+                            <th>동</th>
+                            <th>호수</th>
+                            <th>현황</th>
+                            <th>전세 (만원)</th>
+                            <th>월세보증금 (만원)</th>
+                            <th>월세 (만원)</th>
+                            <th>매매 (만원)</th>
+                            <th>실거주 여부</th>
+                            <th>전화번호</th>
+                            <th>특이사항</th>
+                            <th>담당자</th>
+                            <th>팀</th>
+                            <th>좋아요</th>
+                            <th>싫어요</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            list.forEach(property => {
+                const memoPreview = property.memo ? (property.memo.length > 20 ? property.memo.substring(0, 20) + '...' : property.memo) : '';
+                
+                tableHTML += `
+                    <tr data-property-id="${property.id}">
+                        <td style="cursor: pointer;" onclick="editTeamDate(${property.id}, '${property.check_date || ''}', this)">${property.check_date || ''}</td>
+                        <td style="cursor: pointer;" onclick="editTeamNumber(${property.id}, 'building_number', '${property.building_number || ''}', this)">${property.building_number || ''}</td>
+                        <td style="cursor: pointer;" onclick="editTeamNumber(${property.id}, 'room_number', '${property.room_number || ''}', this)">${property.room_number || ''}</td>
+                        <td>
+                            <button style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; ${property.status === '계약완료' ? 'background: #d1fae5; color: #065f46;' : property.status === '보류' ? 'background: #fef3c7; color: #92400e;' : property.status === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 'background: #e0f2fe; color: #0369a1;'}" 
+                                    onclick="showTeamStatusOptions(${property.id}, '${property.status || '거래가능'}', this)">
+                                ${property.status || '거래가능'}
+                            </button>
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editTeamPrice(${property.id}, 'jeonse_price', '${property.jeonse_price || ''}', this)">
+                            ${property.jeonse_price ? formatNumber(property.jeonse_price) + ' 만원' : '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editTeamPrice(${property.id}, 'deposit', '${property.deposit || ''}', this)">
+                            ${property.deposit ? formatNumber(property.deposit) + ' 만원' : '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editTeamPrice(${property.id}, 'monthly_rent', '${property.monthly_rent || ''}', this)">
+                            ${property.monthly_rent ? formatNumber(property.monthly_rent) + ' 만원' : '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #2563eb; font-weight: 500;" onclick="editTeamPrice(${property.id}, 'sale_price', '${property.sale_price || ''}', this)">
+                            ${property.sale_price ? formatNumber(property.sale_price) + ' 만원' : '-'}
+                        </td>
+                        <td>
+                            <button style="background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px; border-radius: 4px; color: ${property.is_occupied ? '#059669' : '#dc2626'};" 
+                                    onclick="toggleTeamOccupied(${property.id}, ${property.is_occupied})">
+                                ${property.is_occupied ? 'O' : 'X'}
+                            </button>
+                        </td>
+                        <td style="cursor: pointer; font-family: monospace; letter-spacing: 0.5px; max-width: 120px; overflow: hidden; text-overflow: ellipsis;" onclick="editTeamPhone(${property.id}, '${property.phone || ''}', this)">
+                            ${property.phone || '-'}
+                        </td>
+                        <td style="cursor: pointer; color: #64748b; font-style: italic; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="showMemoModal(${property.id}, '${property.memo || ''}')">
+                            ${memoPreview || '메모 추가...'}
+                        </td>
+                        <td>
+                            <span style="color: #4f46e5; font-weight: 500;">
+                                ${property.employee_name || '미지정'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge" style="background: ${getTeamBadgeColor(property.employee_team)}; color: ${getTeamTextColor(property.employee_team)};">
+                                ${property.employee_team || '미지정'}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="cursor: pointer;" onclick="showLikeOptions(${property.id}, ${property.likes}, this)">
+                                ${'❤️'.repeat(property.likes)}${property.likes === 0 ? '🤍' : ''}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="cursor: pointer;" onclick="showDislikeOptions(${property.id}, ${property.dislikes}, this)">
+                                ${'👎'.repeat(property.dislikes)}${property.dislikes === 0 ? '🤍' : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            tableContent.innerHTML = tableHTML;
+        }
+        
+
+        
+        // 팀장용 필터 함수들
+        function setStatusFilterTeam(value, btn) {
+            statusFilterTeam = value;
+            document.querySelectorAll('#status-filter-group-team .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderTeamMaeipeProperties();
+        }
+        
+        function setOccupiedFilterTeam(value, btn) {
+            occupiedFilterTeam = value;
+            document.querySelectorAll('#occupied-filter-group-team .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderTeamMaeipeProperties();
+        }
+        
+        function setDealTypeFilterTeam(value, btn) {
+            dealTypeFilterTeam = value;
+            document.querySelectorAll('#deal-type-filter-group-team .filter-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = '#ffffff';
+                b.style.color = '#334155';
+                b.style.fontWeight = 'normal';
+            });
+            btn.classList.add('active');
+            btn.style.background = '#e0e7ff';
+            btn.style.color = '#4338ca';
+            btn.style.fontWeight = '600';
+            renderTeamMaeipeProperties();
+        }
+        
+        function filterByRoomTeam(searchValue) {
+            roomSearchFilterTeam = searchValue;
+            renderTeamMaeipeProperties();
+        }
+        
+        // 팀장용 담당자 검색 필터
+        function filterByEmployeeTeam(searchValue) {
+            employeeSearchFilterTeam = searchValue;
+            renderTeamMaeipeProperties();
+        }
+        
+        function showTeamMaeipeError(message) {
+            const tableContent = document.getElementById('team-maeiple-table-content');
+            tableContent.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #ef4444;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <div style="font-size: 16px; font-weight: 600;">${message}</div>
+                </div>
+            `;
+        }
+        
+        // 고객관리 페이지네이션 렌더링
+        function renderCustomerPagination() {
+            const paginationDiv = document.getElementById('customer-pagination');
+            if (!paginationDiv || customerTotalPages <= 1) {
+                if (paginationDiv) paginationDiv.style.display = 'none';
+                return;
+            }
+            
+            paginationDiv.style.display = 'flex';
+            let paginationHTML = '';
+            
+            // 이전 페이지 버튼
+            if (currentCustomerPage > 1) {
+                paginationHTML += `<button onclick="loadAllCustomers(${currentCustomerPage - 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">이전</button>`;
+            }
+            
+            // 페이지 번호 버튼들 (최대 7개 표시)
+            const startPage = Math.max(1, currentCustomerPage - 3);
+            const endPage = Math.min(customerTotalPages, startPage + 6);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentCustomerPage;
+                paginationHTML += `
+                    <button onclick="loadAllCustomers(${i})" 
+                            style="padding: 8px 12px; border: 1px solid ${isActive ? '#3b82f6' : '#d1d5db'}; 
+                                   background: ${isActive ? '#3b82f6' : '#f9fafb'}; color: ${isActive ? 'white' : '#374151'}; 
+                                   border-radius: 6px; cursor: pointer; font-weight: ${isActive ? '600' : 'normal'};">
+                        ${i}
+                    </button>
+                `;
+            }
+            
+            // 다음 페이지 버튼
+            if (currentCustomerPage < customerTotalPages) {
+                paginationHTML += `<button onclick="loadAllCustomers(${currentCustomerPage + 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">다음</button>`;
+            }
+            
+            paginationDiv.innerHTML = paginationHTML;
+        }
+        
+        // 직원관리 페이지네이션 렌더링
+        function renderEmployeePagination() {
+            const paginationDiv = document.getElementById('employee-pagination');
+            if (!paginationDiv || employeeTotalPages <= 1) {
+                if (paginationDiv) paginationDiv.style.display = 'none';
+                return;
+            }
+            
+            paginationDiv.style.display = 'flex';
+            let paginationHTML = '';
+            
+            // 이전 페이지 버튼
+            if (currentEmployeePage > 1) {
+                paginationHTML += `<button onclick="loadEmployees(${currentEmployeePage - 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">이전</button>`;
+            }
+            
+            // 페이지 번호 버튼들 (최대 7개 표시)
+            const startPage = Math.max(1, currentEmployeePage - 3);
+            const endPage = Math.min(employeeTotalPages, startPage + 6);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentEmployeePage;
+                paginationHTML += `
+                    <button onclick="loadEmployees(${i})" 
+                            style="padding: 8px 12px; border: 1px solid ${isActive ? '#3b82f6' : '#d1d5db'}; 
+                                   background: ${isActive ? '#3b82f6' : '#f9fafb'}; color: ${isActive ? 'white' : '#374151'}; 
+                                   border-radius: 6px; cursor: pointer; font-weight: ${isActive ? '600' : 'normal'};">
+                        ${i}
+                    </button>
+                `;
+            }
+            
+            // 다음 페이지 버튼
+            if (currentEmployeePage < employeeTotalPages) {
+                paginationHTML += `<button onclick="loadEmployees(${currentEmployeePage + 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">다음</button>`;
+            }
+            
+            paginationDiv.innerHTML = paginationHTML;
+        }
+        
+        // 메이플관리 페이지네이션 렌더링
+        function renderMaeipePagination() {
+            const paginationDiv = document.getElementById('maeiple-pagination');
+            if (!paginationDiv || maeipleTotalPages <= 1) {
+                if (paginationDiv) paginationDiv.style.display = 'none';
+                return;
+            }
+            
+            paginationDiv.style.display = 'flex';
+            let paginationHTML = '';
+            
+            // 이전 페이지 버튼
+            if (currentMaeiplePage > 1) {
+                paginationHTML += `<button onclick="loadMaeipeProperties(${currentMaeiplePage - 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">이전</button>`;
+            }
+            
+            // 페이지 번호 버튼들 (최대 7개 표시)
+            const startPage = Math.max(1, currentMaeiplePage - 3);
+            const endPage = Math.min(maeipleTotalPages, startPage + 6);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentMaeiplePage;
+                paginationHTML += `
+                    <button onclick="loadMaeipeProperties(${i})" 
+                            style="padding: 8px 12px; border: 1px solid ${isActive ? '#3b82f6' : '#d1d5db'}; 
+                                   background: ${isActive ? '#3b82f6' : '#f9fafb'}; color: ${isActive ? 'white' : '#374151'}; 
+                                   border-radius: 6px; cursor: pointer; font-weight: ${isActive ? '600' : 'normal'};">
+                        ${i}
+                    </button>
+                `;
+            }
+            
+            // 다음 페이지 버튼
+            if (currentMaeiplePage < maeipleTotalPages) {
+                paginationHTML += `<button onclick="loadMaeipeProperties(${currentMaeiplePage + 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">다음</button>`;
+            }
+            
+            paginationDiv.innerHTML = paginationHTML;
+        }
+        
+        // 팀장용 메이플관리 페이지네이션 렌더링
+        function renderTeamMaeipePagination() {
+            const paginationDiv = document.getElementById('team-maeiple-pagination');
+            if (!paginationDiv || teamMaeipleTotalPages <= 1) {
+                if (paginationDiv) paginationDiv.style.display = 'none';
+                return;
+            }
+            
+            paginationDiv.style.display = 'flex';
+            let paginationHTML = '';
+            
+            // 이전 페이지 버튼
+            if (currentTeamMaeiplePage > 1) {
+                paginationHTML += `<button onclick="loadTeamMaeipeProperties(${currentTeamMaeiplePage - 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">이전</button>`;
+            }
+            
+            // 페이지 번호 버튼들 (최대 7개 표시)
+            const startPage = Math.max(1, currentTeamMaeiplePage - 3);
+            const endPage = Math.min(teamMaeipleTotalPages, startPage + 6);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentTeamMaeiplePage;
+                paginationHTML += `
+                    <button onclick="loadTeamMaeipeProperties(${i})" 
+                            style="padding: 8px 12px; border: 1px solid ${isActive ? '#3b82f6' : '#d1d5db'}; 
+                                   background: ${isActive ? '#3b82f6' : '#f9fafb'}; color: ${isActive ? 'white' : '#374151'}; 
+                                   border-radius: 6px; cursor: pointer; font-weight: ${isActive ? '600' : 'normal'};">
+                        ${i}
+                    </button>
+                `;
+            }
+            
+            // 다음 페이지 버튼
+            if (currentTeamMaeiplePage < teamMaeipleTotalPages) {
+                paginationHTML += `<button onclick="loadTeamMaeipeProperties(${currentTeamMaeiplePage + 1})" style="padding: 8px 12px; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 6px; cursor: pointer; color: #374151;">다음</button>`;
+            }
+            
+            paginationDiv.innerHTML = paginationHTML;
+        }
+
+        // 메모 모달 관련 함수들
+        function showMemoModal(id, memo) {
+            currentMemoId = id;
+            document.getElementById('memoTextarea').value = memo;
+            document.getElementById('memoModal').style.display = 'block';
+        }
+
+        function closeMemoModal() {
+            document.getElementById('memoModal').style.display = 'none';
+            currentMemoId = null;
+        }
+
+        async function saveMemo() {
+            if (!currentMemoId) return;
+            
+            const memo = document.getElementById('memoTextarea').value;
+            
+            try {
+                const response = await fetch('/api/maeiple/memo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: currentMemoId,
+                        memo: memo
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const property = properties.find(p => p.id === currentMemoId);
+                    if (property) {
+                        property.memo = memo;
+                    }
+                    closeMemoModal();
+                    renderMaeipeProperties();
+                    showMaeipeSuccess('메모가 저장되었습니다.');
+                } else {
+                    showMaeipeError('메모 저장에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMaeipeError('메모 저장에 실패했습니다.');
+            }
+        }
+
+        // 에러/성공 메시지 표시
+        function showMaeipeError(message) {
+            alert('❌ ' + message);
+        }
+
+        function showMaeipeSuccess(message) {
+            alert('✅ ' + message);
+        }
+
+        // 임시 구현 - 나머지 함수들은 필요시 추가
+        function addNewPropertyRow() { alert('새 매물 추가 기능은 준비 중입니다.'); }
+        function editDate(id, value, cell) { alert('날짜 편집 기능은 준비 중입니다.'); }
+        function editNumber(id, field, value, cell) { alert('숫자 편집 기능은 준비 중입니다.'); }
+        function editPrice(id, field, value, cell) { alert('가격 편집 기능은 준비 중입니다.'); }
+        function editPhone(id, value, cell) { alert('전화번호 편집 기능은 준비 중입니다.'); }
+        function showStatusOptions(id, status, btn) { alert('상태 변경 기능은 준비 중입니다.'); }
+        function toggleOccupied(id, occupied) { alert('실거주 변경 기능은 준비 중입니다.'); }
+        function showLikeOptions(id, likes, element) { alert('좋아요 기능은 준비 중입니다.'); }
+        function showDislikeOptions(id, dislikes, element) { alert('싫어요 기능은 준비 중입니다.'); }
+        function deleteProperty(id) { alert('삭제 기능은 준비 중입니다.'); }
+
+        // ==================== 고객 관리 관련 함수들 ====================
+        
+        let allCustomers = [];
+        let filteredCustomers = [];
+        let currentCustomerFilter = 'all';
+        let currentEmployeeFilter = 'all';
+        let currentCustomerPage = 1;
+        let customerPerPage = 20;
+        let customerTotalPages = 0;
+
+        // 모든 고객 목록 조회 (관리자용 - 모든 직원의 고객 통합)
+        async function loadAllCustomers(page = 1) {
+            try {
+                currentCustomerPage = page;
+                const response = await fetch(`/api/customers?all_employees=true&page=${page}&per_page=${customerPerPage}`);
+                const data = await response.json();
+                
+                allCustomers = Array.isArray(data.customers) ? data.customers : [];
+                customerTotalPages = data.total_pages || 0;
+                console.log(`전체 고객 목록 로드: ${allCustomers.length}개 (페이지 ${page}/${customerTotalPages})`);
+                
+                // 직원 필터 옵션 업데이트
+                updateEmployeeFilter();
+                
+                // 고객 목록 렌더링
+                applyCustomerFilters();
+                updateCustomerStats();
+                renderCustomerPagination();
+                
+            } catch (error) {
+                console.error('고객 목록 로드 오류:', error);
+                showCustomerError('고객 목록을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 직원 필터 옵션 업데이트
+        function updateEmployeeFilter() {
+            const select = document.getElementById('employee-filter');
+            const employees = [...new Set(allCustomers.map(c => c.employee_name || c.employee_id).filter(Boolean))];
+            
+            select.innerHTML = '<option value="all">전체 직원</option>';
+            employees.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp;
+                option.textContent = emp;
+                select.appendChild(option);
+            });
+        }
+
+        // 고객 필터 적용
+        function applyCustomerFilters() {
+            filteredCustomers = allCustomers.slice();
+            
+            // 상태 필터 (progress_status 필드 사용)
+            if (currentCustomerFilter !== 'all') {
+                filteredCustomers = filteredCustomers.filter(c => (c.progress_status || '상담중') === currentCustomerFilter);
+            }
+            
+            // 직원 필터
+            if (currentEmployeeFilter !== 'all') {
+                filteredCustomers = filteredCustomers.filter(c => 
+                    (c.employee_name || c.employee_id) === currentEmployeeFilter
+                );
+            }
+            
+            renderCustomerTable();
+        }
+
+        // 고객 테이블 렌더링
+        function renderCustomerTable() {
+            const tableContent = document.getElementById('customer-table-content');
+            
+            if (filteredCustomers.length === 0) {
+                tableContent.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;">👥</div>
+                        <p>조건에 맞는 고객이 없습니다.</p>
+                        <p>필터를 변경하거나 새 고객을 추가해보세요.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let tableHTML = `
+                <table class="employees-table">
+                    <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>입주</th>
+                            <th>고객</th>
+                            <th>고객번호</th>
+                            <th>금액</th>
+                            <th>룸수</th>
+                            <th>위치</th>
+                            <th>대출여부</th>
+                            <th>주차</th>
+                            <th>애완</th>
+                            <th>메모</th>
+                            <th>진행여부</th>
+                            <th>주거사이트</th>
+                            <th>업무사이트</th>
+                            <th>담당자</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            filteredCustomers.forEach(customer => {
+                const statusClass = customer.progress_status === '계약' ? 'status-complete' : 
+                                   customer.progress_status === '보류' ? 'status-hold' : 'status-progress';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${customer.inquiry_date || '-'}</td>
+                        <td>${customer.move_in_date || '-'}</td>
+                        <td style="font-weight: 600;">${customer.customer_name || '-'}</td>
+                        <td style="font-family: monospace;">${customer.phone || '-'}</td>
+                        <td style="font-weight: 600; color: #059669;">${customer.budget ? customer.budget + '만원' : '-'}</td>
+                        <td>${customer.rooms || '-'}</td>
+                        <td>${customer.location || '-'}</td>
+                        <td>${customer.loan_needed ? 'O' : 'X'}</td>
+                        <td>${customer.parking_needed ? 'O' : 'X'}</td>
+                        <td>${customer.pet_allowed ? 'O' : 'X'}</td>
+                        <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${customer.memo || ''}">${customer.memo || '-'}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">
+                                ${customer.progress_status || '상담중'}
+                            </span>
+                        </td>
+                        <td>
+                            ${customer.residence_site_id ? `<a href="http://localhost:5000/?management_site_id=${customer.residence_site_id}" target="_blank" class="site-link">주거사이트</a>` : '-'}
+                        </td>
+                        <td>
+                            ${customer.office_site_id ? `<a href="http://localhost:5001/?management_site_id=${customer.office_site_id}" target="_blank" class="site-link">업무사이트</a>` : '-'}
+                        </td>
+                        <td style="font-weight: 500; color: #6366f1;">${customer.employee_name || customer.employee_id || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            tableContent.innerHTML = tableHTML;
+        }
+
+        // 고객 통계 업데이트
+        function updateCustomerStats() {
+            const total = allCustomers.length;
+            const progress = allCustomers.filter(c => (c.progress_status || '상담중') === '상담중').length;
+            const completed = allCustomers.filter(c => (c.progress_status || '') === '계약').length;
+            
+            // 이번 주 신규 고객 (7일 이내)
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const newCustomers = allCustomers.filter(c => {
+                if (!c.date) return false;
+                const customerDate = new Date(c.date);
+                return customerDate >= weekAgo;
+            }).length;
+
+            document.getElementById('total-customers-admin').textContent = total;
+            document.getElementById('progress-customers-admin').textContent = progress;
+            document.getElementById('completed-customers-admin').textContent = completed;
+            document.getElementById('new-customers-admin').textContent = newCustomers;
+        }
+
+        // 고객 상태 필터
+        function setCustomerFilter(status, btn) {
+            currentCustomerFilter = status;
+            
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.customer-filter-btn').forEach(b => {
+                b.style.background = 'white';
+                b.style.color = '#64748b';
+            });
+            btn.style.background = '#6366f1';
+            btn.style.color = 'white';
+            
+            applyCustomerFilters();
+        }
+
+        // 직원 필터
+        function filterByEmployee() {
+            const select = document.getElementById('employee-filter');
+            currentEmployeeFilter = select.value;
+            applyCustomerFilters();
+        }
+
+        // 에러 메시지 표시
+        function showCustomerError(message) {
+            alert('❌ ' + message);
+        }
+
+        // 임시 구현
+        function addNewCustomerRow() { alert('고객 추가 기능은 준비 중입니다.'); }
+        function editCustomer(id) { alert('고객 편집 기능은 준비 중입니다.'); }
+
+        // 팀장용 메이플관리 통계 업데이트
+        function updateTeamMaeipleStats(data) {
+            const properties = data.properties || [];
+            const total = properties.length;
+            
+            // 상태별 개수 계산
+            const statusCounts = {
+                '거래중': 0,
+                '거래완료': 0,
+                '보류': 0,
+                '부재': 0
+            };
+            
+            properties.forEach(property => {
+                const status = property.status || '보류';
+                if (statusCounts.hasOwnProperty(status)) {
+                    statusCounts[status]++;
+                }
+            });
+            
+            // 이번 주 신규 등록 계산 (현재 날짜 기준으로 7일 이내)
+            const now = new Date();
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const newThisWeek = properties.filter(property => {
+                const createdDate = new Date(property.created_at || property.date_added || now);
+                return createdDate >= weekAgo;
+            }).length;
+            
+            // 통계 카드 업데이트
+            document.getElementById('total-maeiple-team').textContent = total;
+            document.getElementById('available-maeiple-team').textContent = statusCounts['거래중'];
+            document.getElementById('completed-maeiple-team').textContent = statusCounts['거래완료'];
+            document.getElementById('new-maeiple-team').textContent = newThisWeek;
+            
+            console.log('팀장용 메이플관리 통계 업데이트 완료:', statusCounts);
+        }
+
+        // ==================== 팀장 전용 함수들 ====================
+        
+        // 팀장 본인 고객 조회
+        async function loadTeamLeaderCustomers(page = 1) {
+            try {
+                const url = `/api/team-leader/customers?page=${page}&per_page=20`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.customers) {
+                    console.log(`팀장 본인 고객 로드: ${data.customers.length}개 (페이지 ${page}/${data.total_pages})`);
+                    renderTeamLeaderCustomers(data.customers);
+                    renderTeamLeaderCustomerPagination(data.total_pages, page);
+                    updateTeamLeaderCustomerStats(data.customers);
+                } else {
+                    console.error('팀장 본인 고객 데이터 오류:', data.error);
+                    alert('팀장 본인 고객을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('팀장 본인 고객 로드 오류:', error);
+                alert('팀장 본인 고객을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 팀장 본인 매물 조회
+        async function loadTeamLeaderMaeiple(page = 1) {
+            try {
+                const url = `/api/team-leader/maeiple?page=${page}&per_page=20`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log(`팀장 본인 매물 로드: ${data.properties.length}개 (페이지 ${page}/${data.total_pages})`);
+                    renderTeamLeaderMaeiple(data.properties);
+                    renderTeamLeaderMaeiplePagination(data.total_pages, page);
+                    updateTeamLeaderMaeipleStats(data.properties);
+                } else {
+                    console.error('팀장 본인 매물 데이터 오류:', data.error);
+                    alert('팀장 본인 매물을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('팀장 본인 매물 로드 오류:', error);
+                alert('팀장 본인 매물을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 팀 전체 고객 조회
+        async function loadTeamCustomers(page = 1) {
+            try {
+                const url = `/api/team/customers?page=${page}&per_page=20`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.customers) {
+                    console.log(`팀 전체 고객 로드: ${data.customers.length}개 (페이지 ${page}/${data.total_pages})`);
+                    renderTeamCustomers(data.customers);
+                    renderTeamCustomerPagination(data.total_pages, page);
+                    updateTeamCustomerStats(data.customers);
+                } else {
+                    console.error('팀 전체 고객 데이터 오류:', data.error);
+                    alert('팀 전체 고객을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('팀 전체 고객 로드 오류:', error);
+                alert('팀 전체 고객을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 팀 전체 매물 조회
+        async function loadTeamMaeiple(page = 1) {
+            try {
+                const url = `/api/team/maeiple?page=${page}&per_page=20`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log(`팀 전체 매물 로드: ${data.properties.length}개 (페이지 ${page}/${data.total_pages})`);
+                    renderTeamMaeiple(data.properties);
+                    renderTeamMaeiplePagination(data.total_pages, page);
+                    updateTeamMaeipleStats(data.properties);
+                } else {
+                    console.error('팀 전체 매물 데이터 오류:', data.error);
+                    alert('팀 전체 매물을 불러오는데 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('팀 전체 매물 로드 오류:', error);
+                alert('팀 전체 매물을 불러오는데 실패했습니다.');
+            }
+        }
+
+        // 팀장 본인 고객 렌더링
+        function renderTeamLeaderCustomers(customers) {
+            const tableContent = document.getElementById('team-leader-customer-table-body');
+            if (!tableContent) return;
+            
+            let tableHTML = '';
+            customers.forEach(customer => {
+                tableHTML += `
+                    <tr>
+                        <td>${customer.inquiry_date || ''}</td>
+                        <td>${customer.customer_name || ''}</td>
+                        <td>${customer.phone || ''}</td>
+                        <td>${customer.amount || ''}</td>
+                        <td>${customer.room_count || ''}</td>
+                        <td>${customer.location || ''}</td>
+                        <td>${customer.loan_info || ''}</td>
+                        <td>${customer.parking || ''}</td>
+                        <td>${customer.pets || ''}</td>
+                        <td>${customer.memo || ''}</td>
+                        <td>
+                            <span class="status-badge ${customer.progress_status === '진행중' ? 'progress' : customer.progress_status === '계약' ? 'completed' : 'pending'}">
+                                ${customer.progress_status || '상담중'}
+                            </span>
+                        </td>
+                        <td>${customer.employee_name || ''}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editTeamLeaderCustomer(${customer.id})">수정</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTeamLeaderCustomer(${customer.id})">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableContent.innerHTML = tableHTML;
+        }
+
+        // 팀장 본인 매물 렌더링
+        function renderTeamLeaderMaeiple(properties) {
+            const tableContent = document.getElementById('team-leader-maeiple-table-body');
+            if (!tableContent) return;
+            
+            let tableHTML = '';
+            properties.forEach(property => {
+                tableHTML += `
+                    <tr>
+                        <td>${property.check_date || ''}</td>
+                        <td>${property.building_number || ''}</td>
+                        <td>${property.room_number || ''}</td>
+                        <td>
+                            <span class="status-badge ${property.status === '거래중' ? 'progress' : property.status === '거래완료' ? 'completed' : 'pending'}">
+                                ${property.status || '보류'}
+                            </span>
+                        </td>
+                        <td>${property.jeonse_price || ''}</td>
+                        <td>${property.monthly_rent || ''}</td>
+                        <td>${property.sale_price || ''}</td>
+                        <td>${property.is_occupied ? '입주중' : '빈방'}</td>
+                        <td>${property.phone || ''}</td>
+                        <td>${property.memo || ''}</td>
+                        <td>${property.likes || 0}</td>
+                        <td>${property.dislikes || 0}</td>
+                        <td>${property.employee_name || ''}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editTeamLeaderMaeiple(${property.id})">수정</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTeamLeaderMaeiple(${property.id})">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableContent.innerHTML = tableHTML;
+        }
+
+        // 팀 전체 고객 렌더링
+        function renderTeamCustomers(customers) {
+            const tableContent = document.getElementById('team-customer-table-body');
+            if (!tableContent) return;
+            
+            let tableHTML = '';
+            customers.forEach(customer => {
+                tableHTML += `
+                    <tr>
+                        <td>${customer.inquiry_date || ''}</td>
+                        <td>${customer.customer_name || ''}</td>
+                        <td>${customer.phone || ''}</td>
+                        <td>${customer.amount || ''}</td>
+                        <td>${customer.room_count || ''}</td>
+                        <td>${customer.location || ''}</td>
+                        <td>${customer.loan_info || ''}</td>
+                        <td>${customer.parking || ''}</td>
+                        <td>${customer.pets || ''}</td>
+                        <td>${customer.memo || ''}</td>
+                        <td>
+                            <span class="status-badge ${customer.progress_status === '진행중' ? 'progress' : customer.progress_status === '계약' ? 'completed' : 'pending'}">
+                                ${customer.progress_status || '상담중'}
+                            </span>
+                        </td>
+                        <td>${customer.employee_name || ''}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editTeamCustomer(${customer.id})">수정</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTeamCustomer(${customer.id})">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableContent.innerHTML = tableHTML;
+        }
+
+        // 팀 전체 매물 렌더링
+        function renderTeamMaeiple(properties) {
+            const tableContent = document.getElementById('team-maeiple-table-body');
+            if (!tableContent) return;
+            
+            let tableHTML = '';
+            properties.forEach(property => {
+                tableHTML += `
+                    <tr>
+                        <td>${property.check_date || ''}</td>
+                        <td>${property.building_number || ''}</td>
+                        <td>${property.room_number || ''}</td>
+                        <td>
+                            <span class="status-badge ${property.status === '거래중' ? 'progress' : property.status === '거래완료' ? 'completed' : 'pending'}">
+                                ${property.status || '보류'}
+                            </span>
+                        </td>
+                        <td>${property.jeonse_price || ''}</td>
+                        <td>${property.monthly_rent || ''}</td>
+                        <td>${property.sale_price || ''}</td>
+                        <td>${property.is_occupied ? '입주중' : '빈방'}</td>
+                        <td>${property.phone || ''}</td>
+                        <td>${property.memo || ''}</td>
+                        <td>${property.likes || 0}</td>
+                        <td>${property.dislikes || 0}</td>
+                        <td>${property.employee_name || ''}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="editTeamMaeiple(${property.id})">수정</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTeamMaeiple(${property.id})">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableContent.innerHTML = tableHTML;
+        }
+
+        // 통계 업데이트 함수들
+        function updateTeamLeaderCustomerStats(customers) {
+            const total = customers.length;
+            const progress = customers.filter(c => (c.progress_status || '상담중') === '진행중').length;
+            const completed = customers.filter(c => (c.progress_status || '') === '계약').length;
+            
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const newCustomers = customers.filter(c => {
+                if (!c.inquiry_date) return false;
+                const customerDate = new Date(c.inquiry_date);
+                return customerDate >= weekAgo;
+            }).length;
+
+            // 통계 카드 업데이트 (팀장 본인 고객)
+            const totalElement = document.getElementById('total-customers-team-leader');
+            const progressElement = document.getElementById('progress-customers-team-leader');
+            const completedElement = document.getElementById('completed-customers-team-leader');
+            const newElement = document.getElementById('new-customers-team-leader');
+            
+            if (totalElement) totalElement.textContent = total;
+            if (progressElement) progressElement.textContent = progress;
+            if (completedElement) completedElement.textContent = completed;
+            if (newElement) newElement.textContent = newCustomers;
+        }
+
+        function updateTeamLeaderMaeipleStats(properties) {
+            const total = properties.length;
+            const progress = properties.filter(p => p.status === '거래중').length;
+            const completed = properties.filter(p => p.status === '거래완료').length;
+            
+            const now = new Date();
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const newThisWeek = properties.filter(property => {
+                const createdDate = new Date(property.created_at || property.date_added || now);
+                return createdDate >= weekAgo;
+            }).length;
+
+            // 통계 카드 업데이트 (팀장 본인 매물)
+            const totalElement = document.getElementById('total-maeiple-team-leader');
+            const progressElement = document.getElementById('available-maeiple-team-leader');
+            const completedElement = document.getElementById('completed-maeiple-team-leader');
+            const newElement = document.getElementById('new-maeiple-team-leader');
+            
+            if (totalElement) totalElement.textContent = total;
+            if (progressElement) progressElement.textContent = progress;
+            if (completedElement) completedElement.textContent = completed;
+            if (newElement) newElement.textContent = newThisWeek;
+        }
+
+        function updateTeamCustomerStats(customers) {
+            const total = customers.length;
+            const progress = customers.filter(c => (c.progress_status || '상담중') === '진행중').length;
+            const completed = customers.filter(c => (c.progress_status || '') === '계약').length;
+            
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const newCustomers = customers.filter(c => {
+                if (!c.inquiry_date) return false;
+                const customerDate = new Date(c.inquiry_date);
+                return customerDate >= weekAgo;
+            }).length;
+
+            // 통계 카드 업데이트 (팀 전체 고객)
+            const totalElement = document.getElementById('total-customers-team');
+            const progressElement = document.getElementById('progress-customers-team');
+            const completedElement = document.getElementById('completed-customers-team');
+            const newElement = document.getElementById('new-customers-team');
+            
+            if (totalElement) totalElement.textContent = total;
+            if (progressElement) progressElement.textContent = progress;
+            if (completedElement) completedElement.textContent = completed;
+            if (newElement) newElement.textContent = newCustomers;
+        }
+
+        // 페이지네이션 렌더링 함수들
+        function renderTeamLeaderCustomerPagination(totalPages, currentPage) {
+            const pagination = document.getElementById('team-leader-customer-pagination');
+            if (!pagination) return;
+            
+            let paginationHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                paginationHTML += `
+                    <button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'}" 
+                            onclick="loadTeamLeaderCustomers(${i})">${i}</button>
+                `;
+            }
+            pagination.innerHTML = paginationHTML;
+        }
+
+        function renderTeamLeaderMaeiplePagination(totalPages, currentPage) {
+            const pagination = document.getElementById('team-leader-maeiple-pagination');
+            if (!pagination) return;
+            
+            let paginationHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                paginationHTML += `
+                    <button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'}" 
+                            onclick="loadTeamLeaderMaeiple(${i})">${i}</button>
+                `;
+            }
+            pagination.innerHTML = paginationHTML;
+        }
+
+        function renderTeamCustomerPagination(totalPages, currentPage) {
+            const pagination = document.getElementById('team-customer-pagination');
+            if (!pagination) return;
+            
+            let paginationHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                paginationHTML += `
+                    <button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'}" 
+                            onclick="loadTeamCustomers(${i})">${i}</button>
+                `;
+            }
+            pagination.innerHTML = paginationHTML;
+        }
+
+        function renderTeamMaeiplePagination(totalPages, currentPage) {
+            const pagination = document.getElementById('team-maeiple-pagination');
+            if (!pagination) return;
+            
+            let paginationHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                paginationHTML += `
+                    <button class="btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'}" 
+                            onclick="loadTeamMaeiple(${i})">${i}</button>
+                `;
+            }
+            pagination.innerHTML = paginationHTML;
+        }
+
+        // 필터 함수들
+        function setTeamLeaderCustomerFilter(status, btn) {
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.filter-btn[data-status]').forEach(b => {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            
+            // 필터링 로직 (필요시 구현)
+            console.log('팀장 본인 고객 필터:', status);
+        }
+
+        function setTeamLeaderMaeipleFilter(status, btn) {
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.filter-btn[data-status]').forEach(b => {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            
+            // 필터링 로직 (필요시 구현)
+            console.log('팀장 본인 매물 필터:', status);
+        }
+
+        function setTeamCustomerFilter(status, btn) {
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.filter-btn[data-status]').forEach(b => {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            
+            // 필터링 로직 (필요시 구현)
+            console.log('팀 전체 고객 필터:', status);
+        }
+
+        function setTeamMaeipleFilter(status, btn) {
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.filter-btn[data-status]').forEach(b => {
+                b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            
+            // 필터링 로직 (필요시 구현)
+            console.log('팀 전체 매물 필터:', status);
+        }
+
+        // 편집/삭제 함수들 (임시 구현)
+        function editTeamLeaderCustomer(id) { alert('팀장 본인 고객 수정 기능은 준비 중입니다.'); }
+        function deleteTeamLeaderCustomer(id) { alert('팀장 본인 고객 삭제 기능은 준비 중입니다.'); }
+        function editTeamLeaderMaeiple(id) { alert('팀장 본인 매물 수정 기능은 준비 중입니다.'); }
+        function deleteTeamLeaderMaeiple(id) { alert('팀장 본인 매물 삭제 기능은 준비 중입니다.'); }
+        function editTeamCustomer(id) { alert('팀 고객 수정 기능은 준비 중입니다.'); }
+        function deleteTeamCustomer(id) { alert('팀 고객 삭제 기능은 준비 중입니다.'); }
+        function editTeamMaeiple(id) { alert('팀 매물 수정 기능은 준비 중입니다.'); }
+        function deleteTeamMaeiple(id) { alert('팀 매물 삭제 기능은 준비 중입니다.'); }
+
+        // 추가 함수들 (임시 구현)
+        function addNewTeamLeaderCustomerRow() { alert('팀장 본인 고객 추가 기능은 준비 중입니다.'); }
+        function addNewTeamLeaderMaeipleRow() { alert('팀장 본인 매물 추가 기능은 준비 중입니다.'); }
+        function addNewTeamCustomerRow() { alert('팀 고객 추가 기능은 준비 중입니다.'); }
+        function addNewTeamMaeipleRow() { alert('팀 매물 추가 기능은 준비 중입니다.'); }
     </script>
 </body>
 </html> 
