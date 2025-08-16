@@ -600,3 +600,16 @@ def get_personal_maeiple_properties(employee_id: str = None, limit: int = 50) ->
     except Exception as e:
         logger.error(f"개인용 메이플 아파트 매물 목록 조회 실패: {e}")
         return []
+
+def get_team_leader_customers(team_leader_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """팀장 본인의 고객 목록을 조회합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return []
+            
+        response = supabase.table('employee_customers').select('*').eq('employee_id', team_leader_id).order('inquiry_date', desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        logger.error(f"팀장 본인 고객 목록 조회 실패: {e}")
+        return []

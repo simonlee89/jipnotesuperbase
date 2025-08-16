@@ -822,8 +822,8 @@ def team_leader_customers():
     per_page = int(request.args.get('per_page', 20))
     offset = (page - 1) * per_page
     
-    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 팀장 본인 고객 샘플 데이터 반환")
         sample_customers = [
             {
@@ -854,28 +854,20 @@ def team_leader_customers():
             'total_pages': (total_count + per_page - 1) // per_page
         })
     
-    conn = None
+    # Supabase에서 팀장 본인의 고객 조회
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
+        customers = supabase_utils.get_team_leader_customers(team_leader_id, per_page)
         
-        # 팀장 본인의 고객만 조회
-        count_query = "SELECT COUNT(*) FROM employee_customers WHERE employee_id = %s"
-        cursor.execute(count_query, (team_leader_id,))
-        total_count = cursor.fetchone()[0]
-        
-        query = "SELECT * FROM employee_customers WHERE employee_id = %s ORDER BY inquiry_date DESC, id DESC LIMIT %s OFFSET %s"
-        cursor.execute(query, (team_leader_id, per_page, offset))
-        
-        customers_raw = cursor.fetchall()
-        customers_list = [db_utils.dict_from_row(row) for row in customers_raw]
+        # 페이지네이션 처리
+        total_count = len(customers)
+        paginated_customers = customers[offset:offset + per_page]
         
         # employee_name 필드 추가
-        for customer in customers_list:
+        for customer in paginated_customers:
             customer['employee_name'] = customer.get('employee_id', '')
         
         return jsonify({
-            'customers': customers_list,
+            'customers': paginated_customers,
             'total_count': total_count,
             'page': page,
             'per_page': per_page,
@@ -885,9 +877,6 @@ def team_leader_customers():
     except Exception as e:
         print(f"팀장 본인 고객 조회 오류: {e}")
         return jsonify({'error': f'팀장 본인 고객 조회 실패: {e}'}), 500
-    finally:
-        if conn:
-            conn.close()
 
 @app.route('/api/team-leader/maeiple', methods=['GET'])
 def team_leader_maeiple():
@@ -1730,8 +1719,8 @@ def maeiple_api():
         per_page = int(request.args.get('per_page', 20))
         offset = (page - 1) * per_page
         
-        # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-        if not os.environ.get('DATABASE_URL'):
+        # Supabase 연결 확인
+        if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
             print("⚠️ 테스트 모드 - 개인용 샘플 매물 데이터 반환")
             
             # 현재 사용자 정보 가져오기
@@ -2020,8 +2009,8 @@ def team_leader_team_maeiple():
     per_page = int(request.args.get('per_page', 20))
     offset = (page - 1) * per_page
     
-    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-    if not os.environ.get('DATABASE_URL'):
+    # Supabase 연결 확인
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
         print("⚠️ 테스트 모드 - 팀장 팀 통합용 샘플 매물 데이터 반환")
         
         # 현재 사용자의 팀 정보 가져오기
@@ -2178,61 +2167,18 @@ def team_leader_team_maeiple():
             'type': 'team'  # 팀 통합용임을 명시
         })
     
+    # Supabase에서 팀 전체 매물 조회
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        # 현재 사용자의 팀 정보 가져오기
         current_team = session.get('employee_team', '')
+        properties = supabase_utils.get_team_all_maeiple_properties(current_team, per_page)
         
-        # 전체 개수 조회
-        count_query = "SELECT COUNT(*) FROM maeiple_properties WHERE employee_team = %s"
-        cursor.execute(count_query, (current_team,))
-        total_count = cursor.fetchone()[0]
+        # 페이지네이션 처리
+        total_count = len(properties)
+        paginated_properties = properties[offset:offset + per_page]
         
-        # 해당 팀의 매물 조회 (페이지네이션 적용)
-        order_clause = f"ORDER BY {sort_by} {sort_order.upper()}"
-        query = f'''
-            SELECT id, check_date, building_number, room_number, status, 
-                   jeonse_price, monthly_rent, sale_price, is_occupied, 
-                   phone, memo, likes, dislikes, employee_id, employee_name, employee_team
-            FROM maeiple_properties 
-            WHERE employee_team = %s
-            {order_clause}
-            LIMIT %s OFFSET %s
-        '''
-        
-        cursor.execute(query, (current_team, per_page, offset))
-        rows = cursor.fetchall()
-        
-        properties = []
-        for row in rows:
-            if isinstance(row, dict):
-                properties.append(row)
-            else:
-                properties.append({
-                    'id': row[0],
-                    'check_date': str(row[1]) if row[1] else '',
-                    'building_number': row[2],
-                    'room_number': row[3],
-                    'status': row[4] or '',
-                    'jeonse_price': row[5] or 0,
-                    'monthly_rent': row[6] or 0,
-                    'sale_price': row[7] or 0,
-                    'is_occupied': bool(row[8]),
-                    'phone': row[9] or '',
-                    'memo': row[10] or '',
-                    'likes': row[11] or 0,
-                    'dislikes': row[12] or 0,
-                    'employee_id': row[13] or '',
-                    'employee_name': row[14] or '',
-                    'employee_team': row[15] or ''
-                })
-        
-        conn.close()
         return jsonify({
             'success': True, 
-            'properties': properties,
+            'properties': paginated_properties,
             'total_count': total_count,
             'page': page,
             'per_page': per_page,
@@ -2241,8 +2187,6 @@ def team_leader_team_maeiple():
         })
         
     except Exception as e:
-        if 'conn' in locals():
-            conn.close()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/user-info', methods=['GET'])
