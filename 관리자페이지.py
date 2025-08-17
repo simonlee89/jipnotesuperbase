@@ -81,78 +81,28 @@ def login():
             session['employee_role'] = employee.get('role', 'employee')
             
             # 마지막 로그인 시간 업데이트
-            supabase_utils.update_employee_last_login(employee['id'])
+            supabase_utils.update_employee_last_login(employee['name'])
             
             print(f"✅ 직원 로그인 성공: {employee['name']} ({employee.get('role', 'employee')})")
-            return jsonify({'success': True, 'message': '로그인 성공'})
+            print(f"  - 세션 employee_id: {session['employee_id']}")
+            print(f"  - 세션 employee_name: {session['employee_name']}")
+            print(f"  - 세션 employee_team: {session['employee_team']}")
+            print(f"  - 세션 employee_role: {session['employee_role']}")
+            
+            return jsonify({
+                'success': True, 
+                'message': '로그인 성공',
+                'redirect': '/admin' if employee.get('role') == '팀장' else '/dashboard',
+                'role': employee.get('role', 'employee')
+            })
         else:
             # 로그인 실패
+            print(f"❌ 로그인 실패: 비밀번호 불일치 또는 직원 정보 없음")
             return jsonify({'success': False, 'message': '직원 이름 또는 비밀번호가 올바르지 않습니다.'})
             
     except Exception as e:
         print(f"❌ 데이터베이스 오류: {e}")
-        # 오류 발생 시 테스트 모드로 폴백
-        if FORCE_TEST_MODE:
-            print("⚠️ 테스트 모드 - 임시 로그인 허용")
-            if employee_id in ['원형', '테스트', 'admin', '관리자', '수정'] and password == '1':
-                session['employee_id'] = employee_id
-                session['employee_name'] = employee_id
-                if employee_id == '수정':
-                    session['employee_team'] = '위플러스'
-                    session['employee_role'] = '팀장'
-                    print(f"🎯 '수정' 사용자 감지 - 팀장으로 설정")
-                else:
-                    session['employee_team'] = '관리자'
-                    session['employee_role'] = '직원'
-                return jsonify({'success': True, 'message': '테스트 모드 로그인 성공'})
-        
         return jsonify({'success': False, 'message': '로그인 중 오류가 발생했습니다.'})
-    
-    # 테스트 모드 로그인 처리
-    if employee_id in ['원형', '테스트', 'admin', '관리자', '수정'] and password == '1':
-        session['employee_id'] = employee_id
-        session['employee_name'] = employee_id
-        if employee_id == '수정':
-            session['employee_team'] = '위플러스'
-            session['employee_role'] = '팀장'
-        else:
-            session['employee_team'] = '관리자'
-            session['employee_role'] = '직원'
-            print(f"👤 '{employee_id}' 사용자 감지 - 직원으로 설정")
-        
-        print(f"✅ 테스트 로그인 성공: {employee_id}")
-        print(f"  - 세션 employee_id: {session['employee_id']}")
-        print(f"  - 세션 employee_name: {session['employee_name']}")
-        print(f"  - 세션 employee_team: {session['employee_team']}")
-        print(f"  - 세션 employee_role: {session['employee_role']}")
-        
-        # 역할에 따른 리다이렉트 정보 포함
-        if employee_id == '수정':
-            return jsonify({
-                'success': True, 
-                'message': '테스트 로그인 성공',
-                'redirect': '/team-leader',
-                'role': '팀장'
-            })
-        else:
-            return jsonify({
-                'success': True, 
-                'message': '테스트 로그인 성공',
-                'redirect': '/dashboard',
-                'role': '직원'
-            })
-    else:
-        print(f"❌ 허용되지 않은 사용자 또는 잘못된 비밀번호")
-        return jsonify({'success': False, 'message': '테스트 모드에서는 지정된 이름과 비밀번호를 사용해주세요.'})
-    
-    # Supabase를 사용한 로그인 처리
-    try:
-        from supabase_utils import get_employee_by_name, update_employee_last_login
-        
-        # 직원 정보 조회
-        employee = get_employee_by_name(employee_id)
-        
-        if employee:
             # 비밀번호 확인
             if employee.get('password') != password:
                 print(f"❌ 비밀번호 불일치: '{employee_id}'")
