@@ -1614,17 +1614,17 @@
                         <td class="editable-cell" data-field="inquiry_date" data-type="date" onclick="editCell(this)">${customer.inquiry_date || '-'}</td>
                         <td class="editable-cell" data-field="move_in_date" data-type="date" onclick="editCell(this)">${customer.move_in_date || '-'}</td>
                         <td class="editable-cell" data-field="customer_name" data-type="text" onclick="editCell(this)"><strong>${customer.customer_name || '-'}</strong>${customer.employee_id && '{{ employee_name }}' === '관리자' ? `<br><small style="color: #6366f1;">(${customer.employee_id})</small>` : ''}</td>
-                        <td class="editable-cell" data-field="phone" data-type="tel" onclick="editCell(this)">${customer.phone || '-'}</td>
-                        <td class="editable-cell" data-field="amount" data-type="text" onclick="editCell(this)">${customer.amount || '-'}</td>
-                        <td class="editable-cell" data-field="room_count" data-type="text" onclick="editCell(this)">${customer.room_count || '-'}</td>
+                        <td class="editable-cell" data-field="customer_phone" data-type="tel" onclick="editCell(this)">${customer.customer_phone || '-'}</td>
+                        <td class="editable-cell" data-field="budget" data-type="text" onclick="editCell(this)">${customer.budget || '-'}</td>
+                        <td class="editable-cell" data-field="rooms" data-type="text" onclick="editCell(this)">${customer.rooms || '-'}</td>
                         <td class="editable-cell" data-field="location" data-type="text" onclick="editCell(this)">${customer.location || '-'}</td>
-                        <td class="editable-cell" data-field="loan_info" data-type="text" onclick="editCell(this)">${customer.loan_info || '-'}</td>
-                        <td class="editable-cell" data-field="parking" data-type="text" onclick="editCell(this)">${customer.parking || '-'}</td>
+                        <td class="editable-cell" data-field="loan_needed" data-type="text" onclick="editCell(this)">${customer.loan_needed || '-'}</td>
+                        <td class="editable-cell" data-field="parking_needed" data-type="text" onclick="editCell(this)">${customer.parking_needed || '-'}</td>
                         <td class="editable-cell" data-field="pets" data-type="text" onclick="editCell(this)">${customer.pets || '-'}</td>
                         <td class="memo-cell" onclick="openMemoModal(${customer.id}, '${(customer.memo || '').replace(/'/g, "\\'")}')" title="${customer.memo || ''}">${memoDisplay}</td>
-                        <td class="editable-cell" data-field="progress_status" data-type="select" onclick="editCell(this)">
+                        <td class="editable-cell" data-field="status" data-type="select" onclick="editCell(this)">
                             <span class="status-badge ${statusClass}">
-                                ${customer.progress_status || '진행중'}
+                                ${customer.status || '진행중'}
                             </span>
                         </td>
                                         <td>
@@ -1663,8 +1663,8 @@
             });
 
             const totalThisMonth = customersThisMonth.length;
-            const progressThisMonth = customersThisMonth.filter(c => c.progress_status === '진행중').length;
-            const contractThisMonth = customersThisMonth.filter(c => c.progress_status === '계약').length;
+            const progressThisMonth = customersThisMonth.filter(c => c.status === '진행중').length;
+            const contractThisMonth = customersThisMonth.filter(c => c.status === '계약').length;
             
             // 이번 주 신규 고객 계산
             const oneWeekAgo = new Date();
@@ -1711,15 +1711,15 @@
                 <td class="editable-cell" data-field="inquiry_date" data-type="date" onclick="editCell(this)">${today}</td>
                 <td class="editable-cell" data-field="move_in_date" data-type="date" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="customer_name" data-type="text" onclick="editCell(this)"><strong>${autoCustomerName}</strong></td>
-                <td class="editable-cell" data-field="phone" data-type="tel" onclick="editCell(this)">-</td>
-                <td class="editable-cell" data-field="amount" data-type="text" onclick="editCell(this)">-</td>
-                <td class="editable-cell" data-field="room_count" data-type="text" onclick="editCell(this)">-</td>
+                <td class="editable-cell" data-field="customer_phone" data-type="tel" onclick="editCell(this)">-</td>
+                <td class="editable-cell" data-field="budget" data-type="text" onclick="editCell(this)">-</td>
+                <td class="editable-cell" data-field="rooms" data-type="text" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="location" data-type="text" onclick="editCell(this)">-</td>
-                <td class="editable-cell" data-field="loan_info" data-type="text" onclick="editCell(this)">-</td>
-                <td class="editable-cell" data-field="parking" data-type="text" onclick="editCell(this)">-</td>
+                <td class="editable-cell" data-field="loan_needed" data-type="text" onclick="editCell(this)">-</td>
+                <td class="editable-cell" data-field="parking_needed" data-type="text" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="pets" data-type="text" onclick="editCell(this)">-</td>
                 <td class="memo-cell" onclick="editMemo(this)">-</td>
-                <td class="editable-cell" data-field="progress_status" data-type="select" onclick="editCell(this)">
+                <td class="editable-cell" data-field="status" data-type="select" onclick="editCell(this)">
                     <span class="status-badge status-progress">진행중</span>
                 </td>
                 <td><span class="property-link-placeholder">주거사이트 생성 중...</span></td>
