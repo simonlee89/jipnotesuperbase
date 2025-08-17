@@ -1007,44 +1007,34 @@ def residence_index():
 def residence_customer_site(management_site_id):
     """주거용 고객별 사이트"""
     print(f"[주거ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
-    
-    # 디버깅: 모든 고객 목록 확인
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, customer_name, management_site_id FROM employee_customers ORDER BY id DESC LIMIT 10")
-        all_customers = cursor.fetchall()
-        print(f"[주거ROUTE] 최근 고객 10명:")
-        for cust in all_customers:
-            print(f"  - ID: {cust.get('id')}, 이름: {cust.get('customer_name')}, management_site_id: {cust.get('management_site_id')}")
-        conn.close()
+        # 고객 정보 Supabase에서 조회
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return "데이터베이스 연결이 설정되지 않았습니다.", 500
+
+        res = supabase.table('employee_customers').select('*').eq('management_site_id', management_site_id).limit(1).execute()
+        if not res.data:
+            print(f"[주거ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
+            return f"""
+            <h1>고객 정보를 찾을 수 없습니다</h1>
+            <p>요청한 management_site_id: <strong>{management_site_id}</strong></p>
+            <p>데이터베이스에서 해당 고객을 찾을 수 없습니다.</p>
+            <p><a href="/dashboard">대시보드로 돌아가기</a></p>
+            """, 404
+
+        customer_info = res.data[0]
+        customer_name = customer_info.get('customer_name', '고객')
+        print(f"[주거ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
+
+        # 미확인 좋아요 처리 (주거용)
+        try:
+            supabase.table('residence_links').update({'is_checked': True}).eq('management_site_id', management_site_id).eq('liked', True).eq('is_checked', False).execute()
+        except Exception as e:
+            print(f"미확인 좋아요 처리 오류: {e}")
     except Exception as e:
-        print(f"[주거ROUTE] 고객 목록 조회 오류: {e}")
-    
-    # 공통 get_customer_info 함수 사용
-    customer_info = db_utils.get_customer_info(management_site_id)
-    if not customer_info:
-        print(f"[주거ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
-        # 더 자세한 오류 메시지
-        return f"""
-        <h1>고객 정보를 찾을 수 없습니다</h1>
-        <p>요청한 management_site_id: <strong>{management_site_id}</strong></p>
-        <p>데이터베이스에서 해당 고객을 찾을 수 없습니다.</p>
-        <p><a href="/dashboard">대시보드로 돌아가기</a></p>
-        """, 404
-    
-    customer_name = customer_info.get('customer_name', '고객')
-    print(f"[주거ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
-    
-    # 미확인 좋아요 처리
-    try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('UPDATE links SET is_checked = TRUE WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"미확인 좋아요 처리 오류: {e}")
+        print(f"[주거ROUTE] 처리 중 오류: {e}")
+        return f"주거용 사이트 오류: {e}", 500
     
     return render_template('index.html', 
                          customer_name=customer_name, 
@@ -1071,44 +1061,33 @@ def business_index():
 def business_customer_site(management_site_id):
     """업무용 고객별 사이트"""
     print(f"[업무ROUTE] 고객 사이트 접근 - management_site_id: {management_site_id}")
-    
-    # 디버깅: 모든 고객 목록 확인
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, customer_name, management_site_id FROM employee_customers ORDER BY id DESC LIMIT 10")
-        all_customers = cursor.fetchall()
-        print(f"[업무ROUTE] 최근 고객 10명:")
-        for cust in all_customers:
-            print(f"  - ID: {cust.get('id')}, 이름: {cust.get('customer_name')}, management_site_id: {cust.get('management_site_id')}")
-        conn.close()
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return "데이터베이스 연결이 설정되지 않았습니다.", 500
+
+        res = supabase.table('employee_customers').select('*').eq('management_site_id', management_site_id).limit(1).execute()
+        if not res.data:
+            print(f"[업무ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
+            return f"""
+            <h1>고객 정보를 찾을 수 없습니다</h1>
+            <p>요청한 management_site_id: <strong>{management_site_id}</strong></p>
+            <p>데이터베이스에서 해당 고객을 찾을 수 없습니다.</p>
+            <p><a href="/dashboard">대시보드로 돌아가기</a></p>
+            """, 404
+
+        customer_info = res.data[0]
+        customer_name = customer_info.get('customer_name', '고객')
+        print(f"[업무ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
+
+        # 미확인 좋아요 처리 (업무용)
+        try:
+            supabase.table('office_links').update({'is_checked': True}).eq('management_site_id', management_site_id).eq('liked', True).eq('is_checked', False).execute()
+        except Exception as e:
+            print(f"미확인 좋아요 처리 오류: {e}")
     except Exception as e:
-        print(f"[업무ROUTE] 고객 목록 조회 오류: {e}")
-    
-    # 공통 get_customer_info 함수 사용
-    customer_info = db_utils.get_customer_info(management_site_id)
-    if not customer_info:
-        print(f"[업무ROUTE] 고객 정보를 찾을 수 없음: {management_site_id}")
-        # 더 자세한 오류 메시지
-        return f"""
-        <h1>고객 정보를 찾을 수 없습니다</h1>
-        <p>요청한 management_site_id: <strong>{management_site_id}</strong></p>
-        <p>데이터베이스에서 해당 고객을 찾을 수 없습니다.</p>
-        <p><a href="/dashboard">대시보드로 돌아가기</a></p>
-        """, 404
-    
-    customer_name = customer_info.get('customer_name', '고객')
-    print(f"[업무ROUTE] 고객 정보 조회 성공 - 이름: {customer_name}")
-    
-    # 미확인 좋아요 처리 (업무용도 is_checked 사용)
-    try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('UPDATE office_links SET is_checked = TRUE WHERE management_site_id = %s AND liked = TRUE AND is_checked = FALSE', (management_site_id,))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"미확인 좋아요 처리 오류: {e}")
+        print(f"[업무ROUTE] 처리 중 오류: {e}")
+        return f"업무용 사이트 오류: {e}", 500
     
     return render_template('업무용_index.html', 
                          customer_name=customer_name, 
@@ -1429,53 +1408,42 @@ def customer_info_api():
     if request.method == 'GET':
         if not management_site_id:
             return jsonify({'error': 'management_site_id가 필요합니다.'}), 400
-        
-        customer_info = db_utils.get_customer_info(management_site_id)
-        if not customer_info:
-            return jsonify({'error': '고객 정보를 찾을 수 없습니다.'}), 404
-        
-        return jsonify({
-            'customer_name': customer_info.get('customer_name', '고객'),
-            'move_in_date': customer_info.get('move_in_date', ''),
-            'management_site_id': management_site_id
-        })
+        try:
+            supabase = supabase_utils.get_supabase()
+            if not supabase:
+                return jsonify({'error': '데이터베이스 연결 실패'}), 500
+            res = supabase.table('employee_customers').select('*').eq('management_site_id', management_site_id).limit(1).execute()
+            if not res.data:
+                return jsonify({'error': '고객 정보를 찾을 수 없습니다.'}), 404
+            customer_info = res.data[0]
+            return jsonify({
+                'customer_name': customer_info.get('customer_name', '고객'),
+                'move_in_date': customer_info.get('move_in_date', ''),
+                'management_site_id': management_site_id
+            })
+        except Exception as e:
+            return jsonify({'error': f'고객 정보 조회 실패: {e}'}), 500
     
     elif request.method == 'POST':
         # 고객 정보 업데이트 (필요한 경우)
         if not management_site_id:
             return jsonify({'error': 'management_site_id가 필요합니다.'}), 400
-        
-        data = request.json
-        customer_name = data.get('customer_name')
-        move_in_date = data.get('move_in_date')
-        
         try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
-            
-            update_fields = []
-            params = []
-            
-            if customer_name is not None:
-                update_fields.append('customer_name = %s')
-                params.append(customer_name)
-            
-            if move_in_date is not None:
-                update_fields.append('move_in_date = %s')
-                params.append(move_in_date)
-            
-            if update_fields:
-                params.append(management_site_id)
-                query = f"UPDATE employee_customers SET {', '.join(update_fields)} WHERE management_site_id = %s"
-                cursor.execute(query, params)
-                conn.commit()
-            
-            conn.close()
+            supabase = supabase_utils.get_supabase()
+            if not supabase:
+                return jsonify({'error': '데이터베이스 연결 실패'}), 500
+            data = request.json or {}
+            update_data = {}
+            if 'customer_name' in data and data.get('customer_name') is not None:
+                update_data['customer_name'] = data.get('customer_name')
+            # move_in_date 컬럼이 현재 스키마에 없으므로 무시
+            if not update_data:
+                return jsonify({'success': True})
+            res = supabase.table('employee_customers').update(update_data).eq('management_site_id', management_site_id).execute()
+            if res.data is None:
+                return jsonify({'error': '업데이트 실패'}), 500
             return jsonify({'success': True})
-            
         except Exception as e:
-            if 'conn' in locals():
-                conn.close()
             return jsonify({'error': str(e)}), 500
 
 # ==================== 매이플관리 API 라우트 ====================
