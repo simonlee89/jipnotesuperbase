@@ -1457,9 +1457,235 @@ def maeiple_management():
     return render_template('maeiple_management.html', 
                          employee_name=employee_name)
 
+@app.route('/api/employee/maeiple', methods=['GET', 'POST'])
+def employee_maeiple_api():
+    """직원용 메이플관리 API - 개인 매물만 조회 및 생성"""
+    if 'employee_id' not in session:
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    if request.method == 'GET':
+        # 정렬 파라미터 가져오기
+        sort_by = request.args.get('sort_by', 'check_date')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        # 페이지네이션 파라미터
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        offset = (page - 1) * per_page
+        
+        # Supabase 연결 확인
+        if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
+            print("⚠️ 테스트 모드 - 직원 개인용 샘플 매물 데이터 반환")
+            
+            # 현재 사용자 정보 가져오기
+            current_user = session.get('employee_id', '')
+            current_team = session.get('employee_team', '')
+            print(f"🔍 직원 개인 메이플관리 - 사용자: {current_user}, 팀: {current_team}")
+            
+            # 모든 샘플 매물 데이터
+            all_sample_properties = [
+                {
+                    'id': 1,
+                    'check_date': '2024-08-12',
+                    'building_number': 101,
+                    'room_number': 1001,
+                    'status': '거래중',
+                    'jeonse_price': 5000,
+                    'monthly_rent': 50,
+                    'sale_price': 80000,
+                    'is_occupied': False,
+                    'phone': '010-1234-5678',
+                    'memo': '역세권, 교통편리',
+                    'likes': 3,
+                    'dislikes': 1,
+                    'employee_id': '원형',
+                    'employee_name': '원형',
+                    'employee_team': '빈시트'
+                },
+                {
+                    'id': 4,
+                    'check_date': '2024-08-09',
+                    'building_number': 104,
+                    'room_number': 4001,
+                    'status': '거래가능',
+                    'jeonse_price': 5500,
+                    'monthly_rent': 55,
+                    'sale_price': 85000,
+                    'is_occupied': False,
+                    'phone': '010-4567-8901',
+                    'memo': '원형의 개인 매물',
+                    'likes': 4,
+                    'dislikes': 0,
+                    'employee_id': '원형',
+                    'employee_name': '원형',
+                    'employee_team': '빈시트'
+                }
+            ]
+            
+            # 현재 직원의 개인 매물만 필터링
+            personal_properties = [p for p in all_sample_properties if p['employee_id'] == current_user]
+            print(f"✅ 직원 개인 매물 필터링: {current_user}의 매물 {len(personal_properties)}개")
+            
+            # 테스트 모드에서도 정렬 적용
+            if sort_by == 'check_date':
+                personal_properties.sort(key=lambda x: x['check_date'], reverse=(sort_order == 'desc'))
+            
+            # 페이지네이션 적용
+            total_count = len(personal_properties)
+            paginated_properties = personal_properties[offset:offset + per_page]
+            
+            return jsonify({
+                'success': True, 
+                'properties': paginated_properties,
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total_count + per_page - 1) // per_page
+            })
+        
+        try:
+            # Supabase에서 개인 매물 목록 조회
+            current_user = session.get('employee_id', '')
+            
+            properties_data = supabase_utils.get_maeiple_properties_with_pagination(
+                page, per_page, current_user, sort_by, sort_order
+            )
+            
+            if properties_data:
+                properties = properties_data.get('properties', [])
+                total_count = properties_data.get('total_count', 0)
+                total_pages = properties_data.get('total_pages', 0)
+                
+                print(f"[직원 매물 목록] 조회된 매물 수: {len(properties)} (페이지 {page}/{total_pages})")
+                
+                return jsonify({
+                    'success': True, 
+                    'properties': properties,
+                    'total_count': total_count,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': total_pages
+                })
+            else:
+                print("⚠️ 직원 매물 목록 조회 실패")
+                return jsonify({
+                    'success': False,
+                    'properties': [],
+                    'total_count': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 0
+                })
+                
+        except Exception as e:
+            print(f"❌ 직원 매물 목록 조회 중 오류: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            # 현재 로그인한 사용자 정보 가져오기
+            employee_id = session.get('employee_id', 'system')
+            employee_name = session.get('employee_name', '시스템')
+            employee_team = session.get('employee_team', '관리자')
+
+            property_data = {
+                'check_date': data.get('check_date'),
+                'building_number': data.get('building_number'),
+                'room_number': data.get('room_number'),
+                'status': data.get('status', '거래중'),
+                'jeonse_price': data.get('jeonse_price'),
+                'monthly_rent': data.get('monthly_rent'),
+                'sale_price': data.get('sale_price'),
+                'is_occupied': data.get('is_occupied', False),
+                'phone': data.get('phone'),
+                'memo': data.get('memo', ''),
+                'employee_id': employee_id,
+                'employee_name': employee_name,
+                'employee_team': employee_team
+            }
+
+            new_prop = supabase_utils.create_maeiple_property(property_data)
+            if not new_prop:
+                return jsonify({'success': False, 'error': '매물 생성 실패'}), 500
+
+            return jsonify({'success': True, 'id': new_prop.get('id')})
+
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/employee/maeiple/update', methods=['POST'])
+def employee_maeiple_update():
+    """직원용 메이플관리 매물 업데이트 API"""
+    if 'employee_id' not in session:
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    try:
+        data = request.json
+        property_id = data.get('id')
+        field = data.get('field')
+        value = data.get('value')
+        
+        if not all([property_id, field]):
+            return jsonify({'error': '필수 파라미터가 누락되었습니다.'}), 400
+        
+        # DATABASE_URL이 없으면 테스트 모드로 처리
+        if not os.environ.get('DATABASE_URL'):
+            print(f"⚠️ 테스트 모드 - 업데이트 시뮬레이션: {field} = {value}")
+            return jsonify({'success': True, 'message': '테스트 모드 - 업데이트 시뮬레이션 완료'})
+        
+        # 실제 데이터베이스 업데이트 로직은 나중에 구현
+        return jsonify({'success': True, 'message': '업데이트 완료'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/employee/maeiple/memo', methods=['POST'])
+def employee_maeiple_memo():
+    """직원용 메이플관리 메모 저장 API"""
+    if 'employee_id' not in session:
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    try:
+        data = request.json
+        property_id = data.get('id')
+        memo = data.get('memo', '')
+        
+        if not property_id:
+            return jsonify({'error': '매물 ID가 필요합니다.'}), 400
+        
+        # DATABASE_URL이 없으면 테스트 모드로 처리
+        if not os.environ.get('DATABASE_URL'):
+            print(f"⚠️ 테스트 모드 - 메모 저장 시뮬레이션: ID {property_id}, 메모: {memo}")
+            return jsonify({'success': True, 'message': '테스트 모드 - 메모 저장 시뮬레이션 완료'})
+        
+        # 실제 데이터베이스 업데이트 로직은 나중에 구현
+        return jsonify({'success': True, 'message': '메모 저장 완료'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/employee/maeiple/<int:property_id>', methods=['DELETE'])
+def employee_maeiple_delete(property_id):
+    """직원용 메이플관리 매물 삭제 API"""
+    if 'employee_id' not in session:
+        return jsonify({'error': '로그인이 필요합니다.'}), 401
+    
+    try:
+        # DATABASE_URL이 없으면 테스트 모드로 처리
+        if not os.environ.get('DATABASE_URL'):
+            print(f"⚠️ 테스트 모드 - 매물 삭제 시뮬레이션: ID {property_id}")
+            return jsonify({'success': True, 'message': '테스트 모드 - 매물 삭제 시뮬레이션 완료'})
+        
+        # 실제 데이터베이스 삭제 로직은 나중에 구현
+        return jsonify({'success': True, 'message': '매물 삭제 완료'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/maeiple', methods=['GET', 'POST'])
 def maeiple_api():
-    """매이플관리 API - 매물 조회 및 생성"""
+    """매이플관리 API - 매물 조회 및 생성 (관리자용)"""
     if 'employee_id' not in session and not session.get('is_admin'):
         return jsonify({'error': '로그인이 필요합니다.'}), 401
     

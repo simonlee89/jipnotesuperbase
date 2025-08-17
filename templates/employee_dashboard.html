@@ -1146,8 +1146,17 @@
                 
                 <!-- 보증보험 매물 리스트 (초기에는 숨김) -->
                 <div class="card" id="guarantee-log-section" style="display:none;">
+                    <div class="page-header" style="margin-bottom: 24px;">
+                        <div class="header-content">
+                            <div class="header-text">
+                                <h1 class="page-title"><span>🛡️</span> 보증보험</h1>
+                                <p class="page-subtitle">보증보험 가능 매물 조회</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="card-header">
-                        <h2 class="card-title"><span>🛡️</span> 보증보험 매물 리스트</h2>
+                        <h2 class="card-title">보증보험 매물 목록</h2>
                     </div>
                     <div class="table-container">
                         <table class="customers-table">
@@ -1199,74 +1208,49 @@
                         </table>
                     </div>
                 </div>
-
+                
                 <!-- 메이플관리 섹션 (초기에는 숨김) -->
                 <div class="card" id="maeiple-section" style="display:none;">
+                    <div class="page-header" style="margin-bottom: 24px;">
+                        <div class="header-content">
+                            <div class="header-text">
+                                <h1 class="page-title"><span>🏢</span> 메이플관리</h1>
+                                <p class="page-subtitle">매물 등록 및 관리</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="card-header">
-                        <h2 class="card-title"><span>🏢</span> 메이플관리</h2>
+                        <h2 class="card-title">매물 목록</h2>
                         <div class="card-actions">
-                            <button class="btn btn-primary btn-sm" onclick="showAddPropertyForm()">
+                            <button class="btn btn-primary btn-sm" onclick="addNewPropertyRow()">
                                 <span>➕</span> 새 매물 추가
                             </button>
                         </div>
                     </div>
                     
-                    <!-- 새 매물 추가 폼 (초기에는 숨김) -->
-                    <div id="add-property-form" style="display:none; margin-bottom: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
-                        <h3 style="margin-bottom: 16px;">새 매물 추가</h3>
-                        <form id="property-form" style="display: grid; gap: 12px; max-width: 600px;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                <label>확인 날짜 <input type="date" name="check_date" required /></label>
-                                <label>동 <input type="number" name="building_number" required /></label>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                <label>호수 <input type="number" name="room_number" required /></label>
-                                <label>상태
-                                    <select name="status">
-                                        <option value="거래중">거래중</option>
-                                        <option value="거래가능">거래가능</option>
-                                        <option value="거래완료">거래완료</option>
-                                    </select>
-                                </label>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                                <label>전세가 <input type="number" name="jeonse_price" placeholder="만원" /></label>
-                                <label>월세 <input type="number" name="monthly_rent" placeholder="만원" /></label>
-                                <label>매매가 <input type="number" name="sale_price" placeholder="만원" /></label>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                <label>점유 여부
-                                    <select name="is_occupied">
-                                        <option value="false">빈집</option>
-                                        <option value="true">입주중</option>
-                                    </select>
-                                </label>
-                                <label>연락처 <input type="text" name="phone" /></label>
-                            </div>
-                            <label>메모 <textarea name="memo" rows="3" placeholder="매물에 대한 메모를 입력하세요"></textarea></label>
-                            <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="hideAddPropertyForm()">취소</button>
-                                <button type="submit" class="btn btn-primary btn-sm">추가</button>
-                            </div>
-                        </form>
-                    </div>
+                    <!-- 매물 추가는 테이블에 직접 행 추가하는 방식으로 변경 -->
 
                     <!-- 매물 목록 테이블 -->
                     <div class="table-container">
                         <table class="customers-table" id="maeiple-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>날짜</th>
+                                    <th>확인날짜</th>
                                     <th>동</th>
-                                    <th>호</th>
-                                    <th>상태</th>
-                                    <th>전세가</th>
-                                    <th>월세</th>
-                                    <th>매매가</th>
-                                    <th>점유</th>
-                                    <th>연락처</th>
-                                    <th>메모</th>
+                                    <th>호수</th>
+                                    <th>현황</th>
+                                    <th>전세 (만원)</th>
+                                    <th>월세보증금 (만원)</th>
+                                    <th>월세 (만원)</th>
+                                    <th>매매 (만원)</th>
+                                    <th>실거주 여부</th>
+                                    <th>전화번호</th>
+                                    <th>특이사항</th>
+                                    <th>담당자</th>
+                                    <th>팀</th>
+                                    <th>좋아요</th>
+                                    <th>싫어요</th>
                                     <th>작업</th>
                                 </tr>
                             </thead>
@@ -1525,10 +1509,10 @@
             }
         }
         
-        // 메이플자이 데이터 로드
+        // 메이플자이 데이터 로드 (직원용)
         async function loadMaeipleData() {
             try {
-                const response = await fetch('/api/maeiple');
+                const response = await fetch('/api/employee/maeiple');
                 if (response.ok) {
                     const data = await response.json();
                     updateMaeipleStats(data);
@@ -1576,12 +1560,17 @@
             
             console.log('메이플자이 통계 업데이트 완료:', statusCounts);
         }
-
+        
         // 메이플관리 관련 함수들
         function showMaeipleSection() {
-            // 모든 섹션 숨기기
+            // 모든 섹션과 탭 숨기기
             document.getElementById('guarantee-log-section').style.display = 'none';
             document.getElementById('maeiple-section').style.display = 'block';
+            
+            // 탭 네비게이션과 탭 컨텐츠 숨기기
+            document.querySelector('.tab-navigation').style.display = 'none';
+            document.getElementById('dashboard-tab').style.display = 'none';
+            document.getElementById('customers-tab').style.display = 'none';
             
             // 메이플관리 데이터 로드
             loadMaeipleProperties();
@@ -1589,20 +1578,39 @@
 
         function hideMaeipleSection() {
             document.getElementById('maeiple-section').style.display = 'none';
+            
+            // 탭 네비게이션과 기본 탭 다시 표시
+            document.querySelector('.tab-navigation').style.display = 'flex';
+            document.getElementById('dashboard-tab').style.display = 'block';
+        }
+        
+        // 보증보험 관련 함수들
+        function showGuaranteeSection() {
+            // 모든 섹션과 탭 숨기기
+            document.getElementById('maeiple-section').style.display = 'none';
+            document.getElementById('guarantee-log-section').style.display = 'block';
+            
+            // 탭 네비게이션과 탭 컨텐츠 숨기기
+            document.querySelector('.tab-navigation').style.display = 'none';
+            document.getElementById('dashboard-tab').style.display = 'none';
+            document.getElementById('customers-tab').style.display = 'none';
+            
+            // 보증보험 데이터 로드
+            loadGuaranteeLogs();
         }
 
-        function showAddPropertyForm() {
-            document.getElementById('add-property-form').style.display = 'block';
+        function hideGuaranteeSection() {
+            document.getElementById('guarantee-log-section').style.display = 'none';
+            
+            // 탭 네비게이션과 기본 탭 다시 표시
+            document.querySelector('.tab-navigation').style.display = 'flex';
+            document.getElementById('dashboard-tab').style.display = 'block';
         }
 
-        function hideAddPropertyForm() {
-            document.getElementById('add-property-form').style.display = 'none';
-        }
-
-        // 메이플관리 매물 목록 로드
+        // 메이플관리 매물 목록 로드 (직원용)
         async function loadMaeipleProperties() {
             try {
-                const response = await fetch('/api/maeiple?sort_by=check_date&sort_order=desc&page=1&per_page=20');
+                const response = await fetch('/api/employee/maeiple?sort_by=check_date&sort_order=desc&page=1&per_page=20');
                 if (response.ok) {
                     const data = await response.json();
                     displayMaeipleProperties(data.properties || []);
@@ -1620,76 +1628,556 @@
             tbody.innerHTML = '';
             
             if (properties.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#64748b; padding:40px;">등록된 매물이 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; color:#64748b; padding:40px;">등록된 매물이 없습니다.</td></tr>';
                 return;
             }
             
             properties.forEach(property => {
                 const row = document.createElement('tr');
+                row.dataset.propertyId = property.id;
+                
+                // 현황 배지 스타일
+                const statusStyle = property.status === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                  property.status === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                  property.status === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+                                  'background: #e0f2fe; color: #0369a1;';
+                
+                // 실거주 여부 표시
+                const occupiedDisplay = property.is_occupied ? 'O' : 'X';
+                const occupiedStyle = property.is_occupied ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
+                
+                // 가격 포맷팅 함수
+                const formatPrice = (price) => price ? price.toLocaleString() + ' 만원' : '-';
+                
+                // 하트 표시 함수
+                const renderHearts = (count, type) => {
+                    const hearts = [];
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= count) {
+                            hearts.push(type === 'like' ? '❤️' : '👎');
+                        } else {
+                            hearts.push('🤍');
+                        }
+                    }
+                    return hearts.join('');
+                };
+                
                 row.innerHTML = `
-                    <td>${property.id || ''}</td>
-                    <td>${property.check_date || ''}</td>
-                    <td>${property.building_number || ''}</td>
-                    <td>${property.room_number || ''}</td>
-                    <td>
-                        <span class="badge" style="background:#6366f1; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
-                            ${property.status || '거래중'}
+                    <td class="editable-cell" data-field="check_date" data-type="date" onclick="editExistingPropertyCell(this, ${property.id})">${property.check_date || ''}</td>
+                    <td class="editable-cell" data-field="building_number" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})">${property.building_number || ''}</td>
+                    <td class="editable-cell" data-field="room_number" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})">${property.room_number || ''}</td>
+                    <td class="editable-cell" data-field="status" data-type="select" onclick="editExistingPropertyCell(this, ${property.id})">
+                        <span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">
+                            ${property.status || '거래가능'}
                         </span>
                     </td>
-                    <td>${property.jeonse_price ? property.jeonse_price + '만원' : '-'}</td>
-                    <td>${property.monthly_rent ? property.monthly_rent + '만원' : '-'}</td>
-                    <td>${property.sale_price ? property.sale_price + '만원' : '-'}</td>
-                    <td>
-                        <span class="badge" style="background:${property.is_occupied ? '#ef4444' : '#10b981'}; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
-                            ${property.is_occupied ? '입주중' : '빈집'}
+                    <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.jeonse_price || '-'}</td>
+                    <td class="editable-cell" data-field="deposit" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.deposit || '-'}</td>
+                    <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.monthly_rent || '-'}</td>
+                    <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.sale_price || '-'}</td>
+                    <td onclick="toggleOccupied(${property.id}, ${property.is_occupied})" style="cursor: pointer;">
+                        <span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">
+                            ${occupiedDisplay}
                         </span>
                     </td>
-                    <td>${property.phone || '-'}</td>
-                    <td>${property.memo || '-'}</td>
+                    <td class="editable-cell" data-field="phone" data-type="text" onclick="editExistingPropertyCell(this, ${property.id})" style="font-family: monospace; letter-spacing: 0.5px;">${property.phone || '-'}</td>
+                    <td class="editable-cell" data-field="memo" data-type="text" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #64748b; font-style: italic; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${property.memo ? (property.memo.length > 20 ? property.memo.substring(0, 20) + '...' : property.memo) : '-'}
+                    </td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="editProperty(${property.id})">수정</button>
+                        <span style="color: #4f46e4; font-weight: 500;">
+                            ${property.employee_name || '{{ session.employee_name }}'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status-badge" style="background: #e0e7ff; color: #4338ca; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                            ${property.employee_team || '{{ session.employee_team }}'}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="cursor: pointer; user-select: none;" onclick="toggleLikes(${property.id}, ${property.likes || 0}, 'like', this)">
+                            ${renderHearts(property.likes || 0, 'like')}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="cursor: pointer; user-select: none;" onclick="toggleLikes(${property.id}, ${property.dislikes || 0}, 'dislike', this)">
+                            ${renderHearts(property.dislikes || 0, 'dislike')}
+                        </div>
+                    </td>
+                    <td>
                         <button class="btn btn-danger btn-sm" onclick="deleteProperty(${property.id})">삭제</button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
         }
-
-        // 매물 추가 폼 제출 처리
-        document.addEventListener('DOMContentLoaded', function() {
-            const propertyForm = document.getElementById('property-form');
-            if (propertyForm) {
-                propertyForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    const payload = Object.fromEntries(formData.entries());
-                    
-                    // 문자열 불리언 변환
-                    payload.is_occupied = payload.is_occupied === 'true';
-                    
-                    try {
-                        const response = await fetch('/api/maeiple', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        
-                        const data = await response.json();
-                        if (data.success) {
-                            alert('매물이 추가되었습니다.');
-                            e.target.reset();
-                            hideAddPropertyForm();
-                            loadMaeipleProperties(); // 목록 새로고침
-                        } else {
-                            alert('매물 추가 실패: ' + (data.error || '알 수 없는 오류'));
-                        }
-                    } catch (error) {
-                        console.error('매물 추가 오류:', error);
-                        alert('매물 추가 중 오류가 발생했습니다.');
-                    }
-                });
+        
+        // 새 매물 행 추가 (고객 추가와 동일한 방식)
+        function addNewPropertyRow() {
+            const tbody = document.getElementById('maeiple-tbody');
+            // 오늘 날짜 구하기 (한국시간 기준)
+            const now = new Date();
+            now.setHours(now.getHours() + 9);
+            const today = now.toISOString().slice(0, 10);
+            
+            const newRow = document.createElement('tr');
+            newRow.className = 'new-property-row';
+            newRow.innerHTML = `
+                <td class="editable-cell" data-field="check_date" data-type="date" onclick="editPropertyCell(this)">${today}</td>
+                <td class="editable-cell" data-field="building_number" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="room_number" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="status" data-type="select" onclick="editPropertyCell(this)">
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">거래가능</span>
+                </td>
+                <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="deposit" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="is_occupied" data-type="select" onclick="editPropertyCell(this)">
+                    <span class="badge" style="background: #fecaca; color: #dc2626; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">X</span>
+                </td>
+                <td class="editable-cell" data-field="phone" data-type="text" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="memo" data-type="text" onclick="editPropertyCell(this)">-</td>
+                <td style="color: #4f46e4; font-weight: 500;">{{ session.employee_name }}</td>
+                <td>
+                    <span class="status-badge" style="background: #e0e7ff; color: #4338ca; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                        {{ session.employee_team }}
+                    </span>
+                </td>
+                <td>
+                    <div style="cursor: pointer; user-select: none;" onclick="toggleNewPropertyLikes(this, 'like')">
+                        🤍🤍🤍🤍🤍
+                    </div>
+                </td>
+                <td>
+                    <div style="cursor: pointer; user-select: none;" onclick="toggleNewPropertyLikes(this, 'dislike')">
+                        🤍🤍🤍🤍🤍
+                    </div>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary btn-sm" onclick="saveNewProperty(this)">저장</button>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelNewPropertyRow(this)">취소</button>
+                    </div>
+                </td>
+            `;
+            tbody.insertBefore(newRow, tbody.firstChild);
+        }
+        
+        // 매물 셀 편집 (고객 편집과 유사)
+        function editPropertyCell(cell) {
+            // 이미 편집 중이어도 강제로 편집 진입
+            if (cell.classList.contains('editing-cell')) {
+                cell.classList.remove('editing-cell');
+                cell.innerHTML = cell.textContent;
             }
-        });
+            
+            const field = cell.dataset.field;
+            const type = cell.dataset.type;
+            const currentValue = cell.textContent.trim();
+            
+            cell.classList.add('editing-cell');
+            
+            let inputElement;
+            if (type === 'select' && field === 'status') {
+                inputElement = document.createElement('select');
+                inputElement.innerHTML = `
+                    <option value="거래가능" ${currentValue === '거래가능' ? 'selected' : ''}>거래가능</option>
+                    <option value="거래중" ${currentValue === '거래중' ? 'selected' : ''}>거래중</option>
+                    <option value="계약완료" ${currentValue === '계약완료' ? 'selected' : ''}>계약완료</option>
+                    <option value="보류" ${currentValue === '보류' ? 'selected' : ''}>보류</option>
+                    <option value="부재" ${currentValue === '부재' ? 'selected' : ''}>부재</option>
+                `;
+            } else if (type === 'select' && field === 'is_occupied') {
+                inputElement = document.createElement('select');
+                inputElement.innerHTML = `
+                    <option value="false" ${currentValue === 'X' ? 'selected' : ''}>X (빈집)</option>
+                    <option value="true" ${currentValue === 'O' ? 'selected' : ''}>O (입주중)</option>
+                `;
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = type;
+                inputElement.value = currentValue === '-' ? '' : currentValue;
+                
+                // 날짜 필드이고 값이 비어있으면 오늘 날짜로 자동 입력
+                if (type === 'date' && !inputElement.value) {
+                    const now = new Date();
+                    now.setHours(now.getHours() + 9);
+                    inputElement.value = now.toISOString().slice(0, 10);
+                }
+            }
+            
+            cell.innerHTML = '';
+            cell.appendChild(inputElement);
+            inputElement.focus();
+            
+            // 날짜 picker 자동 표시
+            if (type === 'date') {
+                try {
+                    if (typeof inputElement.showPicker === 'function') {
+                        setTimeout(() => { try { inputElement.showPicker(); } catch (e) {} }, 0);
+                    }
+                } catch (e) {}
+            }
+            
+            // 저장 함수
+            const saveCell = (moveNext = false) => {
+                const newValue = inputElement.value.trim();
+                cell.classList.remove('editing-cell');
+                
+                // 새 행의 경우 바로 텍스트 업데이트
+                if (field === 'status') {
+                    const statusStyle = newValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                      newValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                      newValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+                                      'background: #e0f2fe; color: #0369a1;';
+                    cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${newValue}</span>`;
+                } else if (field === 'is_occupied') {
+                    const occupiedDisplay = newValue === 'true' ? 'O' : 'X';
+                    const occupiedStyle = newValue === 'true' ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
+                    cell.innerHTML = `<span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${occupiedDisplay}</span>`;
+                } else {
+                    cell.textContent = newValue || '-';
+                }
+                
+                // 엔터로 저장 후 옆 셀로 이동
+                if (moveNext) {
+                    const editableCells = Array.from(cell.parentElement.querySelectorAll('.editable-cell'));
+                    const idx = editableCells.indexOf(cell);
+                    if (idx !== -1 && idx < editableCells.length - 1) {
+                        setTimeout(() => editPropertyCell(editableCells[idx + 1]), 50);
+                    }
+                }
+            };
+            
+            // 이벤트 리스너
+            inputElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveCell(true);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelPropertyCellEdit(cell, currentValue);
+                }
+            });
+            
+            inputElement.addEventListener('blur', () => saveCell(false));
+        }
+        
+        // 매물 셀 편집 취소
+        function cancelPropertyCellEdit(cell, originalValue) {
+            cell.classList.remove('editing-cell');
+            
+            if (cell.dataset.field === 'status') {
+                const statusStyle = originalValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                   originalValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                   originalValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+                                   'background: #e0f2fe; color: #0369a1;';
+                cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${originalValue}</span>`;
+            } else if (cell.dataset.field === 'is_occupied') {
+                const occupiedDisplay = originalValue === 'O' ? 'O' : 'X';
+                const occupiedStyle = originalValue === 'O' ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
+                cell.innerHTML = `<span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${occupiedDisplay}</span>`;
+            } else {
+                cell.textContent = originalValue;
+            }
+        }
+        
+        // 새 매물 저장
+        async function saveNewProperty(button) {
+            const row = button.closest('tr');
+            const cells = row.querySelectorAll('.editable-cell');
+            
+            const propertyData = {};
+            cells.forEach(cell => {
+                const field = cell.dataset.field;
+                if (field) {
+                    let value = cell.textContent.trim();
+                    
+                    // 특수 처리
+                    if (field === 'is_occupied') {
+                        value = value === 'O';
+                    } else if (field === 'status') {
+                        // 현재 표시된 텍스트 추출
+                        const badge = cell.querySelector('.badge');
+                        value = badge ? badge.textContent.trim() : value;
+                    } else if (value === '-') {
+                        value = '';
+                    }
+                    
+                    // 숫자 필드들 처리
+                    if (['building_number', 'room_number', 'jeonse_price', 'deposit', 'monthly_rent', 'sale_price'].includes(field)) {
+                        value = value ? parseInt(value) : null;
+                    }
+                    
+                    propertyData[field] = value;
+                }
+            });
+            
+            // 좋아요/싫어요 개수 추가
+            const likeElement = row.querySelector('td:nth-child(14) div');
+            const dislikeElement = row.querySelector('td:nth-child(15) div');
+            
+            propertyData.likes = parseInt(likeElement?.dataset.count || 0);
+            propertyData.dislikes = parseInt(dislikeElement?.dataset.count || 0);
+            
+            try {
+                const response = await fetch('/api/employee/maeiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(propertyData)
+                });
+                
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('매물이 성공적으로 추가되었습니다.', 'success');
+
+                    // 최신 서버 상태를 다시 불러와 동기화
+                    await loadMaeipleProperties();
+                    await loadMaeipleData(); // 통계도 업데이트
+                } else {
+                    showAlert(result.error || '매물 추가에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('매물 저장 오류:', error);
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 새 매물 행 취소
+        function cancelNewPropertyRow(button) {
+            const row = button.closest('tr');
+            row.remove();
+        }
+        
+        // 기존 매물 셀 편집
+        function editExistingPropertyCell(cell, propertyId) {
+            // 기존 매물 편집 로직 (새 매물 편집과 유사하지만 서버 저장 포함)
+            if (cell.classList.contains('editing-cell')) {
+                cell.classList.remove('editing-cell');
+                cell.innerHTML = cell.textContent;
+            }
+            
+            const field = cell.dataset.field;
+            const type = cell.dataset.type;
+            let currentValue = cell.textContent.trim();
+            
+            // 배지에서 실제 값 추출
+            if (field === 'status') {
+                const badge = cell.querySelector('.badge');
+                currentValue = badge ? badge.textContent.trim() : currentValue;
+            }
+            
+            cell.classList.add('editing-cell');
+            
+            let inputElement;
+            if (type === 'select' && field === 'status') {
+                inputElement = document.createElement('select');
+                inputElement.innerHTML = `
+                    <option value="거래가능" ${currentValue === '거래가능' ? 'selected' : ''}>거래가능</option>
+                    <option value="거래중" ${currentValue === '거래중' ? 'selected' : ''}>거래중</option>
+                    <option value="계약완료" ${currentValue === '계약완료' ? 'selected' : ''}>계약완료</option>
+                    <option value="보류" ${currentValue === '보류' ? 'selected' : ''}>보류</option>
+                    <option value="부재" ${currentValue === '부재' ? 'selected' : ''}>부재</option>
+                `;
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = type;
+                // 숫자 필드는 '만원' 제거
+                if (type === 'number' && currentValue.includes('만원')) {
+                    currentValue = currentValue.replace(/[^0-9]/g, '');
+                }
+                inputElement.value = currentValue === '-' ? '' : currentValue;
+            }
+            
+            cell.innerHTML = '';
+            cell.appendChild(inputElement);
+            inputElement.focus();
+            
+            // 저장 함수
+            const saveCell = async () => {
+                const newValue = inputElement.value.trim();
+                
+                try {
+                    // 서버에 업데이트 요청
+                    const response = await fetch('/api/employee/maeiple/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: propertyId,
+                            field: field,
+                            value: type === 'number' ? (newValue ? parseInt(newValue) : null) : newValue
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        cell.classList.remove('editing-cell');
+                        
+                        // UI 업데이트
+                        if (field === 'status') {
+                            const statusStyle = newValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                              newValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                              newValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+                                              'background: #e0f2fe; color: #0369a1;';
+                            cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${newValue}</span>`;
+                        } else if (type === 'number' && ['jeonse_price', 'deposit', 'monthly_rent', 'sale_price'].includes(field)) {
+                            cell.textContent = newValue ? parseInt(newValue).toLocaleString() + ' 만원' : '-';
+                        } else {
+                            cell.textContent = newValue || '-';
+                        }
+                        
+                        showAlert('수정이 완료되었습니다.', 'success');
+                    } else {
+                        showAlert('수정에 실패했습니다.', 'error');
+                        cancelPropertyCellEdit(cell, currentValue);
+                    }
+                } catch (error) {
+                    console.error('매물 수정 오류:', error);
+                    showAlert('서버 오류가 발생했습니다.', 'error');
+                    cancelPropertyCellEdit(cell, currentValue);
+                }
+            };
+            
+            // 이벤트 리스너
+            inputElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveCell();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelPropertyCellEdit(cell, currentValue);
+                }
+            });
+            
+            inputElement.addEventListener('blur', () => saveCell());
+        }
+        
+        // 실거주 여부 토글
+        async function toggleOccupied(propertyId, currentStatus) {
+            const newStatus = !currentStatus;
+            
+            try {
+                const response = await fetch('/api/employee/maeiple/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: propertyId,
+                        field: 'is_occupied',
+                        value: newStatus
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // UI 업데이트
+                    const row = document.querySelector(`tr[data-property-id="${propertyId}"]`);
+                    const cell = row.querySelector('td:nth-child(9)'); // 실거주 여부 셀
+                    
+                    const occupiedDisplay = newStatus ? 'O' : 'X';
+                    const occupiedStyle = newStatus ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
+                    
+                    cell.innerHTML = `
+                        <span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">
+                            ${occupiedDisplay}
+                        </span>
+                    `;
+                    
+                    // 클릭 이벤트 업데이트
+                    cell.onclick = () => toggleOccupied(propertyId, newStatus);
+                    
+                    showAlert('실거주 여부가 변경되었습니다.', 'success');
+                } else {
+                    showAlert('변경에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('실거주 여부 변경 오류:', error);
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 좋아요/싫어요 하트 토글 (1-5개)
+        async function toggleLikes(propertyId, currentCount, type, element) {
+            // 클릭 위치에 따라 하트 개수 결정
+            const rect = element.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const cellWidth = rect.width;
+            const heartWidth = cellWidth / 5; // 5개 하트로 나눔
+            const newCount = Math.ceil(clickX / heartWidth);
+            
+            // 같은 개수 클릭시 0으로 초기화
+            const finalCount = (newCount === currentCount) ? 0 : newCount;
+            
+            try {
+                const response = await fetch('/api/employee/maeiple/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: propertyId,
+                        field: type === 'like' ? 'likes' : 'dislikes',
+                        value: finalCount
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // UI 업데이트
+                    const hearts = [];
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= finalCount) {
+                            hearts.push(type === 'like' ? '❤️' : '👎');
+                        } else {
+                            hearts.push('🤍');
+                        }
+                    }
+                    element.innerHTML = hearts.join('');
+                    
+                    // 클릭 이벤트 업데이트
+                    element.onclick = () => toggleLikes(propertyId, finalCount, type, element);
+                    
+                } else {
+                    showAlert('변경에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('하트 변경 오류:', error);
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 새 매물 행에서 하트 토글 (저장 전)
+        function toggleNewPropertyLikes(element, type) {
+            // 클릭 위치에 따라 하트 개수 결정
+            const rect = element.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const cellWidth = rect.width;
+            const heartWidth = cellWidth / 5; // 5개 하트로 나눔
+            const newCount = Math.ceil(clickX / heartWidth);
+            
+            // 현재 하트 개수 확인
+            const currentHearts = element.innerHTML;
+            const currentCount = (currentHearts.match(/❤️|👎/g) || []).length;
+            
+            // 같은 개수 클릭시 0으로 초기화
+            const finalCount = (newCount === currentCount) ? 0 : newCount;
+            
+            // UI 업데이트
+            const hearts = [];
+            for (let i = 1; i <= 5; i++) {
+                if (i <= finalCount) {
+                    hearts.push(type === 'like' ? '❤️' : '👎');
+                } else {
+                    hearts.push('🤍');
+                }
+            }
+            element.innerHTML = hearts.join('');
+            
+            // 데이터 속성에 값 저장 (저장 시 사용)
+            element.dataset.count = finalCount;
+        }
         
         // 페이지 로드 시 실행
         document.addEventListener('DOMContentLoaded', function() {
@@ -1731,9 +2219,7 @@
             if (menu && section && mainContent) {
                 menu.addEventListener('click', function(e) {
                     e.preventDefault();
-                    mainContent.querySelectorAll('.card').forEach(card => card.style.display = 'none');
-                    section.style.display = 'block';
-                    loadGuaranteeLogs();
+                    showGuaranteeSection();
                     if (statsBox) statsBox.style.display = 'none';
                 });
             }
@@ -1742,16 +2228,29 @@
             if (maeipleMenu && maeipleSection && mainContent) {
                 maeipleMenu.addEventListener('click', function(e) {
                     e.preventDefault();
-                    mainContent.querySelectorAll('.card').forEach(card => card.style.display = 'none');
-                    maeipleSection.style.display = 'block';
-                    loadMaeipleProperties();
+                    showMaeipleSection();
                     if (statsBox) statsBox.style.display = 'none';
                 });
             }
             
+            // 대시보드 메뉴 클릭 시 기본 상태로 복원
             if (dashboardMenu && mainContent && statsBox) {
                 dashboardMenu.addEventListener('click', function(e) {
+                    // 모든 특수 섹션 숨기기
+                    hideMaeipleSection();
+                    hideGuaranteeSection();
+                    
+                    // 기본 탭과 통계 다시 표시
                     statsBox.style.display = '';
+                    document.querySelector('.tab-navigation').style.display = 'flex';
+                    document.getElementById('dashboard-tab').style.display = 'block';
+                    document.getElementById('customers-tab').style.display = 'none';
+                    
+                    // 대시보드 탭 활성화
+                    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    document.querySelector('.tab-btn[onclick="showTab(\'dashboard\')"]').classList.add('active');
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    document.getElementById('dashboard-tab').classList.add('active');
                 });
             }
         });
@@ -2427,6 +2926,34 @@
                         </div>
                     `;
                 });
+        }
+        
+        // 매물 수정 (더 이상 사용하지 않음 - 인라인 편집으로 대체)
+        function editProperty(propertyId) {
+            showAlert('각 셀을 클릭해서 직접 수정하세요.', 'info');
+        }
+        
+        // 매물 삭제
+        async function deleteProperty(propertyId) {
+            if (!confirm('이 매물을 삭제하시겠습니까?')) return;
+            
+            try {
+                const response = await fetch(`/api/employee/maeiple/${propertyId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('매물이 성공적으로 삭제되었습니다.');
+                    loadMaeipleProperties(); // 목록 새로고침
+                } else {
+                    alert('매물 삭제 실패: ' + (result.error || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('매물 삭제 오류:', error);
+                alert('매물 삭제 중 오류가 발생했습니다.');
+            }
         }
     </script>
 </body>
