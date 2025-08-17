@@ -1199,6 +1199,83 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- 메이플관리 섹션 (초기에는 숨김) -->
+                <div class="card" id="maeiple-section" style="display:none;">
+                    <div class="card-header">
+                        <h2 class="card-title"><span>🏢</span> 메이플관리</h2>
+                        <div class="card-actions">
+                            <button class="btn btn-primary btn-sm" onclick="showAddPropertyForm()">
+                                <span>➕</span> 새 매물 추가
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 새 매물 추가 폼 (초기에는 숨김) -->
+                    <div id="add-property-form" style="display:none; margin-bottom: 20px; padding: 20px; background: #f8fafc; border-radius: 8px;">
+                        <h3 style="margin-bottom: 16px;">새 매물 추가</h3>
+                        <form id="property-form" style="display: grid; gap: 12px; max-width: 600px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <label>확인 날짜 <input type="date" name="check_date" required /></label>
+                                <label>동 <input type="number" name="building_number" required /></label>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <label>호수 <input type="number" name="room_number" required /></label>
+                                <label>상태
+                                    <select name="status">
+                                        <option value="거래중">거래중</option>
+                                        <option value="거래가능">거래가능</option>
+                                        <option value="거래완료">거래완료</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                                <label>전세가 <input type="number" name="jeonse_price" placeholder="만원" /></label>
+                                <label>월세 <input type="number" name="monthly_rent" placeholder="만원" /></label>
+                                <label>매매가 <input type="number" name="sale_price" placeholder="만원" /></label>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <label>점유 여부
+                                    <select name="is_occupied">
+                                        <option value="false">빈집</option>
+                                        <option value="true">입주중</option>
+                                    </select>
+                                </label>
+                                <label>연락처 <input type="text" name="phone" /></label>
+                            </div>
+                            <label>메모 <textarea name="memo" rows="3" placeholder="매물에 대한 메모를 입력하세요"></textarea></label>
+                            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="hideAddPropertyForm()">취소</button>
+                                <button type="submit" class="btn btn-primary btn-sm">추가</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 매물 목록 테이블 -->
+                    <div class="table-container">
+                        <table class="customers-table" id="maeiple-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>날짜</th>
+                                    <th>동</th>
+                                    <th>호</th>
+                                    <th>상태</th>
+                                    <th>전세가</th>
+                                    <th>월세</th>
+                                    <th>매매가</th>
+                                    <th>점유</th>
+                                    <th>연락처</th>
+                                    <th>메모</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maeiple-tbody">
+                                <!-- 매물 데이터가 여기에 로드됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 
                 <!-- 통계 카드 -->
                 <!-- 탭 네비게이션 -->
@@ -1499,10 +1576,120 @@
             
             console.log('메이플자이 통계 업데이트 완료:', statusCounts);
         }
-        
 
-        
+        // 메이플관리 관련 함수들
+        function showMaeipleSection() {
+            // 모든 섹션 숨기기
+            document.getElementById('guarantee-log-section').style.display = 'none';
+            document.getElementById('maeiple-section').style.display = 'block';
+            
+            // 메이플관리 데이터 로드
+            loadMaeipleProperties();
+        }
 
+        function hideMaeipleSection() {
+            document.getElementById('maeiple-section').style.display = 'none';
+        }
+
+        function showAddPropertyForm() {
+            document.getElementById('add-property-form').style.display = 'block';
+        }
+
+        function hideAddPropertyForm() {
+            document.getElementById('add-property-form').style.display = 'none';
+        }
+
+        // 메이플관리 매물 목록 로드
+        async function loadMaeipleProperties() {
+            try {
+                const response = await fetch('/api/maeiple?sort_by=check_date&sort_order=desc&page=1&per_page=20');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMaeipleProperties(data.properties || []);
+                } else {
+                    console.error('메이플관리 데이터 로드 실패:', response.status);
+                }
+            } catch (error) {
+                console.error('메이플관리 데이터 로드 오류:', error);
+            }
+        }
+
+        // 메이플관리 매물 목록 표시
+        function displayMaeipleProperties(properties) {
+            const tbody = document.getElementById('maeiple-tbody');
+            tbody.innerHTML = '';
+            
+            if (properties.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#64748b; padding:40px;">등록된 매물이 없습니다.</td></tr>';
+                return;
+            }
+            
+            properties.forEach(property => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${property.id || ''}</td>
+                    <td>${property.check_date || ''}</td>
+                    <td>${property.building_number || ''}</td>
+                    <td>${property.room_number || ''}</td>
+                    <td>
+                        <span class="badge" style="background:#6366f1; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
+                            ${property.status || '거래중'}
+                        </span>
+                    </td>
+                    <td>${property.jeonse_price ? property.jeonse_price + '만원' : '-'}</td>
+                    <td>${property.monthly_rent ? property.monthly_rent + '만원' : '-'}</td>
+                    <td>${property.sale_price ? property.sale_price + '만원' : '-'}</td>
+                    <td>
+                        <span class="badge" style="background:${property.is_occupied ? '#ef4444' : '#10b981'}; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">
+                            ${property.is_occupied ? '입주중' : '빈집'}
+                        </span>
+                    </td>
+                    <td>${property.phone || '-'}</td>
+                    <td>${property.memo || '-'}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="editProperty(${property.id})">수정</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProperty(${property.id})">삭제</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 매물 추가 폼 제출 처리
+        document.addEventListener('DOMContentLoaded', function() {
+            const propertyForm = document.getElementById('property-form');
+            if (propertyForm) {
+                propertyForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const payload = Object.fromEntries(formData.entries());
+                    
+                    // 문자열 불리언 변환
+                    payload.is_occupied = payload.is_occupied === 'true';
+                    
+                    try {
+                        const response = await fetch('/api/maeiple', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            alert('매물이 추가되었습니다.');
+                            e.target.reset();
+                            hideAddPropertyForm();
+                            loadMaeipleProperties(); // 목록 새로고침
+                        } else {
+                            alert('매물 추가 실패: ' + (data.error || '알 수 없는 오류'));
+                        }
+                    } catch (error) {
+                        console.error('매물 추가 오류:', error);
+                        alert('매물 추가 중 오류가 발생했습니다.');
+                    }
+                });
+            }
+        });
         
         // 페이지 로드 시 실행
         document.addEventListener('DOMContentLoaded', function() {
@@ -1535,9 +1722,12 @@
             // 보증보험 메뉴 클릭 시 섹션 표시 및 리스트 불러오기
             const menu = document.getElementById('guarantee-log-menu');
             const dashboardMenu = document.querySelector('.nav-item[href="/dashboard"]');
+            const maeipleMenu = document.querySelector('.nav-item[href="/maeiple"]');
             const section = document.getElementById('guarantee-log-section');
+            const maeipleSection = document.getElementById('maeiple-section');
             const mainContent = document.querySelector('.content');
             const statsBox = document.querySelector('.dashboard-stats');
+            
             if (menu && section && mainContent) {
                 menu.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -1547,6 +1737,18 @@
                     if (statsBox) statsBox.style.display = 'none';
                 });
             }
+            
+            // 메이플관리 메뉴 클릭 시 섹션 표시 및 리스트 불러오기
+            if (maeipleMenu && maeipleSection && mainContent) {
+                maeipleMenu.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    mainContent.querySelectorAll('.card').forEach(card => card.style.display = 'none');
+                    maeipleSection.style.display = 'block';
+                    loadMaeipleProperties();
+                    if (statsBox) statsBox.style.display = 'none';
+                });
+            }
+            
             if (dashboardMenu && mainContent && statsBox) {
                 dashboardMenu.addEventListener('click', function(e) {
                     statsBox.style.display = '';
