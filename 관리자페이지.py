@@ -449,10 +449,7 @@ def manage_employees():
             
     except Exception as e:
         print(f"❌ 직원 API 오류: {e}")
-        return jsonify({'success': False, 'message': f'서버 오류가 발생했습니다: {str(e)}'})
-        return jsonify({'error': str(e)}), 500
-    finally:
-        if conn: conn.close()
+        return jsonify({'success': False, 'message': f'서버 오류가 발생했습니다: {str(e)}'}), 500
 
 @app.route('/api/employees/<int:emp_id>', methods=['DELETE'])
 def delete_employee(emp_id):
