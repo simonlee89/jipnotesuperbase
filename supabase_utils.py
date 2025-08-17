@@ -481,12 +481,21 @@ def get_guarantee_insurance_links(limit: int = 20) -> List[Dict[str, Any]]:
         supabase = get_supabase()
         if not supabase:
             return []
+        
         # 기본 테이블 'links'가 없을 수 있어 'office_links'로 폴백
         try:
             response = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
+            return response.data
         except Exception:
-            response = supabase.table('office_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
-        return response.data
+            # office_links 테이블에서 guarantee_insurance 컬럼이 없는 경우 모든 링크 반환
+            try:
+                response = supabase.table('office_links').select('*').order('id', desc=True).limit(limit).execute()
+                return response.data
+            except Exception:
+                # 모든 시도가 실패하면 빈 리스트 반환
+                logger.warning("보증보험 매물 목록 조회 실패 - 빈 리스트 반환")
+                return []
+                
     except Exception as e:
         logger.error(f"보증보험 매물 목록 조회 실패: {e}")
         return []

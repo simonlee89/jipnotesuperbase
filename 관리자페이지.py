@@ -578,7 +578,6 @@ def manage_customers():
 
             customer_data = {
                 'inquiry_date': data.get('inquiry_date'),
-                'move_in_date': data.get('move_in_date'),
                 'customer_name': data.get('customer_name'),
                 'customer_phone': data.get('phone'),
                 'budget': data.get('amount'),
@@ -594,6 +593,10 @@ def manage_customers():
                 'employee_team': session.get('employee_team'),
                 'created_date': datetime.now().isoformat()
             }
+            
+            # move_in_date가 제공된 경우에만 추가 (선택적 필드)
+            if data.get('move_in_date'):
+                customer_data['move_in_date'] = data.get('move_in_date')
 
             # management_site_id 생성 및 포함
             management_site_id = str(uuid.uuid4().hex)[:8]
