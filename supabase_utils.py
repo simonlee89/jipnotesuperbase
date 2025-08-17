@@ -476,23 +476,24 @@ def add_customer(customer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         return None
 
 def get_guarantee_insurance_links(limit: int = 20) -> List[Dict[str, Any]]:
-    """보증보험 매물 목록을 조회합니다."""
+    """보증보험 매물 목록을 조회합니다. (주거용 링크에서)"""
     try:
         supabase = get_supabase()
         if not supabase:
             return []
         
-        # 기본 테이블 'links'가 없을 수 있어 'office_links'로 폴백
+        # 보증보험은 주거용 링크에서 관리되므로 residence_links 테이블 우선 사용
         try:
-            response = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
+            # residence_links 테이블에서 guarantee_insurance 컬럼이 있는 경우
+            response = supabase.table('residence_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
             return response.data
         except Exception:
-            # office_links 테이블에서 guarantee_insurance 컬럼이 없는 경우 모든 링크 반환
+            # guarantee_insurance 컬럼이 없는 경우 모든 주거용 링크 반환
             try:
-                response = supabase.table('office_links').select('*').order('id', desc=True).limit(limit).execute()
+                response = supabase.table('residence_links').select('*').order('id', desc=True).limit(limit).execute()
                 return response.data
             except Exception:
-                # 모든 시도가 실패하면 빈 리스트 반환
+                # residence_links도 실패하면 빈 리스트 반환
                 logger.warning("보증보험 매물 목록 조회 실패 - 빈 리스트 반환")
                 return []
                 
@@ -605,26 +606,29 @@ def get_guarantee_list(limit: int = 50) -> List[Dict[str, Any]]:
         return []
 
 def update_guarantee_insurance_status(link_id: int, status: bool) -> bool:
-    """보증보험 매물 상태를 변경합니다."""
+    """보증보험 매물 상태를 변경합니다. (주거용 링크에서)"""
     try:
         supabase = get_supabase()
         if not supabase:
             return False
             
-        supabase.table('links').update({'guarantee_insurance': status}).eq('id', link_id).execute()
+        # 보증보험은 주거용 링크에서 관리되므로 'residence_links' 테이블 사용
+        supabase.table('residence_links').update({'guarantee_insurance': status}).eq('id', link_id).execute()
         return True
     except Exception as e:
         logger.error(f"보증보험 매물 상태 변경 실패: {e}")
         return False
 
-def update_link_memo(link_id: int, memo: str) -> bool:
+def update_link_memo(link_id: int, memo: str, table_type: str = 'residence') -> bool:
     """링크 메모를 업데이트합니다."""
     try:
         supabase = get_supabase()
         if not supabase:
             return False
             
-        supabase.table('links').update({'memo': memo}).eq('id', link_id).execute()
+        # 테이블 타입에 따라 적절한 테이블 선택
+        table_name = 'residence_links' if table_type == 'residence' else 'office_links'
+        supabase.table(table_name).update({'memo': memo}).eq('id', link_id).execute()
         return True
     except Exception as e:
         logger.error(f"링크 메모 업데이트 실패: {e}")

@@ -252,7 +252,7 @@ def guarantee_edit(id):
         return "데이터베이스 연결이 설정되지 않았습니다.", 500
     
     try:
-        if supabase_utils.update_link_memo(id, memo):
+        if supabase_utils.update_link_memo(id, memo, 'residence'):
             return redirect(url_for('admin_panel'))
         else:
             return "메모 수정 중 오류 발생", 500
@@ -1143,11 +1143,8 @@ def residence_links():
                 'management_site_id': management_site_id,
                 'guarantee_insurance': guarantee_insurance
             }
-            # 기본 'links'가 없으면 'office_links'로 폴백
-            try:
-                res = supabase.table('links').insert(payload).execute()
-            except Exception:
-                res = supabase.table('office_links').insert(payload).execute()
+            # 주거용 링크는 residence_links 테이블 사용
+            res = supabase.table('residence_links').insert(payload).execute()
             if not res.data:
                 return jsonify({'success': False, 'error': '링크 추가 실패'}), 500
             return jsonify({'success': True, 'id': res.data[0].get('id')})
@@ -1167,7 +1164,7 @@ def residence_links():
             if not supabase:
                 return jsonify([])
 
-            # 기본 'links'가 없을 수 있어 우선 links로 시도 후 office_links로 폴백
+            # 주거용 링크는 residence_links 테이블 사용
             def build_query(table_name: str):
                 q = supabase.table(table_name).select('*')
                 if management_site_id:
@@ -1190,10 +1187,7 @@ def residence_links():
                     q = q.eq('guarantee_insurance', False)
                 return q.order('id', desc=True)
 
-            try:
-                res = build_query('links').execute()
-            except Exception:
-                res = build_query('office_links').execute()
+            res = build_query('residence_links').execute()
 
             data = res.data or []
             return jsonify(data)
@@ -1228,18 +1222,14 @@ def update_residence_link(link_id):
                 update['guarantee_insurance'] = bool(data.get('guarantee_insurance', False))
             else:
                 return jsonify({'success': False, 'error': 'Invalid action'}), 400
-            try:
-                res = supabase.table('links').update(update).eq('id', link_id).execute()
-            except Exception:
-                res = supabase.table('office_links').update(update).eq('id', link_id).execute()
+            # 주거용 링크는 residence_links 테이블 사용
+            res = supabase.table('residence_links').update(update).eq('id', link_id).execute()
             if res.data is None:
                 return jsonify({'success': False}), 500
             return jsonify({'success': True})
         elif request.method == 'DELETE':
-            try:
-                res = supabase.table('links').delete().eq('id', link_id).execute()
-            except Exception:
-                res = supabase.table('office_links').delete().eq('id', link_id).execute()
+            # 주거용 링크는 residence_links 테이블 사용
+            res = supabase.table('residence_links').delete().eq('id', link_id).execute()
             if res.data is None:
                 return jsonify({'success': False}), 500
             return jsonify({'success': True})
@@ -1317,46 +1307,45 @@ def business_links():
 
 @app.route('/api/office-links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_business_link(link_id):
-    """업무용 링크 수정/삭제"""
-    conn, _ = db_utils.get_db_connection()
-    cursor = conn.cursor()
-    
-    if request.method == 'PUT':
-        data = request.json
-        action = data.get('action')
-        
-        if action == 'rating':
-            rating = data.get('rating', 5)
-            cursor.execute('UPDATE office_links SET rating = %s WHERE id = %s', (rating, link_id))
-        
-        elif action == 'like':
-            liked = data.get('liked', False)
-            if liked:
-                cursor.execute('UPDATE office_links SET liked = TRUE, disliked = FALSE, is_checked = FALSE WHERE id = %s', (link_id,))
+    """업무용 링크 수정/삭제 - Supabase"""
+    try:
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify({'success': False}), 500
+        if request.method == 'PUT':
+            data = request.json or {}
+            action = data.get('action')
+            update = {}
+            if action == 'rating':
+                update['rating'] = data.get('rating', 5)
+            elif action == 'like':
+                liked = bool(data.get('liked', False))
+                update['liked'] = liked
+                update['disliked'] = False if liked else False
+                update['is_checked'] = False
+            elif action == 'dislike':
+                disliked = bool(data.get('disliked', False))
+                update['disliked'] = disliked
+                update['liked'] = False
+            elif action == 'memo':
+                update['memo'] = data.get('memo', '')
+            elif action == 'guarantee':
+                update['guarantee_insurance'] = bool(data.get('guarantee_insurance', False))
             else:
-                cursor.execute('UPDATE office_links SET liked = FALSE WHERE id = %s', (link_id,))
-        
-        elif action == 'dislike':
-            disliked = data.get('disliked', False)
-            cursor.execute('UPDATE office_links SET disliked = %s, liked = FALSE WHERE id = %s', (disliked, link_id))
-        
-        elif action == 'memo':
-            memo = data.get('memo', '')
-            cursor.execute('UPDATE office_links SET memo = %s WHERE id = %s', (memo, link_id))
-        
-        elif action == 'guarantee':
-            guarantee_insurance = data.get('guarantee_insurance', False)
-            cursor.execute('UPDATE office_links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
-    
-    elif request.method == 'DELETE':
-        cursor.execute('DELETE FROM office_links WHERE id = %s', (link_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
+                return jsonify({'success': False, 'error': 'Invalid action'}), 400
+            # 업무용 링크는 office_links 테이블 사용
+            res = supabase.table('office_links').update(update).eq('id', link_id).execute()
+            if res.data is None:
+                return jsonify({'success': False}), 500
+            return jsonify({'success': True})
+        elif request.method == 'DELETE':
+            # 업무용 링크는 office_links 테이블 사용
+            res = supabase.table('office_links').delete().eq('id', link_id).execute()
+            if res.data is None:
+                return jsonify({'success': False}), 500
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/debug/check-customers')
 def debug_check_customers():
@@ -2211,11 +2200,8 @@ def get_guarantee_list():
         supabase = supabase_utils.get_supabase()
         if not supabase:
             return jsonify([])
-        # links 우선, 없으면 office_links 폴백
-        try:
-            res = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(50).execute()
-        except Exception:
-            res = supabase.table('office_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(50).execute()
+        # 보증보험은 주거용 링크에서 관리되므로 residence_links 테이블 사용
+        res = supabase.table('residence_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(50).execute()
         return jsonify(res.data or [])
     except Exception as e:
         print(f"보증보험 목록 조회 오류: {e}")
