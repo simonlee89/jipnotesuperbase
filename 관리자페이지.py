@@ -1312,24 +1312,24 @@ def update_business_link(link_id):
         supabase = supabase_utils.get_supabase()
         if not supabase:
             return jsonify({'success': False}), 500
-        if request.method == 'PUT':
+    if request.method == 'PUT':
             data = request.json or {}
-            action = data.get('action')
+        action = data.get('action')
             update = {}
-            if action == 'rating':
+        if action == 'rating':
                 update['rating'] = data.get('rating', 5)
-            elif action == 'like':
+        elif action == 'like':
                 liked = bool(data.get('liked', False))
                 update['liked'] = liked
                 update['disliked'] = False if liked else False
                 update['is_checked'] = False
-            elif action == 'dislike':
+        elif action == 'dislike':
                 disliked = bool(data.get('disliked', False))
                 update['disliked'] = disliked
                 update['liked'] = False
-            elif action == 'memo':
+        elif action == 'memo':
                 update['memo'] = data.get('memo', '')
-            elif action == 'guarantee':
+        elif action == 'guarantee':
                 update['guarantee_insurance'] = bool(data.get('guarantee_insurance', False))
             else:
                 return jsonify({'success': False, 'error': 'Invalid action'}), 400
@@ -1337,13 +1337,13 @@ def update_business_link(link_id):
             res = supabase.table('office_links').update(update).eq('id', link_id).execute()
             if res.data is None:
                 return jsonify({'success': False}), 500
-            return jsonify({'success': True})
-        elif request.method == 'DELETE':
+        return jsonify({'success': True})
+    elif request.method == 'DELETE':
             # 업무용 링크는 office_links 테이블 사용
             res = supabase.table('office_links').delete().eq('id', link_id).execute()
             if res.data is None:
                 return jsonify({'success': False}), 500
-            return jsonify({'success': True})
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

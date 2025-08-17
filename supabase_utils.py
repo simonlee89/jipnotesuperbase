@@ -458,7 +458,7 @@ def get_customers_with_pagination(page: int, per_page: int, employee_id: str = N
         return None
 
 def add_customer(customer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """새 고객을 추가합니다."""
+    """새 고객을 추가하고 전용 주거용/업무용 링크를 생성합니다."""
     try:
         supabase = get_supabase()
         if not supabase:
@@ -468,12 +468,150 @@ def add_customer(customer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         response = supabase.table('employee_customers').insert(customer_data).execute()
         
         if response.data:
-            logger.info(f"고객 추가 성공: {customer_data.get('customer_name', 'Unknown')}")
-            return response.data[0]
+            new_customer = response.data[0]
+            management_site_id = customer_data.get('management_site_id')
+            customer_name = customer_data.get('customer_name', 'Unknown')
+            
+            logger.info(f"고객 추가 성공: {customer_name}")
+            
+            # 고객 전용 주거용/업무용 링크 생성
+            if management_site_id:
+                create_customer_default_links(management_site_id, customer_name)
+            
+            return new_customer
         return None
     except Exception as e:
         logger.error(f"고객 추가 실패: {e}")
         return None
+
+def create_customer_default_links(management_site_id: str, customer_name: str) -> bool:
+    """고객 전용 기본 주거용/업무용 링크를 생성합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        
+        # 주거용 기본 링크들
+        residence_default_links = [
+            {
+                'title': f'{customer_name}님 전용 - 네이버 부동산',
+                'url': 'https://land.naver.com',
+                'description': '네이버 부동산 검색',
+                'platform': '네이버',
+                'added_by': 'system',
+                'date_added': current_date,
+                'memo': f'{customer_name}님 전용 주거용 링크',
+                'management_site_id': management_site_id,
+                'guarantee_insurance': False,
+                'liked': False,
+                'disliked': False,
+                'is_checked': False,
+                'rating': 5
+            },
+            {
+                'title': f'{customer_name}님 전용 - 직방',
+                'url': 'https://www.zigbang.com',
+                'description': '직방 원룸, 투룸 검색',
+                'platform': '직방',
+                'added_by': 'system',
+                'date_added': current_date,
+                'memo': f'{customer_name}님 전용 주거용 링크',
+                'management_site_id': management_site_id,
+                'guarantee_insurance': False,
+                'liked': False,
+                'disliked': False,
+                'is_checked': False,
+                'rating': 5
+            }
+        ]
+        
+        # 업무용 기본 링크들
+        office_default_links = [
+            {
+                'title': f'{customer_name}님 전용 - 네이버 상가',
+                'url': 'https://land.naver.com/commercial',
+                'description': '네이버 상가 검색',
+                'platform': '네이버',
+                'added_by': 'system',
+                'date_added': current_date,
+                'memo': f'{customer_name}님 전용 업무용 링크',
+                'management_site_id': management_site_id,
+                'guarantee_insurance': False,
+                'liked': False,
+                'disliked': False,
+                'is_checked': False,
+                'rating': 5
+            },
+            {
+                'title': f'{customer_name}님 전용 - 상가정보',
+                'url': 'https://www.sangga.co.kr',
+                'description': '상가정보 검색 사이트',
+                'platform': '상가정보',
+                'added_by': 'system',
+                'date_added': current_date,
+                'memo': f'{customer_name}님 전용 업무용 링크',
+                'management_site_id': management_site_id,
+                'guarantee_insurance': False,
+                'liked': False,
+                'disliked': False,
+                'is_checked': False,
+                'rating': 5
+            }
+        ]
+        
+        # 주거용 링크 생성
+        for link_data in residence_default_links:
+            supabase.table('residence_links').insert(link_data).execute()
+            
+        # 업무용 링크 생성
+        for link_data in office_default_links:
+            supabase.table('office_links').insert(link_data).execute()
+            
+        logger.info(f"고객 {customer_name} 전용 링크 생성 완료 (management_site_id: {management_site_id})")
+        return True
+        
+    except Exception as e:
+        logger.error(f"고객 전용 링크 생성 실패: {e}")
+        return False
+
+def create_links_for_existing_customers() -> bool:
+    """기존 고객들에게 전용 링크를 생성합니다."""
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return False
+            
+        # 기존 고객들 조회
+        response = supabase.table('employee_customers').select('*').execute()
+        customers = response.data or []
+        
+        success_count = 0
+        for customer in customers:
+            management_site_id = customer.get('management_site_id')
+            customer_name = customer.get('customer_name', 'Unknown')
+            
+            if management_site_id:
+                # 이미 해당 고객의 링크가 있는지 확인
+                existing_residence = supabase.table('residence_links').select('id').eq('management_site_id', management_site_id).limit(1).execute()
+                existing_office = supabase.table('office_links').select('id').eq('management_site_id', management_site_id).limit(1).execute()
+                
+                # 링크가 없는 경우에만 생성
+                if not existing_residence.data and not existing_office.data:
+                    if create_customer_default_links(management_site_id, customer_name):
+                        success_count += 1
+                        logger.info(f"기존 고객 {customer_name} 전용 링크 생성 완료")
+                else:
+                    logger.info(f"고객 {customer_name}의 전용 링크가 이미 존재함")
+        
+        logger.info(f"기존 고객 전용 링크 생성 완료: {success_count}명")
+        return True
+        
+    except Exception as e:
+        logger.error(f"기존 고객 전용 링크 생성 실패: {e}")
+        return False
 
 def get_guarantee_insurance_links(limit: int = 20) -> List[Dict[str, Any]]:
     """보증보험 매물 목록을 조회합니다. (주거용 링크에서)"""
