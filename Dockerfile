@@ -32,7 +32,7 @@ ENV PORT=8080
 
 # 헬스체크 추가
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/ || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/ || exit 1
 
 # start.sh 스크립트 실행
 CMD ["./start.sh"]
