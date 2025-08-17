@@ -103,44 +103,6 @@ def login():
     except Exception as e:
         print(f"❌ 데이터베이스 오류: {e}")
         return jsonify({'success': False, 'message': '로그인 중 오류가 발생했습니다.'})
-            # 비밀번호 확인
-            if employee.get('password') != password:
-                print(f"❌ 비밀번호 불일치: '{employee_id}'")
-                return jsonify({'success': False, 'message': '비밀번호가 일치하지 않습니다.'})
-            
-            # 세션 설정
-            session['employee_id'] = employee['name']
-            session['employee_name'] = employee['name']
-            session['employee_role'] = employee.get('role', 'employee')
-            session['employee_team'] = employee.get('team', '미지정')
-            
-            # 마지막 로그인 시간 업데이트
-            update_employee_last_login(employee['name'])
-            
-            print(f"✅ Supabase 로그인 성공: {employee['name']} (팀:{session['employee_team']}, 역할:{session['employee_role']})")
-            
-            # 역할에 따른 리다이렉트 정보 포함
-            if employee['name'] == '수정':
-                return jsonify({
-                    'success': True, 
-                    'message': '로그인 성공',
-                    'redirect': '/team-leader',
-                    'role': '팀장'
-                })
-            else:
-                return jsonify({
-                    'success': True, 
-                    'message': '로그인 성공',
-                    'redirect': '/dashboard',
-                    'role': 'employee'
-                })
-        else:
-            print(f"❌ 로그인 실패: '{employee_id}' 직원을 찾을 수 없음")
-            return jsonify({'success': False, 'message': '존재하지 않는 직원입니다.'})
-            
-    except Exception as e:
-        print(f"❌ Supabase 로그인 처리 중 오류: {e}")
-        return jsonify({'success': False, 'message': '로그인 처리 중 오류가 발생했습니다.'})
 
 @app.route('/admin-login', methods=['POST'])
 def admin_login():
