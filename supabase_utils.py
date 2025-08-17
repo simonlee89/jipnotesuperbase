@@ -481,8 +481,11 @@ def get_guarantee_insurance_links(limit: int = 20) -> List[Dict[str, Any]]:
         supabase = get_supabase()
         if not supabase:
             return []
-            
-        response = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
+        # 기본 테이블 'links'가 없을 수 있어 'office_links'로 폴백
+        try:
+            response = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
+        except Exception:
+            response = supabase.table('office_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
         return response.data
     except Exception as e:
         logger.error(f"보증보험 매물 목록 조회 실패: {e}")
@@ -534,7 +537,7 @@ def get_team_maeiple_properties(team_leader_id: str, limit: int = 50) -> List[Di
         if not supabase:
             return []
             
-        response = supabase.table('maeiple_properties').select('*').eq('added_by', team_leader_id).order('id', desc=True).limit(limit).execute()
+        response = supabase.table('maeiple_properties').select('*').eq('employee_id', team_leader_id).order('id', desc=True).limit(limit).execute()
         return response.data
     except Exception as e:
         logger.error(f"팀 메이플 아파트 매물 목록 조회 실패: {e}")

@@ -75,7 +75,7 @@ def login():
         
         if employee:  # 비밀번호 검증 우회 (임시)
             # 로그인 성공
-            session['employee_id'] = employee['name']
+            session['employee_id'] = employee['id']
             session['employee_name'] = employee['name']
             session['employee_team'] = employee.get('team', '')
             session['employee_role'] = employee.get('role', 'employee')
