@@ -283,18 +283,20 @@ def get_maeiple_property(property_id: int) -> Optional[Dict[str, Any]]:
         logger.error(f"매물 조회 실패: {e}")
         return None
 
-def create_maeiple_property(property_data: Dict[str, Any]) -> bool:
-    """새 매물을 생성합니다."""
+def create_maeiple_property(property_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """새 매물을 생성하고 생성된 레코드를 반환합니다."""
     try:
         supabase = get_supabase()
         if not supabase:
-            return False
+            return None
             
-        supabase.table('maeiple_properties').insert(property_data).execute()
-        return True
+        response = supabase.table('maeiple_properties').insert(property_data).execute()
+        if response.data:
+            return response.data[0]
+        return None
     except Exception as e:
         logger.error(f"매물 생성 실패: {e}")
-        return False
+        return None
 
 def update_maeiple_property(property_id: int, property_data: Dict[str, Any]) -> bool:
     """매물 정보를 업데이트합니다."""
