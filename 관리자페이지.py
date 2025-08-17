@@ -612,54 +612,48 @@ def update_delete_customer(customer_id):
         return jsonify({'error': 'Unauthorized'}), 401
     
     employee_id = session.get('employee_id')
-    if session.get('is_admin'):
-        employee_id = 'admin'
+    is_admin = bool(session.get('is_admin'))
 
-    conn = None
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        # 권한 확인
-        if employee_id != 'admin':
-            cursor.execute("SELECT id FROM employee_customers WHERE id = %s AND employee_id = %s", (customer_id, employee_id))
-            if not cursor.fetchone():
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify({'success': False, 'message': '데이터베이스 연결 실패'}), 500
+
+        # 권한 확인: 관리자가 아니면 본인 소유만 허용
+        if not is_admin:
+            owns = supabase.table('employee_customers').select('id').eq('id', customer_id).eq('employee_id', employee_id).execute()
+            if not owns.data:
                 return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
 
         if request.method == 'PUT':
-            data = request.get_json()
-            # 여기에 필드 업데이트 로직이 필요하지만, 현재 사용되지 않으므로 pass
-            pass
+            data = request.get_json() or {}
+            # 필요 시 구현 영역. 현재는 변경 사항 없음
             return jsonify({'success': True})
-    
+
         if request.method == 'DELETE':
-            cursor.execute("DELETE FROM employee_customers WHERE id = %s", (customer_id,))
-            conn.commit()
+            response = supabase.table('employee_customers').delete().eq('id', customer_id).execute()
+            if response.data is None:
+                return jsonify({'success': False, 'message': '삭제 실패'}), 500
             return jsonify({'success': True, 'message': '고객이 삭제되었습니다.'})
 
     except Exception as e:
-        if conn: conn.rollback()
-        return jsonify({'success': False, 'message': '작업 중 오류 발생'}), 500
-    finally:
-        if conn: conn.close()
+        return jsonify({'success': False, 'message': f'작업 중 오류 발생: {e}'}), 500
 
 @app.route('/api/customers/<int:customer_id>/memo', methods=['PUT'])
 def update_customer_memo(customer_id):
     data = request.get_json()
     memo = data.get('memo')
     
-    conn = None
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE employee_customers SET memo = %s WHERE id = %s", (memo, customer_id))
-        conn.commit()
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify({'success': False, 'message': '데이터베이스 연결 실패'}), 500
+        res = supabase.table('employee_customers').update({'memo': memo}).eq('id', customer_id).execute()
+        if res.data is None:
+            return jsonify({'success': False, 'message': '메모 업데이트 실패'}), 500
         return jsonify({'success': True})
     except Exception as e:
-        if conn: conn.rollback()
         return jsonify({'success': False, 'message': '메모 업데이트 실패'}), 500
-    finally:
-        if conn: conn.close()
 
 @app.route('/api/customers/<int:customer_id>/field', methods=['PUT'])
 def update_customer_field(customer_id):
@@ -675,20 +669,18 @@ def update_customer_field(customer_id):
     if field not in allowed_fields:
         return jsonify({'success': False, 'error': '허용되지 않은 필드'}), 400
 
-    conn = None
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        query = f'UPDATE employee_customers SET "{field}" = %s WHERE id = %s'
-        cursor.execute(query, (value, customer_id))
-        conn.commit()
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify({'success': False, 'error': 'DB 연결 실패'}), 500
+        update_data = {field: value}
+        res = supabase.table('employee_customers').update(update_data).eq('id', customer_id).execute()
+        if res.data is None:
+            return jsonify({'success': False, 'error': '업데이트 실패'}), 500
         return jsonify({'success': True})
     except Exception as e:
-        if conn: conn.rollback()
         print(f"필드 업데이트 오류: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-    finally:
-        if conn: conn.close()
 
 # ==================== 팀장 전용 API 라우트 ====================
 @app.route('/api/team-leader/customers', methods=['GET'])
@@ -1126,164 +1118,128 @@ def residence_links():
     
     if request.method == 'POST':
         try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
-            
-            data = request.json
+            data = request.json or {}
             url = data.get('url')
             platform = data.get('platform')
-            added_by = session.get('employee_id', '중개사')
+            added_by = session.get('employee_id')
             memo = data.get('memo', '')
-            guarantee_insurance = data.get('guarantee_insurance', False)
-            
+            guarantee_insurance = bool(data.get('guarantee_insurance', False))
             if not url or not platform:
-                conn.close()
                 return jsonify({'success': False, 'error': 'URL과 플랫폼은 필수 입력 항목입니다.'}), 400
-            
-            date_added = datetime.now().strftime('%Y-%m-%d')
-            
-            # 고객 정보 검증
-            if management_site_id:
-                customer_info = db_utils.get_customer_info(management_site_id)
-                if not customer_info:
-                    conn.close()
-                    return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'}), 404
-            
-            # DB에 링크 추가 (PostgreSQL)
-            cursor.execute('''
-                INSERT INTO links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-            ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-            result = cursor.fetchone()
-            link_id = result['id'] if isinstance(result, dict) else result[0]
-            
-            conn.commit()
-            conn.close()
-            return jsonify({'success': True, 'id': link_id})
-            
+            supabase = supabase_utils.get_supabase()
+            if not supabase:
+                return jsonify({'success': False, 'error': 'DB 연결 실패'}), 500
+            payload = {
+                'url': url,
+                'platform': platform,
+                'added_by': added_by,
+                'date_added': datetime.now().strftime('%Y-%m-%d'),
+                'memo': memo,
+                'management_site_id': management_site_id,
+                'guarantee_insurance': guarantee_insurance
+            }
+            # 기본 'links'가 없으면 'office_links'로 폴백
+            try:
+                res = supabase.table('links').insert(payload).execute()
+            except Exception:
+                res = supabase.table('office_links').insert(payload).execute()
+            if not res.data:
+                return jsonify({'success': False, 'error': '링크 추가 실패'}), 500
+            return jsonify({'success': True, 'id': res.data[0].get('id')})
         except Exception as e:
-            if 'conn' in locals():
-                conn.close()
             return jsonify({'success': False, 'error': str(e)}), 500
     
     else:  # GET 요청
         try:
-            conn, _ = db_utils.get_db_connection()
-            cursor = conn.cursor()
-            
             # 필터 파라미터 처리
             platform_filter = request.args.get('platform', 'all')
             user_filter = request.args.get('user', 'all')
             like_filter = request.args.get('like', 'all')
             date_filter = request.args.get('date', '')
             guarantee_filter = request.args.get('guarantee', 'all')
-            
-            query = 'SELECT * FROM links WHERE 1=1'
-            params = []
-            
-            # 고객별 필터링
-            if management_site_id:
-                query += ' AND management_site_id = %s'
-                params.append(management_site_id)
-            else:
-                query += ' AND management_site_id IS NULL'
-            
-            # 플랫폼 필터
-            if platform_filter != 'all':
-                query += ' AND platform = %s'
-                params.append(platform_filter)
-            
-            # 사용자 필터
-            if user_filter != 'all':
-                query += ' AND added_by = %s'
-                params.append(user_filter)
-            
-            # 좋아요 필터
-            if like_filter == 'liked':
-                query += ' AND liked = TRUE'
-            elif like_filter == 'disliked':
-                query += ' AND disliked = TRUE'
-            
-            # 날짜 필터
-            if date_filter:
-                query += ' AND date_added = %s'
-                params.append(date_filter)
-            
-            # 보증보험 필터
-            if guarantee_filter == 'available':
-                query += ' AND guarantee_insurance = TRUE'
-            elif guarantee_filter == 'unavailable':
-                query += ' AND guarantee_insurance = FALSE'
-            
-            query += ' ORDER BY id DESC'
-            cursor.execute(query, params)
-            links_data = cursor.fetchall()
-            
-            conn.close()
-            
-            # 데이터 형식 변환
-            links_list = []
-            for idx, link in enumerate(links_data):
-                links_list.append({
-                    'id': link['id'],
-                    'number': len(links_data) - idx,  # 역순 번호
-                    'url': link['url'],
-                    'platform': link['platform'],
-                    'added_by': link['added_by'],
-                    'date_added': link['date_added'].strftime('%Y-%m-%d %H:%M') if link.get('date_added') else '',
-                    'rating': link['rating'],
-                    'liked': bool(link['liked']),
-                    'disliked': bool(link['disliked']),
-                    'memo': link.get('memo', ''),
-                    'guarantee_insurance': bool(link['guarantee_insurance'])
-                })
-            
-            return jsonify(links_list)
-            
+
+            supabase = supabase_utils.get_supabase()
+            if not supabase:
+                return jsonify([])
+
+            # 기본 'links'가 없을 수 있어 우선 links로 시도 후 office_links로 폴백
+            def build_query(table_name: str):
+                q = supabase.table(table_name).select('*')
+                if management_site_id:
+                    q = q.eq('management_site_id', management_site_id)
+                else:
+                    q = q.is_('management_site_id', None)
+                if platform_filter != 'all':
+                    q = q.eq('platform', platform_filter)
+                if user_filter != 'all':
+                    q = q.eq('added_by', user_filter)
+                if like_filter == 'liked':
+                    q = q.eq('liked', True)
+                elif like_filter == 'disliked':
+                    q = q.eq('disliked', True)
+                if date_filter:
+                    q = q.eq('date_added', date_filter)
+                if guarantee_filter == 'available':
+                    q = q.eq('guarantee_insurance', True)
+                elif guarantee_filter == 'unavailable':
+                    q = q.eq('guarantee_insurance', False)
+                return q.order('id', desc=True)
+
+            try:
+                res = build_query('links').execute()
+            except Exception:
+                res = build_query('office_links').execute()
+
+            data = res.data or []
+            return jsonify(data)
         except Exception as e:
-            if 'conn' in locals():
-                conn.close()
             return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_residence_link(link_id):
-    """주거용 링크 수정/삭제"""
-    conn, _ = db_utils.get_db_connection()
-    cursor = conn.cursor()
-    
-    if request.method == 'PUT':
-        data = request.json
-        action = data.get('action')
-        
-        if action == 'rating':
-            rating = data.get('rating', 5)
-            cursor.execute('UPDATE links SET rating = %s WHERE id = %s', (rating, link_id))
-        
-        elif action == 'like':
-            liked = data.get('liked', False)
-            cursor.execute('UPDATE links SET liked = %s, disliked = FALSE, is_checked = FALSE WHERE id = %s', (liked, link_id))
-        
-        elif action == 'dislike':
-            disliked = data.get('disliked', False)
-            cursor.execute('UPDATE links SET disliked = %s, liked = FALSE WHERE id = %s', (disliked, link_id))
-        
-        elif action == 'memo':
-            memo = data.get('memo', '')
-            cursor.execute('UPDATE links SET memo = %s WHERE id = %s', (memo, link_id))
-        
-        elif action == 'guarantee':
-            guarantee_insurance = data.get('guarantee_insurance', False)
-            cursor.execute('UPDATE links SET guarantee_insurance = %s WHERE id = %s', (guarantee_insurance, link_id))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
-    
-    elif request.method == 'DELETE':
-        cursor.execute('DELETE FROM links WHERE id = %s', (link_id,))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
+    """주거용 링크 수정/삭제 - Supabase"""
+    try:
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify({'success': False}), 500
+        if request.method == 'PUT':
+            data = request.json or {}
+            action = data.get('action')
+            update = {}
+            if action == 'rating':
+                update['rating'] = data.get('rating', 5)
+            elif action == 'like':
+                liked = bool(data.get('liked', False))
+                update['liked'] = liked
+                update['disliked'] = False if liked else False
+                update['is_checked'] = False
+            elif action == 'dislike':
+                disliked = bool(data.get('disliked', False))
+                update['disliked'] = disliked
+                update['liked'] = False
+            elif action == 'memo':
+                update['memo'] = data.get('memo', '')
+            elif action == 'guarantee':
+                update['guarantee_insurance'] = bool(data.get('guarantee_insurance', False))
+            else:
+                return jsonify({'success': False, 'error': 'Invalid action'}), 400
+            try:
+                res = supabase.table('links').update(update).eq('id', link_id).execute()
+            except Exception:
+                res = supabase.table('office_links').update(update).eq('id', link_id).execute()
+            if res.data is None:
+                return jsonify({'success': False}), 500
+            return jsonify({'success': True})
+        elif request.method == 'DELETE':
+            try:
+                res = supabase.table('links').delete().eq('id', link_id).execute()
+            except Exception:
+                res = supabase.table('office_links').delete().eq('id', link_id).execute()
+            if res.data is None:
+                return jsonify({'success': False}), 500
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== 업무용 API 라우트 ====================
 @app.route('/api/office-links', methods=['GET', 'POST'])
@@ -1292,45 +1248,31 @@ def business_links():
     management_site_id = request.args.get('management_site_id')
     
     if request.method == 'POST':
-        data = request.json
+        data = request.json or {}
         url = data.get('url')
         platform = data.get('platform')
-        added_by = session.get('employee_id', '관리자')
+        added_by = session.get('employee_id')
         memo = data.get('memo', '')
-        guarantee_insurance = data.get('guarantee_insurance', False)
-        
+        guarantee_insurance = bool(data.get('guarantee_insurance', False))
         if not url or not platform:
             return jsonify({'success': False, 'error': '필수 정보가 누락되었습니다.'})
-        
-        date_added = datetime.now().strftime('%Y-%m-%d')
-        
-        # management_site_id가 있는 경우 고객 존재 여부 확인
-        if management_site_id:
-            customer_info = db_utils.get_customer_info(management_site_id)
-            if not customer_info:
-                return jsonify({'success': False, 'error': '존재하지 않는 고객입니다.'})
-        
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO office_links (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-        ''', (url, platform, added_by, date_added, memo, management_site_id, guarantee_insurance))
-        result = cursor.fetchone()
-        new_link_id = result['id'] if result and isinstance(result, dict) else (result[0] if result else None)
-        
-        # 새로 추가된 링크 정보 다시 조회
-        cursor.execute('SELECT * FROM office_links WHERE id = %s', (new_link_id,))
-        new_link_data = cursor.fetchone()
-            
-        conn.commit()
-        conn.close()
-
-        # PostgreSQL 결과 처리
-        response_data = dict(new_link_data)
-        response_data['success'] = True  # 프론트엔드가 기대하는 success 필드 추가
-
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify({'success': False, 'error': 'DB 연결 실패'})
+        payload = {
+            'url': url,
+            'platform': platform,
+            'added_by': added_by,
+            'date_added': datetime.now().strftime('%Y-%m-%d'),
+            'memo': memo,
+            'management_site_id': management_site_id,
+            'guarantee_insurance': guarantee_insurance
+        }
+        res = supabase.table('office_links').insert(payload).execute()
+        if not res.data:
+            return jsonify({'success': False, 'error': '링크 추가 실패'}), 500
+        response_data = res.data[0]
+        response_data['success'] = True
         return jsonify(response_data), 201
 
     else:  # GET 요청
@@ -1341,67 +1283,32 @@ def business_links():
         date_filter = request.args.get('date', '')
         guarantee_filter = request.args.get('guarantee', 'all')
         
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        query = 'SELECT * FROM office_links WHERE 1=1'
-        params = []
-        
-        # 고객별 필터링 추가
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify([])
+        q = supabase.table('office_links').select('*')
         if management_site_id:
-            query += ' AND management_site_id = %s'
-            params.append(management_site_id)
+            q = q.eq('management_site_id', management_site_id)
         else:
-            query += ' AND management_site_id IS NULL'
-        
+            q = q.is_('management_site_id', None)
         if platform_filter != 'all':
-            query += ' AND platform = %s'
-            params.append(platform_filter)
-        
+            q = q.eq('platform', platform_filter)
         if user_filter != 'all':
-            query += ' AND added_by = %s'
-            params.append(user_filter)
-        
+            q = q.eq('added_by', user_filter)
         if like_filter == 'liked':
-            query += ' AND liked = TRUE'
+            q = q.eq('liked', True)
         elif like_filter == 'disliked':
-            query += ' AND disliked = TRUE'
+            q = q.eq('disliked', True)
         elif like_filter == 'none':
-            query += ' AND liked = FALSE AND disliked = FALSE'
-        
+            q = q.eq('liked', False).eq('disliked', False)
         if date_filter:
-            query += ' AND date_added = %s'
-            params.append(date_filter)
-        
+            q = q.eq('date_added', date_filter)
         if guarantee_filter == 'available':
-            query += ' AND guarantee_insurance = TRUE'
+            q = q.eq('guarantee_insurance', True)
         elif guarantee_filter == 'unavailable':
-            query += ' AND guarantee_insurance = FALSE'
-        
-        query += ' ORDER BY id DESC'
-        
-        cursor.execute(query, params)
-        links_data = cursor.fetchall()
-        conn.close()
-        
-        # 데이터 접근 방식을 키(컬럼명)로 변경
-        links_list = []
-        for idx, link in enumerate(links_data):
-            links_list.append({
-                'id': link['id'],
-                'number': len(links_data) - idx,  # 역순 번호
-                'url': link['url'],
-                'platform': link['platform'],
-                'added_by': link['added_by'],
-                'date_added': link['date_added'].strftime('%Y-%m-%d %H:%M') if link.get('date_added') else '',
-                'rating': link['rating'],
-                'liked': bool(link['liked']),
-                'disliked': bool(link['disliked']),
-                'memo': link.get('memo', ''),
-                'guarantee_insurance': bool(link['guarantee_insurance'])
-            })
-        
-        return jsonify(links_list)
+            q = q.eq('guarantee_insurance', False)
+        res = q.order('id', desc=True).execute()
+        return jsonify(res.data or [])
 
 @app.route('/api/office-links/<int:link_id>', methods=['PUT', 'DELETE'])
 def update_business_link(link_id):
@@ -2295,49 +2202,17 @@ def get_guarantee_list():
     if 'employee_id' not in session and 'is_admin' not in session:
         return jsonify({'error': '로그인이 필요합니다.'}), 401
     
-    # DATABASE_URL이 없으면 테스트용 샘플 데이터 반환
-    if not os.environ.get('DATABASE_URL'):
-        print("⚠️ 테스트 모드 - 보증보험 샘플 데이터 반환")
-        return jsonify([
-            {
-                'id': 1,
-                'url': 'https://example.com/property1',
-                'platform': '직방',
-                'added_by': '팀장',
-                'date_added': '2024-08-15',
-                'memo': '보증보험 가능한 매물'
-            },
-            {
-                'id': 2,
-                'url': 'https://example.com/property2',
-                'platform': '네이버',
-                'added_by': '직원',
-                'date_added': '2024-08-14',
-                'memo': '보증보험 가능한 매물'
-            }
-        ])
-    
-    conn = None
     try:
-        conn, _ = db_utils.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT l.id, l.url, l.platform, l.added_by, l.date_added, l.memo
-            FROM links l
-            WHERE l.guarantee_insurance = TRUE 
-            ORDER BY l.id DESC
-            LIMIT 50
-        ''')
-        
-        guarantee_list = [db_utils.dict_from_row(row) for row in cursor.fetchall()]
-        conn.close()
-        
-        return jsonify(guarantee_list)
-        
+        supabase = supabase_utils.get_supabase()
+        if not supabase:
+            return jsonify([])
+        # links 우선, 없으면 office_links 폴백
+        try:
+            res = supabase.table('links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(50).execute()
+        except Exception:
+            res = supabase.table('office_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(50).execute()
+        return jsonify(res.data or [])
     except Exception as e:
-        if 'conn' in locals():
-            conn.close()
         print(f"보증보험 목록 조회 오류: {e}")
         return jsonify({'error': f'보증보험 목록 조회 실패: {e}'}), 500
 

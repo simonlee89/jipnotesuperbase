@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>팀장 패널</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+      h1 { margin-bottom: 8px; }
+      .muted { color:#64748b; }
+      table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+      th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+      th { background:#f8fafc; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+      @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <h1>팀장 패널</h1>
+    <p class="muted">안녕하세요, <strong>{{ employee_name }}</strong> 님</p>
+
+    <div class="grid">
+      <section>
+        <h2>내 고객</h2>
+        <table id="customers">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>고객명</th>
+              <th>상태</th>
+              <th>생성일</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+      <section>
+        <h2>내 매물</h2>
+        <table id="properties">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>날짜</th>
+              <th>동</th>
+              <th>호</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+
+    <script>
+      async function loadCustomers() {
+        const res = await fetch('/api/team-leader/customers?page=1&per_page=20');
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.customers || []);
+        const tbody = document.querySelector('#customers tbody');
+        tbody.innerHTML = list.map(c => `
+          <tr>
+            <td>${c.id ?? ''}</td>
+            <td>${c.customer_name ?? ''}</td>
+            <td>${c.progress_status ?? ''}</td>
+            <td>${c.created_date ?? ''}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="4">없음</td></tr>';
+      }
+
+      async function loadProperties() {
+        const res = await fetch('/api/team-leader/maeiple?page=1&per_page=20');
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.properties || []);
+        const tbody = document.querySelector('#properties tbody');
+        tbody.innerHTML = list.map(p => `
+          <tr>
+            <td>${p.id ?? ''}</td>
+            <td>${p.check_date ?? ''}</td>
+            <td>${p.building_number ?? ''}</td>
+            <td>${p.room_number ?? ''}</td>
+            <td>${p.status ?? ''}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5">없음</td></tr>';
+      }
+
+      Promise.all([loadCustomers(), loadProperties()]);
+    </script>
+  </body>
+  </html>
+
+
