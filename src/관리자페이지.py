@@ -58,20 +58,36 @@ except Exception as e:
     print(f"Supabase 초기화 실패: {e}")
     # 실패해도 앱은 계속 실행
 
+@app.route('/health')
+def health_check():
+    """Railway health check endpoint"""
+    return jsonify({'status': 'healthy', 'service': '관리자페이지'}), 200
+
 @app.route('/')
 def index():
     """메인 페이지 - 로그인 또는 직원 관리"""
-    if 'is_admin' in session:
-        return redirect(url_for('admin_panel'))
-    elif 'employee_id' in session:
-        # 팀장인 경우 팀장 대시보드로, 일반 직원인 경우 직원 대시보드로
-        if session.get('employee_role') == '팀장':
-            print(f" 팀장 '{session.get('employee_name')}' - 팀장 대시보드로 리다이렉트")
-            return redirect(url_for('team_leader_dashboard'))  # 함수명 변경
-        else:
-            print(f" 직원 '{session.get('employee_name')}' - 직원 대시보드로 리다이렉트")
-            return redirect(url_for('employee_dashboard'))
-    return render_template('admin_main.html')
+    try:
+        if 'is_admin' in session:
+            return redirect(url_for('admin_panel'))
+        elif 'employee_id' in session:
+            # 팀장인 경우 팀장 대시보드로, 일반 직원인 경우 직원 대시보드로
+            if session.get('employee_role') == '팀장':
+                print(f" 팀장 '{session.get('employee_name')}' - 팀장 대시보드로 리다이렉트")
+                return redirect(url_for('team_leader_dashboard'))  # 함수명 변경
+            else:
+                print(f" 직원 '{session.get('employee_name')}' - 직원 대시보드로 리다이렉트")
+                return redirect(url_for('employee_dashboard'))
+        return render_template('admin_main.html')
+    except Exception as e:
+        print(f"루트 경로 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        # 기본 응답 반환
+        return jsonify({
+            'status': 'ok',
+            'message': 'Server is running',
+            'error': str(e) if app.debug else 'Internal server error'
+        }), 200
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
