@@ -40,7 +40,22 @@ print(f"업무 사이트 URL: {BUSINESS_SITE_URL}")
 FORCE_TEST_MODE = False  # False로 설정하여 실제 Supabase DB 사용
 print(f"테스트 모드 강제 활성화: {FORCE_TEST_MODE}")
 
-app = Flask(__name__)
+# 템플릿 디렉토리 경로 설정
+import os.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+
+print(f"Base directory: {BASE_DIR}")
+print(f"Template directory: {TEMPLATE_DIR}")
+print(f"Template directory exists: {os.path.exists(TEMPLATE_DIR)}")
+
+if os.path.exists(TEMPLATE_DIR):
+    template_files = os.listdir(TEMPLATE_DIR)
+    print(f"Template files: {template_files}")
+
+app = Flask(__name__, 
+            template_folder=TEMPLATE_DIR,
+            static_folder=os.path.join(BASE_DIR, 'static'))
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')  # 세션용 비밀키
 
 # 개발 환경에서 캐싱 방지 및 자동 리로드 설정
