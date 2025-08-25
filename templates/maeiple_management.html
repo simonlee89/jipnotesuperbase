@@ -3,109 +3,1097 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>메이플관리</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-      h1 { margin-bottom: 16px; }
-      form { display: grid; gap: 8px; max-width: 480px; margin-bottom: 24px; }
-      label { font-weight: 600; }
-      input, select, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 6px; }
-      button { padding: 10px 14px; border: 0; border-radius: 6px; background:#111827; color:#fff; cursor:pointer; }
-      table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-      th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
-      th { background:#f8fafc; }
-      .muted { color:#64748b; font-size: 12px; }
+      body { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        margin: 0;
+        padding: 24px;
+        background: #f8fafc;
+        color: #1a202c;
+        line-height: 1.6;
+      }
+      
+      .header {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+      }
+      
+      h1 { 
+        margin: 0 0 8px 0;
+        font-size: 28px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      
+      .muted { 
+        color: #64748b; 
+        font-size: 14px;
+        margin: 0;
+      }
+      
+      .form-section {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 24px;
+      }
+      
+      .section-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 20px 0;
+        color: #1e293b;
+      }
+      
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      
+      .form-group {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .form-group.full-width {
+        grid-column: 1 / -1;
+      }
+      
+      label { 
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #374151;
+        font-size: 14px;
+      }
+      
+      input, select, textarea { 
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s ease;
+      }
+      
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+      
+      button { 
+        padding: 12px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #6366f1;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: background-color 0.2s ease;
+      }
+      
+      button:hover {
+        background: #5855eb;
+      }
+      
+      .phone-input {
+        position: relative;
+      }
+      
+      .phone-input input {
+        padding-left: 50px;
+      }
+      
+      .phone-prefix {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        font-size: 14px;
+        pointer-events: none;
+      }
+      
+      .table-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+      
+      .table-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      table { 
+        width: 100%;
+        border-collapse: collapse;
+      }
+      
+      th, td { 
+        border-bottom: 1px solid #e5e7eb;
+        padding: 12px 16px;
+        text-align: left;
+      }
+      
+      th { 
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      
+      td {
+        font-size: 14px;
+      }
+      
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .status-거래가능 {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      
+      .status-계약완료 {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      
+      .status-보류 {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      
+      .status-부재 {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      
+      .editable-cell {
+        cursor: pointer;
+        transition: background-color 0.1s ease; /* 더 빠른 전환 */
+      }
+      
+      .editable-cell:hover {
+        background-color: #f3f4f6;
+        transform: scale(1.02); /* 호버 시 살짝 확대 */
+      }
+      
+      .editing-cell {
+        background-color: #fef3c7;
+        box-shadow: 0 0 0 2px #6366f1; /* 편집 중 강조 */
+      }
+      
+      .updating {
+        opacity: 0.7;
+        pointer-events: none; /* 업데이트 중에는 클릭 방지 */
+        position: relative;
+      }
+      
+      .updating::after {
+        content: '저장 중...';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(99, 102, 241, 0.9);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 500;
+        z-index: 1000;
+      }
+      
+      .cell-select {
+        width: 100%;
+        padding: 6px 8px;
+        border: 2px solid #6366f1;
+        border-radius: 4px;
+        font-size: 12px;
+        background: white;
+        cursor: pointer;
+        outline: none;
+      }
+      
+      .cell-select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+      }
+      
+      .heart-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .action-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .action-btn:hover {
+        border-color: #6366f1;
+        color: #6366f1;
+      }
+      
+      .phone-display {
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        font-size: 13px;
+      }
+      
+      .empty-state {
+        text-align: center;
+        color: #6b7280;
+        padding: 40px;
+        font-style: italic;
+      }
+      
+      .loading {
+        text-align: center;
+        color: #6b7280;
+        padding: 20px;
+      }
+      
+      @media (max-width: 768px) {
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .table-section {
+          overflow-x: auto;
+        }
+      }
     </style>
   </head>
   <body>
-    <h1>메이플관리</h1>
-    <p class="muted">안녕하세요, <strong>{{ employee_name }}</strong> 님</p>
+    <div class="header">
+      <h1>메이플관리</h1>
+      <p class="muted">안녕하세요, <strong>{{ employee_name }}</strong> 님</p>
+    </div>
 
-    <h2>새 매물 추가</h2>
-    <form id="property-form">
-      <label>확인 날짜 <input type="date" name="check_date" required /></label>
-      <label>동 <input type="number" name="building_number" required /></label>
-      <label>호수 <input type="number" name="room_number" required /></label>
-      <label>상태
-        <select name="status">
-          <option value="거래중">거래중</option>
-          <option value="거래가능">거래가능</option>
-          <option value="거래완료">거래완료</option>
-        </select>
-      </label>
-      <label>전세가 <input type="number" name="jeonse_price" /></label>
-      <label>월세 <input type="number" name="monthly_rent" /></label>
-      <label>매매가 <input type="number" name="sale_price" /></label>
-      <label>점유 여부
-        <select name="is_occupied">
-          <option value="false">빈집</option>
-          <option value="true">입주중</option>
-        </select>
-      </label>
-      <label>연락처 <input type="text" name="phone" /></label>
-      <label>메모 <textarea name="memo" rows="3"></textarea></label>
-      <button type="submit">추가</button>
-    </form>
+    <div class="form-section">
+      <h2 class="section-title">새 매물 추가</h2>
+      <form id="property-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>확인 날짜</label>
+            <input type="date" name="check_date" required />
+          </div>
+          
+          <div class="form-group">
+            <label>동</label>
+            <input type="number" name="building_number" required placeholder="예: 101" />
+          </div>
+          
+          <div class="form-group">
+            <label>호수</label>
+            <input type="number" name="room_number" required placeholder="예: 1001" />
+          </div>
+          
+          <div class="form-group">
+            <label>현황</label>
+            <select name="status">
+              <option value="거래가능">거래가능</option>
+              <option value="계약완료">계약완료</option>
+              <option value="보류">보류</option>
+              <option value="부재">부재</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>전세가 (만원)</label>
+            <input type="number" name="jeonse_price" placeholder="예: 5000" />
+          </div>
+          
+          <div class="form-group">
+            <label>월세 (만원)</label>
+            <input type="number" name="monthly_rent" placeholder="예: 50" />
+          </div>
+          
+          <div class="form-group">
+            <label>매매가 (만원)</label>
+            <input type="number" name="sale_price" placeholder="예: 80000" />
+          </div>
+          
+          <div class="form-group">
+            <label>점유 여부</label>
+            <select name="is_occupied">
+              <option value="false">빈집</option>
+              <option value="true">입주중</option>
+            </select>
+          </div>
+          
+          <div class="form-group phone-input">
+            <label>연락처</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; color: #6b7280;">010-</span>
+              <input type="tel" name="phone" placeholder="0000-0000" maxlength="9" style="flex: 1; font-family: monospace; letter-spacing: 0.5px;" />
+            </div>
+          </div>
+          
+          <div class="form-group full-width">
+            <label>메모</label>
+            <textarea name="memo" rows="3" placeholder="매물에 대한 추가 정보를 입력하세요..."></textarea>
+          </div>
+        </div>
+        
+        <button type="submit">매물 추가</button>
+      </form>
+    </div>
 
-    <h2>내 매물 목록</h2>
-    <table id="properties-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>날짜</th>
-          <th>동</th>
-          <th>호</th>
-          <th>상태</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="table-section">
+      <div class="table-header">
+        <h2 class="section-title">내 매물 목록</h2>
+      </div>
+      <div style="overflow-x: auto;">
+        <table id="properties-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>위치</th>
+              <th>현황</th>
+              <th>전세/월세/매매</th>
+              <th>연락처</th>
+              <th>좋아요/싫어요</th>
+              <th>메모</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="8" class="loading">매물 목록을 불러오는 중...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
     <script>
+      // 전화번호 포맷팅
+      document.querySelector('input[name="phone"]').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 4) {
+          value = value.slice(0, 4) + '-' + value.slice(4, 8);
+        }
+        if (value.length > 9) {
+          value = value.slice(0, 9);
+        }
+        e.target.value = value;
+      });
+
+      // 매물 목록 로드
       async function loadMyProperties() {
-        const res = await fetch('/api/maeiple?sort_by=check_date&sort_order=desc&page=1&per_page=20');
-        const data = await res.json();
-        const tbody = document.querySelector('#properties-table tbody');
-        tbody.innerHTML = '';
-        const rows = (data.properties || []).map(p => `
-          <tr>
-            <td>${p.id ?? ''}</td>
-            <td>${p.check_date ?? ''}</td>
-            <td>${p.building_number ?? ''}</td>
-            <td>${p.room_number ?? ''}</td>
-            <td>${p.status ?? ''}</td>
-          </tr>
-        `).join('');
-        tbody.insertAdjacentHTML('beforeend', rows || '<tr><td colspan="5">목록이 없습니다.</td></tr>');
+        try {
+          const res = await fetch('/api/employee/maeiple?sort_by=check_date&sort_order=desc&page=1&per_page=50');
+          const data = await res.json();
+          const tbody = document.querySelector('#properties-table tbody');
+          
+          if (data.success && data.properties && data.properties.length > 0) {
+            const rows = data.properties.map(p => `
+              <tr data-id="${p.id}">
+                <td>${p.check_date || '-'}</td>
+                <td>${p.building_number || '-'}동 ${p.room_number || '-'}호</td>
+                                <td class="editable-cell" data-field="status" data-type="select" data-id="${p.id}" onclick="editMaeipleCell(this)">
+                  <span class="status-badge status-${p.status || '거래가능'}">${p.status || '거래가능'}</span>
+                </td>
+                <td>
+                  <div style="font-size: 12px; line-height: 1.4;">
+                    ${p.jeonse_price ? `전세: ${p.jeonse_price}만` : ''}
+                    ${p.monthly_rent ? `${p.jeonse_price ? '<br>' : ''}월세: ${p.monthly_rent}만` : ''}
+                    ${p.sale_price ? `${p.jeonse_price || p.monthly_rent ? '<br>' : ''}매매: ${p.sale_price}만` : ''}
+                    ${!p.jeonse_price && !p.monthly_rent && !p.sale_price ? '-' : ''}
+                  </div>
+                </td>
+                <td class="phone-display" style="font-family: monospace; letter-spacing: 0.5px;">${formatPhone(p.phone) || '-'}</td>
+                <td>
+                  <div class="heart-container" style="display: flex; align-items: center; gap: 8px;">
+                    <div class="editable-cell" data-field="likes" data-type="select" data-id="${p.id}" onclick="editMaeipleCell(this)" 
+                         style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">
+                      <span style="font-size: 18px; color: ${p.likes > 0 ? '#ef4444' : '#d1d5db'};">♥</span>
+                      <span style="font-size: 12px; color: #6b7280;">${p.likes || 0}</span>
+                    </div>
+                    <div class="editable-cell" data-field="dislikes" data-type="select" data-id="${p.id}" onclick="editMaeipleCell(this)" 
+                         style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">
+                      <span style="font-size: 18px; color: ${p.dislikes > 0 ? '#3b82f6' : '#d1d5db'}; transform: rotate(180deg);">♥</span>
+                      <span style="font-size: 12px; color: #6b7280;">${p.dislikes || 0}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: #3b82f6;" 
+                       title="${p.memo || ''}" onclick="showMemoPopup(${p.id}, '${(p.memo || '').replace(/'/g, "\\'")}')">
+                    ${p.memo || '메모 추가'}
+                  </div>
+                </td>
+                <td>
+                  <button class="action-btn" onclick="editProperty(${p.id})" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">수정</button>
+                </td>
+              </tr>
+            `).join('');
+            tbody.innerHTML = rows;
+          } else {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">등록된 매물이 없습니다.</td></tr>';
+          }
+        } catch (error) {
+          console.error('매물 목록 로드 실패:', error);
+          document.querySelector('#properties-table tbody').innerHTML = 
+            '<tr><td colspan="8" class="empty-state">매물 목록을 불러오는데 실패했습니다.</td></tr>';
+        }
       }
 
+      // 전화번호 포맷팅
+      function formatPhone(phone) {
+        if (!phone) return '';
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('010')) {
+          if (cleaned.length === 11) {
+            return cleaned.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+          }
+        }
+        return phone;
+      }
+
+
+
+      // 인라인 편집 함수 (현황 필드만)
+      function editMaeipleCell(cell) {
+        if (cell.classList.contains('editing-cell')) return;
+        
+        const field = cell.dataset.field;
+        const type = cell.dataset.type;
+        const propertyId = cell.dataset.id;
+        
+        console.log('셀 편집 시작:', field, propertyId);
+        
+        let currentValue;
+        if (field === 'status') {
+          const badge = cell.querySelector('.status-badge');
+          currentValue = badge ? badge.textContent.trim() : '거래가능';
+        } else if (field === 'likes' || field === 'dislikes') {
+          const countSpan = cell.querySelector('span:last-child');
+          currentValue = countSpan ? countSpan.textContent.trim() : '0';
+        } else {
+          currentValue = cell.textContent.trim();
+        }
+        // 원래 값 저장 (실패 시 복구용)
+        cell.dataset.originalValue = currentValue;
+        
+        cell.classList.add('editing-cell');
+        
+        let inputElement;
+        if (type === 'select' && field === 'status') {
+          inputElement = document.createElement('select');
+          inputElement.className = 'cell-select';
+          inputElement.style.cssText = `
+            width: 100%;
+            padding: 6px 8px;
+            border: 2px solid #6366f1;
+            border-radius: 4px;
+            font-size: 12px;
+          background: white;
+            cursor: pointer;
+          `;
+          inputElement.innerHTML = `
+            <option value="거래가능" ${currentValue === '거래가능' ? 'selected' : ''}>🔄 거래가능</option>
+            <option value="계약완료" ${currentValue === '계약완료' ? 'selected' : ''}>✅ 계약완료</option>
+            <option value="보류" ${currentValue === '보류' ? 'selected' : ''}>⏸️ 보류</option>
+            <option value="부재" ${currentValue === '부재' ? 'selected' : ''}>❌ 부재</option>
+          `;
+        } else if (type === 'select' && (field === 'likes' || field === 'dislikes')) {
+          inputElement = document.createElement('select');
+          inputElement.className = 'cell-select';
+          inputElement.style.cssText = `
+          width: 100%;
+            padding: 6px 8px;
+            border: 2px solid #6366f1;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+          `;
+          
+          let options = '';
+          for (let i = 0; i <= 5; i++) {
+            const selected = i == currentValue ? 'selected' : '';
+            options += `<option value="${i}" ${selected}>${i === 0 ? '없음' : i + ' ♥'}</option>`;
+          }
+          inputElement.innerHTML = options;
+        }
+
+        
+        cell.innerHTML = '';
+        cell.appendChild(inputElement);
+        inputElement.focus();
+        
+        // 엔터키 또는 포커스 아웃 시 저장 (중복 호출 방지)
+        let isProcessingSave = false;
+        const saveCell = () => {
+          if (isProcessingSave) {
+            console.log('이미 저장 중입니다. 중복 호출 무시.');
+            return;
+          }
+          
+          isProcessingSave = true;
+          const newValue = inputElement.value.trim();
+          console.log('셀 저장:', field, newValue);
+          
+          updateMaeipleField(propertyId, field, newValue, cell).finally(() => {
+            isProcessingSave = false;
+          });
+        };
+        
+        inputElement.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            saveCell();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelMaeipleCellEdit(cell, currentValue);
+          }
+        });
+        
+        // select 요소와 일반 input 요소 구분 처리
+        if (inputElement.tagName === 'SELECT') {
+          inputElement.addEventListener('change', () => {
+            console.log('select 변경 즉시 저장');
+            saveCell();
+          });
+        } else {
+          inputElement.addEventListener('blur', saveCell);
+        }
+      }
+      
+      // 셀 편집 취소
+      function cancelMaeipleCellEdit(cell, originalValue) {
+        cell.classList.remove('editing-cell');
+        
+        const field = cell.dataset.field;
+        
+        if (field === 'status') {
+          // 기존 badge를 찾아서 클래스와 텍스트만 복구 (클릭 이벤트 유지)
+          const badge = cell.querySelector('.status-badge');
+          if (badge) {
+            const statusClass = originalValue === '계약완료' ? 'status-계약완료' : 
+                               originalValue === '보류' ? 'status-보류' : 
+                               originalValue === '부재' ? 'status-부재' : 'status-거래가능';
+            badge.className = `status-badge ${statusClass}`;
+            badge.textContent = originalValue;
+          }
+        } else if (field === 'likes') {
+          // 하트 색상과 숫자만 복구 (클릭 이벤트 유지)
+          const heartSpan = cell.querySelector('span:first-child');
+          const countSpan = cell.querySelector('span:last-child');
+          if (heartSpan && countSpan) {
+            heartSpan.style.color = originalValue > 0 ? '#ef4444' : '#d1d5db';
+            countSpan.textContent = originalValue;
+          }
+        } else if (field === 'dislikes') {
+          // 하트 색상과 숫자만 복구 (클릭 이벤트 유지)
+          const heartSpan = cell.querySelector('span:first-child');
+          const countSpan = cell.querySelector('span:last-child');
+          if (heartSpan && countSpan) {
+            heartSpan.style.color = originalValue > 0 ? '#3b82f6' : '#d1d5db';
+            countSpan.textContent = originalValue;
+          }
+        } else {
+          cell.textContent = originalValue;
+        }
+      }
+      
+      // 로컬 데이터 저장소 (웹 메모리)
+      const localData = new Map();
+
+      // 메이플 필드 업데이트 - 웹에서 즉시 저장 후 서버 동기화
+      async function updateMaeipleField(propertyId, field, value, cell) {
+        console.log('즉시 UI 업데이트:', propertyId, field, value);
+        
+        // 편집 상태 해제
+        cell.classList.remove('editing-cell');
+
+        // likes/dislikes는 숫자형으로 변환
+        let payloadValue = value;
+        if (field === 'likes' || field === 'dislikes') {
+          payloadValue = parseInt(value, 10);
+          if (Number.isNaN(payloadValue)) payloadValue = 0;
+        }
+
+        // 원래 값 백업 (롤백용)
+        const originalValue = cell.dataset.originalValue;
+
+        // 로컬 데이터에 즉시 저장
+        const localKey = `${propertyId}_${field}`;
+        localData.set(localKey, payloadValue);
+        cell.dataset.originalValue = String(payloadValue);
+
+        // UI 즉시 업데이트 (클릭 이벤트 유지)
+        updateCellUI(cell, field, payloadValue);
+        
+        // 성공 표시 (낙관적)
+        showQuickSuccessMessage('✓');
+
+        // 백그라운드에서 서버 저장 (비동기, UI 차단 안함)
+        setTimeout(async () => {
+          try {
+            const response = await fetch('/api/employee/maeiple/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: propertyId,
+                field: field,
+                value: payloadValue
+              })
+            });
+            
+            const result = await response.json();
+            console.log('서버 동기화:', result.success ? '성공' : '실패');
+            
+            if (!result.success) {
+              // 서버 저장 실패 시 롤백
+              console.error('서버 저장 실패, 롤백');
+              localData.delete(localKey);
+              cell.dataset.originalValue = originalValue;
+              updateCellUI(cell, field, originalValue);
+              showErrorMessage('저장 실패 - 롤백됨');
+            }
+          } catch (error) {
+            // 네트워크 오류 시 롤백
+            console.error('네트워크 오류, 롤백');
+            localData.delete(localKey);
+            cell.dataset.originalValue = originalValue;
+            updateCellUI(cell, field, originalValue);
+            showErrorMessage('네트워크 오류 - 롤백됨');
+          }
+        }, 10); // 10ms 후 서버 저장 (UI 즉시 반응)
+      }
+
+      // UI 업데이트 헬퍼 함수
+      function updateCellUI(cell, field, value) {
+        if (field === 'status') {
+          const badge = cell.querySelector('.status-badge');
+          if (badge) {
+            const statusClass = value === '계약완료' ? 'status-계약완료' : 
+                               value === '보류' ? 'status-보류' : 
+                               value === '부재' ? 'status-부재' : 'status-거래가능';
+            badge.className = `status-badge ${statusClass}`;
+            badge.textContent = value;
+          }
+        } else if (field === 'likes') {
+          const heartSpan = cell.querySelector('span:first-child');
+          const countSpan = cell.querySelector('span:last-child');
+          if (heartSpan && countSpan) {
+            heartSpan.style.color = value > 0 ? '#ef4444' : '#d1d5db';
+            countSpan.textContent = value;
+          }
+        } else if (field === 'dislikes') {
+          const heartSpan = cell.querySelector('span:first-child');
+          const countSpan = cell.querySelector('span:last-child');
+          if (heartSpan && countSpan) {
+            heartSpan.style.color = value > 0 ? '#3b82f6' : '#d1d5db';
+            countSpan.textContent = value;
+          }
+        } else {
+          cell.textContent = value || '-';
+        }
+      }
+      
+
+
+
+
+
+
+      // 매물 수정
+      function editProperty(propertyId) {
+        // 간단한 수정 기능 - 실제로는 모달이나 별도 페이지로 이동할 수 있음
+        const memo = prompt('메모를 입력하세요:');
+        if (memo !== null) {
+          updatePropertyMemo(propertyId, memo);
+        }
+      }
+
+      // 메모 업데이트
+      async function updatePropertyMemo(propertyId, memo) {
+        try {
+          const response = await fetch('/api/employee/maeiple/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: propertyId,
+              field: 'memo',
+              value: memo
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // 즉시 DOM 업데이트 (전체 목록 새로고침 없이)
+            const row = document.querySelector(`tr[data-id="${propertyId}"]`);
+            if (row) {
+              const memoCell = row.querySelector('td:nth-child(7) div');
+              if (memoCell) {
+                memoCell.textContent = memo || '메모 추가';
+                memoCell.title = memo || '';
+              }
+            }
+            
+            // 성공 메시지 표시
+            showSuccessMessage('메모가 업데이트되었습니다.');
+          } else {
+            showErrorMessage('메모 업데이트 실패: ' + (result.message || result.error || '알 수 없는 오류'));
+          }
+        } catch (error) {
+          console.error('메모 업데이트 오류:', error);
+          showErrorMessage('메모 업데이트 중 오류가 발생했습니다.');
+        }
+      }
+
+      // 폼 제출
       document.getElementById('property-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.currentTarget;
         const formData = new FormData(form);
         const payload = Object.fromEntries(formData.entries());
-        // 문자열 불리언 변환
+        
+        // 전화번호 처리
+        if (payload.phone) {
+          payload.phone = '010-' + payload.phone;
+        }
+        
+        // 불리언 변환
         payload.is_occupied = payload.is_occupied === 'true';
+        
         try {
-          const res = await fetch('/api/maeiple', {
+          const res = await fetch('/api/employee/maeiple', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
+          
           const data = await res.json();
+          
           if (data.success) {
             form.reset();
-            await loadMyProperties();
-            alert('매물이 추가되었습니다.');
-          } else {
-            alert(data.error || data.message || '추가 실패');
+            
+            // 새로 추가된 매물을 테이블 맨 위에 추가 (전체 목록 새로고침 없이)
+            const tbody = document.querySelector('#properties-table tbody');
+            if (tbody) {
+              const newRow = document.createElement('tr');
+              newRow.dataset.id = data.property.id;
+              newRow.innerHTML = `
+                <td>${data.property.check_date || '-'}</td>
+                <td>${data.property.building_number || '-'}동 ${data.property.room_number || '-'}호</td>
+                                <td class="editable-cell" data-field="status" data-type="select" data-id="${data.property.id}" onclick="editMaeipleCell(this)">
+                  <span class="status-badge status-${data.property.status || '거래가능'}">${data.property.status || '거래가능'}</span>
+                </td>
+                <td>
+                  <div style="font-size: 12px; line-height: 1.4;">
+                    ${data.property.jeonse_price ? `전세: ${data.property.jeonse_price}만` : ''}
+                    ${data.property.monthly_rent ? `${data.property.jeonse_price ? '<br>' : ''}월세: ${data.property.monthly_rent}만` : ''}
+                    ${data.property.sale_price ? `${data.property.jeonse_price || data.property.monthly_rent ? '<br>' : ''}매매: ${data.property.sale_price}만` : ''}
+                    ${!data.property.jeonse_price && !data.property.monthly_rent && !data.property.sale_price ? '-' : ''}
+          </div>
+                </td>
+                <td class="phone-display" style="font-family: monospace; letter-spacing: 0.5px;">${formatPhone(data.property.phone) || '-'}</td>
+                <td>
+                  <div class="heart-container" style="display: flex; align-items: center; gap: 8px;">
+                    <div class="editable-cell" data-field="likes" data-type="select" data-id="${data.property.id}" onclick="editMaeipleCell(this)" 
+                         style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">
+                      <span style="font-size: 18px; color: #d1d5db;">♥</span>
+                      <span style="font-size: 12px; color: #6b7280;">0</span>
+                    </div>
+                    <div class="editable-cell" data-field="dislikes" data-type="select" data-id="${data.property.id}" onclick="editMaeipleCell(this)" 
+                         style="display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">
+                      <span style="font-size: 18px; color: #d1d5db; transform: rotate(180deg);">♥</span>
+                      <span style="font-size: 12px; color: #6b7280;">0</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: #3b82f6;" 
+                       title="" onclick="showMemoPopup(${data.property.id}, '')">
+                    메모 추가
+                  </div>
+                </td>
+                <td>
+                  <button class="action-btn" onclick="editProperty(${data.property.id})" style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">수정</button>
+                </td>
+              `;
+              
+              // 테이블 맨 위에 새 행 추가
+              if (tbody.firstChild) {
+                tbody.insertBefore(newRow, tbody.firstChild);
+              } else {
+                tbody.appendChild(newRow);
+              }
+            }
+            
+            // 성공 메시지 표시
+            showSuccessMessage('매물이 추가되었습니다.');
+              } else {
+            showErrorMessage('매물 추가 실패: ' + (data.error || data.message || '알 수 없는 오류'));
           }
         } catch (err) {
-          alert('추가 중 오류가 발생했습니다.');
+          console.error('매물 추가 오류:', err);
+          showErrorMessage('매물 추가 중 오류가 발생했습니다.');
         }
       });
 
+
+
+      // 메모 팝업 표시
+      function showMemoPopup(propertyId, currentMemo) {
+        // 기존 팝업 제거
+        document.querySelectorAll('.memo-popup').forEach(p => p.remove());
+        document.querySelectorAll('.popup-overlay').forEach(o => o.remove());
+        
+        // 팝업 생성
+        const popup = document.createElement('div');
+        popup.className = 'memo-popup';
+        popup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: white;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+          z-index: 1000;
+          min-width: 400px;
+          max-width: 500px;
+        `;
+        
+        popup.innerHTML = `
+          <h3 style="margin: 0 0 20px 0; text-align: center; color: #1f2937;">특이사항 메모</h3>
+          <div style="margin-bottom: 20px;">
+            <textarea id="memo-text" style="width: 100%; height: 120px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; resize: vertical;" placeholder="특이사항을 입력하세요...">${currentMemo}</textarea>
+          </div>
+          <div style="display: flex; gap: 12px; justify-content: center;">
+            <button type="button" class="save-memo-btn" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">저장</button>
+            <button type="button" class="cancel-memo-btn" style="padding: 10px 20px; border: 1px solid #d1d5db; border-radius: 6px; background: white; color: #6b7280; cursor: pointer; font-size: 14px;">취소</button>
+          </div>
+        `;
+        
+        // 오버레이 생성
+        const overlay = document.createElement('div');
+        overlay.className = 'popup-overlay';
+        overlay.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+        `;
+        
+        document.body.appendChild(overlay);
+        document.body.appendChild(popup);
+        
+        // 텍스트 영역에 포커스
+        const textarea = popup.querySelector('#memo-text');
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        
+        // 저장 버튼 클릭 이벤트
+        popup.querySelector('.save-memo-btn').addEventListener('click', async () => {
+          const newMemo = textarea.value.trim();
+          
+          try {
+            const response = await fetch('/api/employee/maeiple/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: propertyId,
+                field: 'memo',
+                value: newMemo
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              // 팝업 제거
+              document.body.removeChild(overlay);
+              document.body.removeChild(popup);
+              
+              // 즉시 DOM 업데이트 (전체 목록 새로고침 없이)
+              const row = document.querySelector(`tr[data-id="${propertyId}"]`);
+              if (row) {
+                const memoCell = row.querySelector('td:nth-child(7) div');
+                if (memoCell) {
+                  memoCell.textContent = newMemo || '메모 추가';
+                  memoCell.title = newMemo || '';
+                }
+              }
+              
+              // 성공 메시지 표시
+              showSuccessMessage('메모가 저장되었습니다.');
+            } else {
+              showErrorMessage('메모 저장에 실패했습니다.');
+            }
+          } catch (error) {
+            console.error('메모 저장 오류:', error);
+            showErrorMessage('메모 저장 중 오류가 발생했습니다.');
+          }
+        });
+        
+        // 취소 버튼 및 오버레이 클릭 이벤트
+        const closePopup = () => {
+          document.body.removeChild(overlay);
+          document.body.removeChild(popup);
+        };
+        
+        popup.querySelector('.cancel-memo-btn').addEventListener('click', closePopup);
+        overlay.addEventListener('click', closePopup);
+        
+        // ESC 키로 닫기
+        document.addEventListener('keydown', function escHandler(e) {
+          if (e.key === 'Escape') {
+            closePopup();
+            document.removeEventListener('keydown', escHandler);
+          }
+        });
+      }
+
+      // 성공/오류 메시지 표시 함수들
+      function showSuccessMessage(message) {
+        showMessage(message, 'success');
+      }
+      
+      function showErrorMessage(message) {
+        showMessage(message, 'error');
+      }
+      
+      // 빠른 성공 메시지 (0.5초 후 자동 제거)
+      function showQuickSuccessMessage(message) {
+        const quickPopup = document.createElement('div');
+        quickPopup.className = 'quick-success-popup';
+        quickPopup.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: #10b981;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 18px;
+          font-weight: bold;
+          z-index: 10000;
+          animation: quickFadeIn 0.2s ease-out;
+        `;
+        
+        quickPopup.textContent = message;
+        document.body.appendChild(quickPopup);
+        
+        // 0.3초 후 자동 제거 (더 빠르게)
+        setTimeout(() => {
+          if (quickPopup.parentNode) {
+            quickPopup.style.animation = 'quickFadeOut 0.15s ease-in';
+            setTimeout(() => {
+              if (quickPopup.parentNode) {
+                document.body.removeChild(quickPopup);
+              }
+            }, 150);
+          }
+        }, 300);
+      }
+      
+      function showMessage(message, type) {
+        // 기존 메시지 제거
+        document.querySelectorAll('.message-popup').forEach(m => m.remove());
+        
+        const messagePopup = document.createElement('div');
+        messagePopup.className = 'message-popup';
+        messagePopup.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: ${type === 'success' ? '#10b981' : '#ef4444'};
+          color: white;
+          padding: 16px 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 10000;
+          font-weight: 500;
+          max-width: 300px;
+          animation: slideIn 0.3s ease-out;
+        `;
+        
+        messagePopup.textContent = message;
+        document.body.appendChild(messagePopup);
+        
+        // 3초 후 자동 제거
+        setTimeout(() => {
+          if (messagePopup.parentNode) {
+            messagePopup.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => {
+              if (messagePopup.parentNode) {
+                document.body.removeChild(messagePopup);
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+      
+      // CSS 애니메이션 추가
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes quickFadeIn {
+          from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes quickFadeOut {
+          from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          to { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // 페이지 로드시 매물 목록 로드
       loadMyProperties();
+      
+      // 페이지 로드 완료 시 초기화
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('메이플관리 페이지 로드 완료 - 즉시 반영 시스템 활성화');
+      });
     </script>
   </body>
   </html>

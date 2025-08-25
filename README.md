@@ -109,7 +109,6 @@ FLASK_ENV=production
 - `employees`: 직원 정보
 - `employee_customers`: 고객 정보
 - `maeiple_properties`: 매물 정보
-- `maeiple_tasks`: 작업 정보
 - `residence_links`: 주거용 링크
 - `office_links`: 업무용 링크
 

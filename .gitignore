@@ -36,3 +36,28 @@ Thumbs.db
 *.sqlite3
 integrated.db
 admin_system.db
+
+# 임시 파일 및 테스트 출력
+*_output.html
+*_temp.*
+nul
+fix_*.html
+test_*.html
+
+# 임시 SQL 파일
+alter_*.sql
+step*.sql
+simple_insert_test.sql
+test_default_values.sql
+
+# 임시 Python 스크립트
+check_*.py
+!check_db_structure.py
+alter_*.py
+fix_*.py
+!fix_view_dependency.py
+
+# IDE 설정
+.claude/
+.vscode/
+.idea/

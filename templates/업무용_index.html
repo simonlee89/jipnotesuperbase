@@ -305,6 +305,7 @@
             align-items: center;
             gap: var(--spacing-sm);
             max-width: 50%;
+            white-space: nowrap;
         }
         
         .section-title::after {
@@ -2092,13 +2093,23 @@
             background: var(--bg-card);
             color: var(--text-primary);
             transition: all 0.3s var(--ease-luxury);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
         
         .memo-input:focus {
             outline: none;
             border-color: var(--hermes-orange);
-            box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.15);
-            background: rgba(255, 248, 220, 0.5);
+            box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.15), 0 4px 16px rgba(255, 140, 0, 0.2);
+            background: rgba(255, 248, 220, 0.8);
+            transform: translateY(-2px);
+        }
+        
+        /* 편집 모드일 때 메모 입력창 강조 */
+        .memo-input.editing {
+            border-color: var(--hermes-orange);
+            background: rgba(255, 248, 220, 0.9);
+            box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.2), 0 8px 25px rgba(255, 140, 0, 0.15);
+            transform: translateY(-2px);
         }
         
         .memo-toggle {
@@ -2506,18 +2517,14 @@
                     <span onclick="changeRating(${link.id}, ${link.rating})" style="cursor: pointer; margin-left: 12px; color: var(--hermes-orange); font-weight: 600;">평점 변경</span>
                 </div>
                 <div style="margin-top: 8px;">
-                    <button class="memo-toggle" onclick="toggleMemo(${link.id})">메모</button>
+                    <button class="memo-toggle" onclick="editMemo(${link.id})">메모</button>
                 </div>
                 ${link.memo ? `
                     <div class="property-memo" onclick="editMemo(${link.id})" style="cursor: pointer;" title="클릭하여 메모 수정">${link.memo}</div>
-                    <div class="memo-section" id="memo-${link.id}" style="display: none;">
-                        <textarea class="memo-input" onchange="updateMemo(${link.id}, this.value)">${link.memo}</textarea>
-                    </div>
-                ` : `
-                    <div class="memo-section" id="memo-${link.id}" style="display: none;">
-                        <textarea class="memo-input" onchange="updateMemo(${link.id}, this.value)" placeholder="메모를 입력하세요..."></textarea>
-                    </div>
-                `}
+                ` : ''}
+                <div class="memo-section" id="memo-${link.id}" style="display: none;">
+                    <textarea class="memo-input" onchange="updateMemo(${link.id}, this.value)" placeholder="메모를 입력하세요...">${link.memo || ''}</textarea>
+                </div>
                 <div class="property-meta">
                     <span><strong>등록일:</strong> ${link.date_added}</span>
                 </div>
@@ -2782,35 +2789,45 @@
         }
 
         // 메모 토글 함수
-        function toggleMemo(linkId) {
-            const memoSection = document.getElementById(`memo-${linkId}`);
-            if (memoSection.style.display === 'none') {
-                memoSection.style.display = 'block';
-                // 애니메이션 효과
-                memoSection.style.opacity = '0';
-                setTimeout(() => {
-                    memoSection.style.opacity = '1';
-                }, 10);
-            } else {
-                memoSection.style.display = 'none';
-            }
-        }
+
         
         // 메모 편집 함수 - 메모를 클릭했을 때 호출
         function editMemo(linkId) {
             const memoSection = document.getElementById(`memo-${linkId}`);
             const memoInput = memoSection.querySelector('.memo-input');
             
-            // 메모 섹션 표시
+            // 메모 섹션이 이미 표시되어 있으면 숨기고, 숨겨져 있으면 표시
+            if (memoSection.style.display === 'block') {
+                memoSection.style.display = 'none';
+                memoInput.classList.remove('editing');
+                return;
+            }
+            
+            // 메모 섹션을 바로 표시하고 편집 모드로 전환
             memoSection.style.display = 'block';
-            memoSection.style.opacity = '0';
-            setTimeout(() => {
-                memoSection.style.opacity = '1';
-                // 입력창에 포커스
-                memoInput.focus();
-                // 커서를 텍스트 끝으로 이동
+            memoSection.style.opacity = '1';
+            
+            // 편집 모드 클래스 추가
+            memoInput.classList.add('editing');
+            
+            // 입력창에 즉시 포커스
+            memoInput.focus();
+            
+            // 커서를 텍스트 끝으로 이동
+            if (memoInput.value) {
                 memoInput.setSelectionRange(memoInput.value.length, memoInput.value.length);
-            }, 10);
+            }
+            
+            // 부드러운 애니메이션 효과
+            memoSection.style.transform = 'translateY(0)';
+            memoSection.style.transition = 'all 0.3s ease';
+            
+            // 포커스가 벗어날 때 편집 모드 클래스 제거
+            memoInput.addEventListener('blur', function() {
+                setTimeout(() => {
+                    memoInput.classList.remove('editing');
+                }, 200); // 약간의 지연을 두어 저장 애니메이션과 겹치지 않도록
+            }, { once: true }); // 한 번만 실행되도록 설정
         }
         
         // 메모 업데이트 함수
@@ -2829,6 +2846,12 @@
             .then(data => {
                 if (data.success) {
                     showNotification('메모가 저장되었습니다! 📝✨', 'success');
+                    
+                    // 편집 모드 클래스 제거
+                    const memoSection = document.getElementById(`memo-${linkId}`);
+                    const memoInput = memoSection.querySelector('.memo-input');
+                    memoInput.classList.remove('editing');
+                    
                     // 메모가 있으면 property-memo 표시
                     const propertyItem = document.querySelector(`#memo-${linkId}`).closest('.property-item');
                     let propertyMemo = propertyItem.querySelector('.property-memo');

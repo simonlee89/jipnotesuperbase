@@ -8,11 +8,50 @@
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
       h1 { margin-bottom: 8px; }
       .muted { color:#64748b; }
-      table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
       th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
-      th { background:#f8fafc; }
+      th { background:#f8fafc; font-weight: 600; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
       @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+      
+      /* 편집 가능한 셀 스타일 */
+      .editable-cell {
+        position: relative;
+        transition: background-color 0.2s ease;
+      }
+      
+      .editable-cell:hover {
+        background-color: #f8fafc;
+      }
+      
+      .editing-cell {
+        background-color: #fef3c7 !important;
+      }
+      
+      /* 배지 스타일 */
+      .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      
+      /* 메모 셀 스타일 */
+      .memo-cell {
+        font-style: italic;
+        white-space: nowrap;
+      }
+      
+      .memo-cell:hover {
+        background-color: #f1f5f9;
+      }
+      
+      /* 테이블 반응형 */
+      @media (max-width: 1200px) {
+        table { font-size: 12px; }
+        th, td { padding: 6px; }
+      }
     </style>
   </head>
   <body>
@@ -44,6 +83,13 @@
               <th>동</th>
               <th>호</th>
               <th>상태</th>
+              <th>전세</th>
+              <th>월세보증금</th>
+              <th>월세</th>
+              <th>매매</th>
+              <th>거주</th>
+              <th>전화번호</th>
+              <th>메모</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -72,15 +118,298 @@
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.properties || []);
         const tbody = document.querySelector('#properties tbody');
+        
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #64748b;">매물이 없습니다</td></tr>';
+          return;
+        }
+        
         tbody.innerHTML = list.map(p => `
-          <tr>
+          <tr data-property-id="${p.id}">
             <td>${p.id ?? ''}</td>
-            <td>${p.check_date ?? ''}</td>
-            <td>${p.building_number ?? ''}</td>
-            <td>${p.room_number ?? ''}</td>
-            <td>${p.status ?? ''}</td>
+            <td class="editable-cell" data-field="check_date" data-type="date" onclick="editPropertyCell(this)" style="cursor: pointer;">${p.check_date ?? ''}</td>
+            <td class="editable-cell" data-field="building_number" data-type="text" onclick="editPropertyCell(this)" style="cursor: pointer;">${p.building_number ?? ''}</td>
+            <td class="editable-cell" data-field="room_number" data-type="text" onclick="editPropertyCell(this)" style="cursor: pointer;">${p.room_number ?? ''}</td>
+            <td class="editable-cell" data-field="status" data-type="select" onclick="editPropertyCell(this)" style="cursor: pointer;">
+              <span class="badge" style="${getStatusStyle(p.status)}">
+                ${p.status || '거래가능'}
+              </span>
+            </td>
+            <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editPropertyCell(this)" style="cursor: pointer; color: #2563eb; font-weight: 500;">
+              ${p.jeonse_price ? formatNumber(p.jeonse_price) + ' 만원' : '-'}
+            </td>
+            <td class="editable-cell" data-field="monthly_deposit" data-type="number" onclick="editPropertyCell(this)" style="cursor: pointer; color: #2563eb; font-weight: 500;">
+              ${p.monthly_deposit ? formatNumber(p.monthly_deposit) + ' 만원' : '-'}
+            </td>
+            <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editPropertyCell(this)" style="cursor: pointer; color: #2563eb; font-weight: 500;">
+              ${p.monthly_rent ? formatNumber(p.monthly_rent) + ' 만원' : '-'}
+            </td>
+            <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editPropertyCell(this)" style="cursor: pointer; color: #2563eb; font-weight: 500;">
+              ${p.sale_price ? formatNumber(p.sale_price) + ' 만원' : '-'}
+            </td>
+            <td class="editable-cell" data-field="is_occupied" data-type="select" onclick="editPropertyCell(this)" style="cursor: pointer;">
+              <span class="badge" style="${p.is_occupied ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;'}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                ${p.is_occupied ? 'O' : 'X'}
+              </span>
+            </td>
+            <td class="editable-cell" data-field="phone" data-type="text" onclick="editPropertyCell(this)" style="cursor: pointer; font-family: monospace;">
+              ${p.phone || '-'}
+            </td>
+            <td class="memo-cell" onclick="openMemoModal(${p.id}, '${(p.memo || '').replace(/'/g, "\\'")}', '${p.building_number || ''}', '${p.room_number || ''}')" style="cursor: pointer; color: #64748b; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">
+              ${p.memo ? (p.memo.length > 20 ? p.memo.substring(0, 20) + '...' : p.memo) : '-'}
+            </td>
           </tr>
-        `).join('') || '<tr><td colspan="5">없음</td></tr>';
+        `).join('');
+      }
+
+      // ===================== 매물 편집 기능 (관리자 패널에서 이식) =====================
+      
+      // 유틸리티 함수들
+      function formatNumber(num) {
+        if (!num) return '';
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+      
+      function getStatusStyle(status) {
+        const styles = {
+          '거래가능': 'background: #e0f2fe; color: #0369a1;',
+          '거래중': 'background: #fef3c7; color: #92400e;',
+          '계약완료': 'background: #d1fae5; color: #065f46;',
+          '보류': 'background: #fecaca; color: #dc2626;',
+          '부재': 'background: #ede9fe; color: #5b21b6;'
+        };
+        return (styles[status] || styles['거래가능']) + '; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;';
+      }
+      
+      // 매물 셀 편집 함수 (관리자 패널과 동일)
+      function editPropertyCell(cell) {
+        if (cell.classList.contains('editing-cell')) {
+          return; // 이미 편집 중이면 리턴
+        }
+        
+        const field = cell.dataset.field;
+        const type = cell.dataset.type;
+        let currentValue = cell.textContent.trim();
+        
+        // 배지에서 현재 값 추출
+        if (field === 'status') {
+          const badge = cell.querySelector('.badge');
+          currentValue = badge ? badge.textContent.trim() : '거래가능';
+        } else if (field === 'is_occupied') {
+          const badge = cell.querySelector('.badge');
+          currentValue = badge ? badge.textContent.trim() : 'X';
+        }
+        
+        cell.classList.add('editing-cell');
+        
+        if (field === 'status') {
+          // 상태 선택 드롭다운
+          const statusOptions = ['거래가능', '거래중', '계약완료', '보류', '부재'];
+          const selector = document.createElement('select');
+          selector.style.cssText = 'width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;';
+          
+          statusOptions.forEach(status => {
+            const option = document.createElement('option');
+            option.value = status;
+            option.textContent = status;
+            if (status === currentValue) {
+              option.selected = true;
+            }
+            selector.appendChild(option);
+          });
+          
+          selector.addEventListener('change', () => {
+            const selectedValue = selector.value;
+            cell.innerHTML = `<span class="badge" style="${getStatusStyle(selectedValue)}">${selectedValue}</span>`;
+            cell.classList.remove('editing-cell');
+            
+            // 저장
+            updateProperty(getPropertyId(cell), field, selectedValue);
+          });
+          
+          cell.innerHTML = '';
+          cell.appendChild(selector);
+          selector.focus();
+          
+        } else if (field === 'is_occupied') {
+          // 거주 여부 선택
+          const selector = document.createElement('select');
+          selector.style.cssText = 'width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;';
+          
+          const options = [
+            { value: false, text: 'X', style: 'background: #fecaca; color: #dc2626;' },
+            { value: true, text: 'O', style: 'background: #d1fae5; color: #065f46;' }
+          ];
+          
+          options.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.text;
+            if ((option.text === 'O' && currentValue === 'O') || (option.text === 'X' && currentValue === 'X')) {
+              opt.selected = true;
+            }
+            selector.appendChild(opt);
+          });
+          
+          selector.addEventListener('change', () => {
+            const selectedValue = selector.value === 'true';
+            const option = options.find(opt => opt.value === selectedValue);
+            cell.innerHTML = `<span class="badge" style="${option.style}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">${option.text}</span>`;
+            cell.classList.remove('editing-cell');
+            
+            // 저장
+            updateProperty(getPropertyId(cell), field, selectedValue);
+          });
+          
+          cell.innerHTML = '';
+          cell.appendChild(selector);
+          selector.focus();
+          
+        } else {
+          // 일반 입력 필드
+          const input = document.createElement('input');
+          input.type = type === 'date' ? 'date' : (type === 'number' ? 'text' : 'text');
+          
+          // 현재 값 설정 (가격 필드의 경우 숫자만 추출)
+          if (type === 'number' && currentValue.includes('만원')) {
+            input.value = currentValue.replace(/[^0-9]/g, '');
+          } else if (currentValue === '-') {
+            input.value = '';
+          } else {
+            input.value = currentValue;
+          }
+          
+          input.style.cssText = 'width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;';
+          
+          input.addEventListener('blur', () => {
+            let newValue = input.value;
+            let displayValue = newValue;
+            
+            // 가격 필드 처리
+            if (type === 'number' && (field.includes('price') || field.includes('deposit'))) {
+              if (newValue && !isNaN(newValue)) {
+                displayValue = formatNumber(newValue) + ' 만원';
+              } else {
+                displayValue = '-';
+                newValue = '';
+              }
+            } else if (!newValue) {
+              displayValue = '-';
+            }
+            
+            cell.textContent = displayValue;
+            cell.style.color = newValue ? (type === 'number' ? '#2563eb' : 'inherit') : '#64748b';
+            cell.classList.remove('editing-cell');
+            
+            // 저장
+            if (newValue !== currentValue.replace(/[^0-9]/g, '')) {
+              updateProperty(getPropertyId(cell), field, newValue);
+            }
+          });
+          
+          input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              input.blur();
+            } else if (e.key === 'Escape') {
+              cell.textContent = currentValue;
+              cell.classList.remove('editing-cell');
+            }
+          });
+          
+          cell.innerHTML = '';
+          cell.appendChild(input);
+          input.focus();
+        }
+      }
+      
+      // 매물 ID 추출 헬퍼
+      function getPropertyId(cell) {
+        return cell.closest('tr').dataset.propertyId;
+      }
+      
+      // 매물 업데이트 함수 (관리자와 동일한 API 사용)
+      async function updateProperty(id, field, value) {
+        try {
+          console.log('매물 업데이트:', { id, field, value });
+          
+          const response = await fetch('/api/maeiple/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              id: id,
+              field: field,
+              value: value
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            console.log(`${field} 수정 완료`);
+            showMessage(`${field} 수정이 완료되었습니다.`, 'success');
+          } else {
+            console.error('수정 실패:', result.error);
+            showMessage('수정 실패: ' + (result.error || '알 수 없는 오류'), 'error');
+          }
+        } catch (error) {
+          console.error('매물 업데이트 실패:', error);
+          showMessage('수정 중 오류가 발생했습니다.', 'error');
+        }
+      }
+      
+      // 메모 모달 (간단 버전)
+      function openMemoModal(propertyId, currentMemo, buildingNumber, roomNumber) {
+        const newMemo = prompt(`매물 메모 편집 (${buildingNumber || '동'}-${roomNumber || '호'}):`, currentMemo || '');
+        if (newMemo !== null && newMemo !== currentMemo) {
+          updateProperty(propertyId, 'memo', newMemo);
+          
+          // UI 즉시 업데이트
+          const row = document.querySelector(`tr[data-property-id="${propertyId}"]`);
+          if (row) {
+            const memoCell = row.querySelector('.memo-cell');
+            if (memoCell) {
+              memoCell.textContent = newMemo ? (newMemo.length > 20 ? newMemo.substring(0, 20) + '...' : newMemo) : '-';
+            }
+          }
+        }
+      }
+      
+      // 메시지 표시 함수
+      function showMessage(message, type = 'info') {
+        // 기존 메시지 제거
+        const existingMessage = document.querySelector('.message-toast');
+        if (existingMessage) {
+          existingMessage.remove();
+        }
+        
+        // 새 메시지 생성
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-toast';
+        messageDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 12px 20px;
+          border-radius: 6px;
+          font-weight: 500;
+          z-index: 1000;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          ${type === 'success' ? 'background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;' : 
+            type === 'error' ? 'background: #fecaca; color: #dc2626; border: 1px solid #fca5a5;' : 
+            'background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;'}
+        `;
+        messageDiv.textContent = message;
+        
+        document.body.appendChild(messageDiv);
+        
+        // 3초 후 자동 제거
+        setTimeout(() => {
+          if (messageDiv.parentNode) {
+            messageDiv.remove();
+          }
+        }, 3000);
       }
 
       Promise.all([loadCustomers(), loadProperties()]);

@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>직원 대시보드 - 집노트</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -198,8 +201,142 @@
             padding: 20px;
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             border-radius: 16px;
-            border: 2px solid #e2e8f0;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 메모 모달 스타일 */
+        .memo-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            transition: all 0.2s ease;
+            min-height: 120px;
+            line-height: 1.5;
+        }
+        
+        .memo-textarea:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .modal-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .modal-body {
+            padding: 20px 24px;
+        }
+        
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        
+        /* 편집 가능한 셀 스타일 */
+        .editable-cell {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .editable-cell:hover {
+            background-color: #f8fafc;
+            border-radius: 4px;
+        }
+        
+        .editable-cell.editing-cell {
+            background-color: #fef3c7;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        
+        .cell-input {
+            width: 100%;
+            padding: 4px 8px;
+            border: 2px solid #6366f1;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            outline: none;
+        }
+        
+        .cell-input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .editable-cell select {
+            width: 100%;
+            padding: 4px 8px;
+            border: 2px solid #6366f1;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            outline: none;
+        }
+        
+                .editable-cell select:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .chart-container {
             position: relative;
             overflow: hidden;
         }
@@ -573,6 +710,7 @@
         .customers-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         
         .customers-table th {
@@ -667,14 +805,21 @@
         
         .memo-cell {
             cursor: pointer;
+            width: 150px;
+            min-width: 150px;
             max-width: 150px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            transition: all 0.2s ease;
+            padding: 4px 8px;
+            border-radius: 4px;
         }
         
         .memo-cell:hover {
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         
         /* 필터 섹션 */
@@ -835,6 +980,109 @@
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
         
+        /* 매물 메모 모달 스타일 */
+        .memo-info {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .memo-property-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .memo-label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .memo-value {
+            color: #6366f1;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        /* 필터 스타일 */
+        .filter-section {
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-header h4 {
+            margin: 0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .filter-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        
+        .filter-input, .filter-select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            transition: border-color 0.2s ease;
+        }
+        
+        .filter-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .filter-input-small {
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 80px;
+            text-align: center;
+        }
+        
+        .filter-input-small:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        }
+        
+        .filter-actions {
+            margin-top: 16px;
+            text-align: center;
+        }
+        
+        .filter-actions .btn {
+            margin-right: 8px;
+        }
+        
         .modal-footer {
             padding: 16px 24px;
             border-top: 1px solid #e2e8f0;
@@ -891,6 +1139,32 @@
             to { transform: translate(-50%, -50%) rotate(360deg); }
         }
         
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 2px 8px rgba(76,175,80,0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 4px 16px rgba(76,175,80,0.5);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 2px 8px rgba(76,175,80,0.3);
+            }
+        }
+        
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -932,24 +1206,26 @@
         
         .status-option {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 4px;
-            padding: 12px 16px;
-            border: 1px solid #e2e8f0;
+            gap: 6px;
+            padding: 10px 14px;
+            border: 2px solid #e5e7eb;
             background: #ffffff;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 70px;
-            font-size: 12px;
+            transition: all 0.3s ease;
+            min-width: 60px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            user-select: none;
         }
         
         .status-option:hover {
             border-color: #6366f1;
             background: #f8fafc;
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
         .status-option.active {
@@ -965,13 +1241,78 @@
         }
         
         .status-icon {
-            font-size: 16px;
-            margin-bottom: 2px;
+            font-size: 14px;
         }
         
         .status-text {
-            font-weight: 500;
+            font-weight: 600;
             white-space: nowrap;
+        }
+        
+        /* 좋아요/싫어요 선택 UI 스타일 */
+        .likes-selector {
+            position: relative;
+            z-index: 100;
+        }
+        
+        .likes-options {
+            display: flex;
+            gap: 4px;
+            padding: 6px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+        
+        .likes-option {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 10px;
+            border: 2px solid #e5e7eb;
+            background: #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            user-select: none;
+        }
+        
+        .likes-option:hover {
+            border-color: #f59e0b;
+            background: #fef3c7;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .likes-option.active {
+            border-color: #f59e0b;
+            background: #f59e0b;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+        
+        .likes-option.reset {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+        
+        .likes-option.reset:hover {
+            background: #fecaca;
+            border-color: #f87171;
+        }
+        
+        .likes-option.reset.active {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: white;
         }
         
         /* 카드형 보증보험 UI 스타일 추가 */
@@ -1220,12 +1561,101 @@
                         </div>
                     </div>
                     
+
+                    
                     <div class="card-header">
-                        <h2 class="card-title">매물 목록</h2>
                         <div class="card-actions">
                             <button class="btn btn-primary btn-sm" onclick="addNewPropertyRow()">
                                 <span>➕</span> 새 매물 추가
                             </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 필터 섹션 -->
+                    <div class="filter-section" style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div class="filter-header" style="margin-bottom: 16px;">
+                            <h4 style="margin: 0; color: #374151; font-size: 14px; font-weight: 600;">
+                                🔍 매물 필터
+                            </h4>
+                        </div>
+                        
+                        <div class="filter-grid" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+                            <!-- 호실 검색 -->
+                            <div class="filter-group">
+                                <label class="filter-label">🏠 호실 검색</label>
+                                <input type="text" id="room-search" class="filter-input" placeholder="동-호수 (예: 101-1)" onkeyup="filterProperties()">
+                            </div>
+                            
+                            <!-- 현황 필터 -->
+                            <div class="filter-group">
+                                <label class="filter-label">📊 현황</label>
+                                <select id="status-filter" class="filter-select" onchange="filterProperties()">
+                                    <option value="">전체</option>
+                                    <option value="거래가능">거래가능</option>
+                                    <option value="계약완료">계약완료</option>
+                                    <option value="보류">보류</option>
+                                    <option value="부재">부재</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 실거주여부 필터 -->
+                            <div class="filter-group">
+                                <label class="filter-label">👥 실거주여부</label>
+                                <select id="occupied-filter" class="filter-select" onchange="filterProperties()">
+                                    <option value="">전체</option>
+                                    <option value="true">실거주</option>
+                                    <option value="false">비실거주</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 거래 유형 필터 -->
+                            <div class="filter-group">
+                                <label class="filter-label">🏠 거래 유형</label>
+                                <select id="transaction-type-filter" class="filter-select" onchange="filterProperties()">
+                                    <option value="">전체</option>
+                                    <option value="jeonse">전세</option>
+                                    <option value="monthly">월세</option>
+                                    <option value="sale">매매</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 좋아요 필터 -->
+                            <div class="filter-group">
+                                <label class="filter-label">❤️ 좋아요</label>
+                                <select id="likes-filter" class="filter-select" onchange="filterProperties()">
+                                    <option value="">전체</option>
+                                    <option value="0">0점</option>
+                                    <option value="1">1점</option>
+                                    <option value="2">2점</option>
+                                    <option value="3">3점</option>
+                                    <option value="4">4점</option>
+                                    <option value="5">5점</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 싫어요 필터 -->
+                            <div class="filter-group">
+                                <label class="filter-label">👎 싫어요</label>
+                                <select id="dislikes-filter" class="filter-select" onchange="filterProperties()">
+                                    <option value="">전체</option>
+                                    <option value="0">0점</option>
+                                    <option value="1">1점</option>
+                                    <option value="2">2점</option>
+                                    <option value="3">3점</option>
+                                    <option value="4">4점</option>
+                                    <option value="5">5점</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- 필터 초기화 버튼 -->
+                        <div class="filter-actions" style="margin-top: 16px; text-align: center;">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()">
+                                <span>🔄</span> 필터 초기화
+                            </button>
+                            <span id="filter-count" style="margin-left: 12px; color: #6b7280; font-size: 13px;">
+                                총 0개 매물
+                            </span>
                         </div>
                     </div>
                     
@@ -1251,7 +1681,6 @@
                                     <th>팀</th>
                                     <th>좋아요</th>
                                     <th>싫어요</th>
-                                    <th>작업</th>
                                 </tr>
                             </thead>
                             <tbody id="maeiple-tbody">
@@ -1428,11 +1857,11 @@
                                         <th>대출여부</th>
                                         <th>주차</th>
                                         <th>애완</th>
-                                        <th>메모</th>
+                                        <th style="width: 150px; min-width: 150px; max-width: 150px;">메모</th>
                                         <th>진행여부</th>
                                         <th>주거사이트</th>
                                         <th>업무사이트</th>
-                                        <th>작업</th>
+                                        <th>관리</th>
                                     </tr>
                                 </thead>
                                 <tbody id="customers-list">
@@ -1459,6 +1888,29 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeMemoModal()">취소</button>
                 <button class="btn btn-primary" onclick="saveMemo()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 매물 메모 모달 -->
+    <div id="property-memo-modal" class="modal-overlay" onclick="closePropertyMemoModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 매물 특이사항 편집</h3>
+                <button class="modal-close" onclick="closePropertyMemoModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="memo-info">
+                    <div class="memo-property-info">
+                        <span class="memo-label">매물:</span>
+                        <span id="property-memo-info" class="memo-value">동-호수</span>
+                    </div>
+                </div>
+                <textarea id="property-memo-textarea" class="memo-textarea" placeholder="매물의 특이사항을 입력하세요..." rows="8"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePropertyMemoModal()">취소</button>
+                <button class="btn btn-primary" onclick="savePropertyMemo()">저장</button>
             </div>
         </div>
     </div>
@@ -1561,6 +2013,133 @@
             console.log('메이플자이 통계 업데이트 완료:', statusCounts);
         }
         
+        // ==================== 고객 목록 셀 편집 기능 ====================
+        
+        // 셀 편집 함수
+        function editCell(cell) {
+            // 이미 편집 중인 경우 기존 편집 UI 제거
+            if (cell.classList.contains('editing-cell')) {
+                const existingInput = cell.querySelector('input, select');
+                if (existingInput) {
+                    existingInput.remove();
+                }
+                cell.classList.remove('editing-cell');
+                return; // 편집 모드 종료
+            }
+            
+            // 편집 모드 시작
+            const field = cell.dataset.field;
+            const type = cell.dataset.type;
+            let currentValue = cell.textContent.trim();
+            
+            // 상태 배지에서 실제 값 추출
+            if (field === 'status') {
+                const badge = cell.querySelector('.status-badge');
+                currentValue = badge ? badge.textContent.trim() : currentValue;
+            }
+            
+            // 빈 값이나 기본 플레이스홀더 처리
+            if (currentValue === '-' || currentValue === '') {
+                currentValue = '';
+            }
+            
+            cell.classList.add('editing-cell');
+            
+            let inputElement;
+            if (type === 'select' && field === 'status') {
+                inputElement = document.createElement('select');
+                inputElement.innerHTML = `
+                    <option value="진행중" ${currentValue === '진행중' ? 'selected' : ''}>진행중</option>
+                    <option value="완료" ${currentValue === '완료' ? 'selected' : ''}>완료</option>
+                    <option value="계약" ${currentValue === '계약' ? 'selected' : ''}>계약</option>
+                    <option value="보류" ${currentValue === '보류' ? 'selected' : ''}>보류</option>
+                `;
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = type === 'date' ? 'date' : 'text';
+                inputElement.value = currentValue;
+                inputElement.className = 'cell-input';
+            }
+            
+            // 기존 내용을 저장하고 입력 요소로 교체
+            const originalContent = cell.innerHTML;
+            cell.innerHTML = '';
+            cell.appendChild(inputElement);
+            inputElement.focus();
+            
+            // 저장 함수
+            const saveCell = async () => {
+                const newValue = inputElement.value.trim();
+                
+                // 값이 변경되지 않았으면 편집 모드만 종료
+                if (newValue === currentValue) {
+                    cell.classList.remove('editing-cell');
+                    cell.innerHTML = originalContent;
+                    return;
+                }
+                
+                try {
+                    // 고객 ID 가져오기
+                    const customerId = cell.closest('tr').dataset.customerId;
+                    if (!customerId) {
+                        showAlert('고객 정보를 찾을 수 없습니다.', 'error');
+                        return;
+                    }
+                    
+                    // 서버에 업데이트 요청
+                    const result = await updateCustomerField(customerId, field, newValue);
+                    
+                    if (result.success) {
+                        // UI 업데이트
+                        if (field === 'status') {
+                            const statusClass = newValue === '계약' ? 'status-complete' : 
+                                               newValue === '보류' ? 'status-hold' : 'status-progress';
+                            cell.innerHTML = `<span class="status-badge ${statusClass}">${newValue}</span>`;
+                        } else if (field === 'budget' && newValue) {
+                            cell.textContent = newValue;
+                        } else {
+                            cell.textContent = newValue || '-';
+                        }
+                        
+                        cell.classList.remove('editing-cell');
+                        showAlert('수정이 완료되었습니다.', 'success');
+                    } else {
+                        showAlert(result.error || '수정에 실패했습니다.', 'error');
+                        // 원래 내용으로 복원
+                        cell.classList.remove('editing-cell');
+                        cell.innerHTML = originalContent;
+                    }
+                } catch (error) {
+                    console.error('셀 수정 오류:', error);
+                    showAlert('서버 오류가 발생했습니다.', 'error');
+                    // 원래 내용으로 복원
+                    cell.classList.remove('editing-cell');
+                    cell.innerHTML = originalContent;
+                }
+            };
+            
+            // 취소 함수
+            const cancelEdit = () => {
+                cell.classList.remove('editing-cell');
+                cell.innerHTML = originalContent;
+            };
+            
+            // 이벤트 리스너
+            inputElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveCell();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit();
+                }
+            });
+            
+            inputElement.addEventListener('blur', () => saveCell());
+        }
+        
+        // 고객 필드 업데이트 함수 (중복 제거됨 - 아래의 확장된 버전 사용)
+        
         // 메이플관리 관련 함수들
         function showMaeipleSection() {
             // 모든 섹션과 탭 숨기기
@@ -1610,15 +2189,35 @@
         // 메이플관리 매물 목록 로드 (직원용)
         async function loadMaeipleProperties() {
             try {
+                console.log('메이플관리 매물 목록 로드 시작...');
+                
                 const response = await fetch('/api/employee/maeiple?sort_by=check_date&sort_order=desc&page=1&per_page=20');
+                console.log('API 응답 상태:', response.status);
+                
                 if (response.ok) {
                     const data = await response.json();
-                    displayMaeipleProperties(data.properties || []);
+                    console.log('받은 데이터:', data);
+                    
+                    if (data.success) {
+                        const properties = data.properties || [];
+                        console.log(`매물 ${properties.length}개 로드됨`);
+                        displayMaeipleProperties(properties);
+                    } else {
+                        console.error('API 응답에서 success가 false:', data.error);
+                        showAlert('매물 목록을 불러오는데 실패했습니다: ' + (data.error || '알 수 없는 오류'), 'error');
+                        displayMaeipleProperties([]); // 빈 목록 표시
+                    }
                 } else {
                     console.error('메이플관리 데이터 로드 실패:', response.status);
+                    const errorText = await response.text();
+                    console.error('에러 응답:', errorText);
+                    showAlert(`매물 목록 로드 실패 (${response.status}): ${errorText}`, 'error');
+                    displayMaeipleProperties([]); // 빈 목록 표시
                 }
             } catch (error) {
                 console.error('메이플관리 데이터 로드 오류:', error);
+                showAlert('매물 목록을 불러오는데 실패했습니다: ' + error.message, 'error');
+                displayMaeipleProperties([]); // 빈 목록 표시
             }
         }
 
@@ -1640,6 +2239,7 @@
                 const statusStyle = property.status === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
                                   property.status === '보류' ? 'background: #fef3c7; color: #92400e;' : 
                                   property.status === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+
                                   'background: #e0f2fe; color: #0369a1;';
                 
                 // 실거주 여부 표시
@@ -1649,7 +2249,7 @@
                 // 가격 포맷팅 함수
                 const formatPrice = (price) => price ? price.toLocaleString() + ' 만원' : '-';
                 
-                // 하트 표시 함수
+                // 하트 표시 함수 (기존 방식 - 새 매물용)
                 const renderHearts = (count, type) => {
                     const hearts = [];
                     for (let i = 1; i <= 5; i++) {
@@ -1662,6 +2262,8 @@
                     return hearts.join('');
                 };
                 
+
+                
                 row.innerHTML = `
                     <td class="editable-cell" data-field="check_date" data-type="date" onclick="editExistingPropertyCell(this, ${property.id})">${property.check_date || ''}</td>
                     <td class="editable-cell" data-field="building_number" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})">${property.building_number || ''}</td>
@@ -1671,18 +2273,18 @@
                             ${property.status || '거래가능'}
                         </span>
                     </td>
-                    <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.jeonse_price || '-'}</td>
-                    <td class="editable-cell" data-field="deposit" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.deposit || '-'}</td>
-                    <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.monthly_rent || '-'}</td>
-                    <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.sale_price || '-'}</td>
+                    <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.jeonse_price ? parseInt(property.jeonse_price).toLocaleString() + ' 만원' : '-'}</td>
+                    <td class="editable-cell" data-field="monthly_deposit" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.monthly_deposit ? parseInt(property.monthly_deposit).toLocaleString() + ' 만원' : '-'}</td>
+                    <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.monthly_rent ? parseInt(property.monthly_rent).toLocaleString() + ' 만원' : '-'}</td>
+                    <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #2563eb; font-weight: 500;">${property.sale_price ? parseInt(property.sale_price).toLocaleString() + ' 만원' : '-'}</td>
                     <td onclick="toggleOccupied(${property.id}, ${property.is_occupied})" style="cursor: pointer;">
                         <span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">
                             ${occupiedDisplay}
                         </span>
                     </td>
-                    <td class="editable-cell" data-field="phone" data-type="text" onclick="editExistingPropertyCell(this, ${property.id})" style="font-family: monospace; letter-spacing: 0.5px;">${property.phone || '-'}</td>
-                    <td class="editable-cell" data-field="memo" data-type="text" onclick="editExistingPropertyCell(this, ${property.id})" style="color: #64748b; font-style: italic; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${property.memo ? (property.memo.length > 20 ? property.memo.substring(0, 20) + '...' : property.memo) : '-'}
+                    <td class="editable-cell" data-field="phone" data-type="text" onclick="editExistingPropertyCell(this, ${property.id})" style="font-family: monospace; letter-spacing: 0.5px;">${property.phone ? formatPhoneNumber(property.phone) : '-'}</td>
+                    <td class="memo-cell" onclick="openPropertyMemoModal(${property.id}, '${(property.memo || '').replace(/'/g, "\\'")}', '${property.building_number || ''}', '${property.room_number || ''}')" style="color: #64748b; font-style: italic; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;">
+                        ${property.memo ? (property.memo.length > 60 ? property.memo.substring(0, 60) + '...' : property.memo) : '-'}
                     </td>
                     <td>
                         <span style="color: #4f46e4; font-weight: 500;">
@@ -1695,26 +2297,38 @@
                         </span>
                     </td>
                     <td>
-                        <div style="cursor: pointer; user-select: none;" onclick="toggleLikes(${property.id}, ${property.likes || 0}, 'like', this)">
-                            ${renderHearts(property.likes || 0, 'like')}
+                        <div style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; gap: 2px;" onclick="editLikes(this, ${property.id}, ${property.likes || 0}, 'like')">
+                            ${renderLikesDisplay(property.likes || 0, 'like')}
                         </div>
                     </td>
                     <td>
-                        <div style="cursor: pointer; user-select: none;" onclick="toggleLikes(${property.id}, ${property.dislikes || 0}, 'dislike', this)">
-                            ${renderHearts(property.dislikes || 0, 'dislike')}
+                        <div style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; gap: 2px;" onclick="editLikes(this, ${property.id}, ${property.dislikes || 0}, 'dislike')">
+                            ${renderLikesDisplay(property.dislikes || 0, 'dislike')}
                         </div>
                     </td>
-                    <td>
-                        <button class="btn btn-danger btn-sm" onclick="deleteProperty(${property.id})">삭제</button>
-                    </td>
+
                 `;
                 tbody.appendChild(row);
             });
+            
+            // 필터 카운트 업데이트
+            const totalCount = properties.length;
+            document.getElementById('filter-count').textContent = `총 ${totalCount}개 매물`;
         }
         
         // 새 매물 행 추가 (고객 추가와 동일한 방식)
         function addNewPropertyRow() {
+            console.log('새 매물 행 추가 시작...');
+            
             const tbody = document.getElementById('maeiple-tbody');
+            if (!tbody) {
+                console.error('maeiple-tbody를 찾을 수 없습니다.');
+                showAlert('테이블을 찾을 수 없습니다. 메이플관리 섹션이 제대로 로드되지 않았습니다.', 'error');
+                return;
+            }
+            
+            console.log('테이블 tbody 찾음:', tbody);
+            
             // 오늘 날짜 구하기 (한국시간 기준)
             const now = new Date();
             now.setHours(now.getHours() + 9);
@@ -1724,20 +2338,20 @@
             newRow.className = 'new-property-row';
             newRow.innerHTML = `
                 <td class="editable-cell" data-field="check_date" data-type="date" onclick="editPropertyCell(this)">${today}</td>
-                <td class="editable-cell" data-field="building_number" data-type="number" onclick="editPropertyCell(this)">-</td>
-                <td class="editable-cell" data-field="room_number" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="building_number" data-type="number" onclick="editPropertyCell(this)" style="color: #64748b;">동 번호 입력</td>
+                <td class="editable-cell" data-field="room_number" data-type="number" onclick="editPropertyCell(this)" style="color: #64748b;">호수 입력</td>
                 <td class="editable-cell" data-field="status" data-type="select" onclick="editPropertyCell(this)">
                     <span class="badge" style="background: #e0f2fe; color: #0369a1; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">거래가능</span>
                 </td>
-                <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editPropertyCell(this)">-</td>
-                <td class="editable-cell" data-field="deposit" data-type="number" onclick="editPropertyCell(this)">-</td>
-                <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editPropertyCell(this)">-</td>
-                <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="jeonse_price" data-type="number" onclick="editPropertyCell(this)" style="color: #64748b;">전세가 입력</td>
+                <td class="editable-cell" data-field="monthly_deposit" data-type="number" onclick="editPropertyCell(this)" style="color: #64748b;">월세보증금 입력</td>
+                <td class="editable-cell" data-field="monthly_rent" data-type="number" onclick="editPropertyCell(this)" style="color: #64748b;">월세 입력</td>
+                <td class="editable-cell" data-field="sale_price" data-type="number" onclick="editPropertyCell(this)" style="color: #64748b;">매매가 입력</td>
                 <td class="editable-cell" data-field="is_occupied" data-type="select" onclick="editPropertyCell(this)">
                     <span class="badge" style="background: #fecaca; color: #dc2626; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">X</span>
                 </td>
-                <td class="editable-cell" data-field="phone" data-type="text" onclick="editPropertyCell(this)">-</td>
-                <td class="editable-cell" data-field="memo" data-type="text" onclick="editPropertyCell(this)">-</td>
+                <td class="editable-cell" data-field="phone" data-type="text" onclick="editPropertyCell(this)" style="color: #64748b;">연락처 입력</td>
+                <td class="memo-cell" onclick="openNewPropertyMemoModal(this)" style="color: #64748b; cursor: pointer;">메모 입력</td>
                 <td style="color: #4f46e4; font-weight: 500;">{{ session.employee_name }}</td>
                 <td>
                     <span class="status-badge" style="background: #e0e7ff; color: #4338ca; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">
@@ -1745,49 +2359,200 @@
                     </span>
                 </td>
                 <td>
-                    <div style="cursor: pointer; user-select: none;" onclick="toggleNewPropertyLikes(this, 'like')">
-                        🤍🤍🤍🤍🤍
+                    <div style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; gap: 2px;" onclick="editNewPropertyLikes(this, 'like')" data-count="0">
+                        <span style="color: #9ca3af; font-size: 14px;">❤️ 0</span>
                     </div>
                 </td>
                 <td>
-                    <div style="cursor: pointer; user-select: none;" onclick="toggleNewPropertyLikes(this, 'dislike')">
-                        🤍🤍🤍🤍🤍
+                    <div style="cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; gap: 2px;" onclick="editNewPropertyLikes(this, 'dislike')" data-count="0">
+                        <span style="color: #9ca3af; font-size: 14px;">👎 0</span>
                     </div>
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-primary btn-sm" onclick="saveNewProperty(this)">저장</button>
-                        <button class="btn btn-secondary btn-sm" onclick="cancelNewPropertyRow(this)">취소</button>
+                        <button class="btn btn-primary btn-sm" onclick="saveNewProperty(this)">💾 저장</button>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelNewPropertyRow(this)">❌ 취소</button>
                     </div>
                 </td>
             `;
+            
             tbody.insertBefore(newRow, tbody.firstChild);
+            console.log('새 행이 테이블에 추가됨');
+            
+            // 첫 번째 필수 필드(동 번호)로 자동 포커스
+            setTimeout(() => {
+                const firstCell = newRow.querySelector('[data-field="building_number"]');
+                if (firstCell) {
+                    console.log('동 번호 셀에 포커스 설정');
+                    editPropertyCell(firstCell);
+                } else {
+                    console.error('동 번호 셀을 찾을 수 없습니다.');
+                }
+            }, 100);
+            
+            console.log('새 매물 행이 추가되었습니다.');
+            showAlert('새 매물을 추가했습니다. 모든 필드는 선택사항입니다. 원하는 정보만 입력하고 저장하세요.', 'success');
         }
         
         // 매물 셀 편집 (고객 편집과 유사)
         function editPropertyCell(cell) {
-            // 이미 편집 중이어도 강제로 편집 진입
+            // 이미 편집 중인 경우 현재 입력값을 보존하고 편집 모드 유지
             if (cell.classList.contains('editing-cell')) {
-                cell.classList.remove('editing-cell');
-                cell.innerHTML = cell.textContent;
+                const existingInput = cell.querySelector('input, select');
+                const existingSelector = cell.querySelector('.status-selector');
+                
+                // 기존 입력 요소가 있으면 현재 값을 유지하고 포커스만 설정
+                if (existingInput && !existingSelector) {
+                    existingInput.focus();
+                    if (existingInput.tagName === 'INPUT') {
+                        existingInput.select(); // 텍스트 전체 선택
+                    }
+                    return; // 편집 모드 유지
+                }
+                
+                // 상태 선택기가 있는 경우만 제거 후 종료
+                if (existingSelector) {
+                    existingSelector.remove();
+                    cell.classList.remove('editing-cell');
+                    return; // 편집 모드 종료
+                }
+                
+                return; // 기타 경우 편집 모드 유지
             }
             
             const field = cell.dataset.field;
             const type = cell.dataset.type;
-            const currentValue = cell.textContent.trim();
+            let currentValue = cell.textContent.trim();
+            
+            // 배지에서 실제 값 추출
+            if (field === 'status') {
+                const badge = cell.querySelector('.badge');
+                currentValue = badge ? badge.textContent.trim() : currentValue;
+            }
+            
+            console.log(`매물 셀 편집 시작: ${field}, 타입: ${type}, 현재값: "${currentValue}"`);
+            
+            // 원본 HTML을 저장 (복원용)
+            if (!cell.dataset.originalHtml) {
+                cell.dataset.originalHtml = cell.innerHTML;
+            }
+            
+            // 원본 값을 저장 (복원용)
+            cell.dataset.originalValue = currentValue;
             
             cell.classList.add('editing-cell');
             
             let inputElement;
             if (type === 'select' && field === 'status') {
-                inputElement = document.createElement('select');
-                inputElement.innerHTML = `
-                    <option value="거래가능" ${currentValue === '거래가능' ? 'selected' : ''}>거래가능</option>
-                    <option value="거래중" ${currentValue === '거래중' ? 'selected' : ''}>거래중</option>
-                    <option value="계약완료" ${currentValue === '계약완료' ? 'selected' : ''}>계약완료</option>
-                    <option value="보류" ${currentValue === '보류' ? 'selected' : ''}>보류</option>
-                    <option value="부재" ${currentValue === '부재' ? 'selected' : ''}>부재</option>
+                console.log('매물 현황 편집 시작:', { field, type, currentValue });
+                
+                // 예쁜 버튼 형태의 현황 선택 UI 생성
+                const statusContainer = document.createElement('div');
+                statusContainer.className = 'status-selector';
+                statusContainer.innerHTML = `
+                    <div class="status-options">
+                        <button type="button" class="status-option ${currentValue === '거래가능' ? 'active' : ''}" data-value="거래가능">
+                            <span class="status-icon">🔄</span>
+                            <span class="status-text">거래가능</span>
+                        </button>
+
+                        <button type="button" class="status-option ${currentValue === '계약완료' ? 'active' : ''}" data-value="계약완료">
+                            <span class="status-icon">✅</span>
+                            <span class="status-text">계약완료</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '보류' ? 'active' : ''}" data-value="보류">
+                            <span class="status-icon">⏸️</span>
+                            <span class="status-text">보류</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '부재' ? 'active' : ''}" data-value="부재">
+                            <span class="status-icon">❌</span>
+                            <span class="status-text">부재</span>
+                        </button>
+                    </div>
                 `;
+                
+                cell.innerHTML = '';
+                cell.appendChild(statusContainer);
+                
+                // 버튼 클릭 이벤트 처리
+                const buttons = statusContainer.querySelectorAll('.status-option');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const selectedValue = btn.dataset.value;
+                        console.log('매물 현황 버튼 클릭:', { selectedValue, field });
+                        
+                        // 편집 모드 종료 및 UI 정리
+                        cell.classList.remove('editing-cell');
+                        
+                        // UI 즉시 업데이트
+                        const statusStyle = selectedValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                          selectedValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                          selectedValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+
+                                          'background: #e0f2fe; color: #0369a1;';
+                        cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${selectedValue}</span>`;
+                        
+                        // 새 행인지 기존 행인지 확인
+                        const row = cell.closest('tr');
+                        if (row.classList.contains('new-property-row')) {
+                            // 새 행의 경우 - 저장 시까지 임시로 저장
+                            row.dataset.tempStatus = selectedValue;
+                            console.log('새 매물 현황 임시 저장:', selectedValue);
+                        } else {
+                            // 기존 매물: 서버에 저장
+                            const propertyId = row.dataset.propertyId;
+                            if (propertyId) {
+                                try {
+                                    console.log('기존 매물 현황 저장 시도:', propertyId, selectedValue);
+                                    const response = await fetch('/api/employee/maeiple/update', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            id: propertyId,
+                                            field: 'status',
+                                            value: selectedValue
+                                        })
+                                    });
+                                    
+                                    const result = await response.json();
+                                    console.log('서버 응답:', result);
+                                    
+                                    if (result.success) {
+                                        showAlert('현황이 변경되었습니다.', 'success');
+                                    } else {
+                                        showAlert('저장에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'error');
+                                    }
+                                } catch (error) {
+                                    console.error('현황 저장 오류:', error);
+                                    showAlert('서버 오류가 발생했습니다.', 'error');
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                // 외부 클릭 시 편집 모드 종료
+                setTimeout(() => {
+                    const closeSelector = (e) => {
+                        if (!statusContainer.contains(e.target) && e.target !== cell) {
+                            cell.classList.remove('editing-cell');
+                            // 원래 상태로 복원
+                            const statusStyle = currentValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                              currentValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                              currentValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+
+                                              'background: #e0f2fe; color: #0369a1;';
+                            cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${currentValue}</span>`;
+                            document.removeEventListener('click', closeSelector);
+                        }
+                    };
+                    document.addEventListener('click', closeSelector);
+                }, 100);
+                
+                return;
             } else if (type === 'select' && field === 'is_occupied') {
                 inputElement = document.createElement('select');
                 inputElement.innerHTML = `
@@ -1797,7 +2562,13 @@
             } else {
                 inputElement = document.createElement('input');
                 inputElement.type = type;
-                inputElement.value = currentValue === '-' ? '' : currentValue;
+                
+                // 숫자 필드인 경우 '만원' 제거
+                if (type === 'number' && currentValue.includes('만원')) {
+                    inputElement.value = currentValue.replace(/[^0-9]/g, '') || '';
+                } else {
+                    inputElement.value = currentValue === '-' ? '' : currentValue;
+                }
                 
                 // 날짜 필드이고 값이 비어있으면 오늘 날짜로 자동 입력
                 if (type === 'date' && !inputElement.value) {
@@ -1823,6 +2594,8 @@
             // 저장 함수
             const saveCell = (moveNext = false) => {
                 const newValue = inputElement.value.trim();
+                console.log(`매물 셀 저장: ${field} = "${newValue}"`);
+                
                 cell.classList.remove('editing-cell');
                 
                 // 새 행의 경우 바로 텍스트 업데이트
@@ -1830,12 +2603,16 @@
                     const statusStyle = newValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
                                       newValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
                                       newValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+
                                       'background: #e0f2fe; color: #0369a1;';
                     cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${newValue}</span>`;
                 } else if (field === 'is_occupied') {
                     const occupiedDisplay = newValue === 'true' ? 'O' : 'X';
                     const occupiedStyle = newValue === 'true' ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
                     cell.innerHTML = `<span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${occupiedDisplay}</span>`;
+                } else if (type === 'number' && ['jeonse_price', 'monthly_deposit', 'monthly_rent', 'sale_price'].includes(field)) {
+                    // 가격 필드는 '만원' 추가
+                    cell.textContent = newValue ? parseInt(newValue).toLocaleString() + ' 만원' : '-';
                 } else {
                     cell.textContent = newValue || '-';
                 }
@@ -1854,7 +2631,10 @@
             inputElement.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    saveCell(true);
+                    saveCell(true); // 엔터키로 다음 셀로 이동
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    saveCell(true); // 탭키로도 다음 셀로 이동
                 } else if (e.key === 'Escape') {
                     e.preventDefault();
                     cancelPropertyCellEdit(cell, currentValue);
@@ -1868,10 +2648,21 @@
         function cancelPropertyCellEdit(cell, originalValue) {
             cell.classList.remove('editing-cell');
             
+            // 저장된 원본 HTML이 있으면 그것을 사용하여 완전 복원
+            if (cell.dataset.originalHtml) {
+                cell.innerHTML = cell.dataset.originalHtml;
+                // 복원 후 임시 데이터 정리
+                delete cell.dataset.originalHtml;
+                delete cell.dataset.originalValue;
+                return;
+            }
+            
+            // 기존 로직 유지 (백업)
             if (cell.dataset.field === 'status') {
                 const statusStyle = originalValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
                                    originalValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
                                    originalValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+
                                    'background: #e0f2fe; color: #0369a1;';
                 cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${originalValue}</span>`;
             } else if (cell.dataset.field === 'is_occupied') {
@@ -1879,69 +2670,310 @@
                 const occupiedStyle = originalValue === 'O' ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
                 cell.innerHTML = `<span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${occupiedDisplay}</span>`;
             } else {
-                cell.textContent = originalValue;
+                cell.textContent = originalValue || '-';
             }
+        }
+        
+        // 매물 필터링 함수
+        function filterProperties() {
+            const roomSearch = document.getElementById('room-search').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            const occupiedFilter = document.getElementById('occupied-filter').value;
+            const transactionTypeFilter = document.getElementById('transaction-type-filter').value;
+            const likesFilter = document.getElementById('likes-filter').value;
+            const dislikesFilter = document.getElementById('dislikes-filter').value;
+            
+            const rows = document.querySelectorAll('#maeiple-tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                let shouldShow = true;
+                
+                // 호실 검색 필터
+                if (roomSearch) {
+                    const buildingNumber = (row.cells[1]?.textContent || '').toLowerCase();
+                    const roomNumber = (row.cells[2]?.textContent || '').toLowerCase();
+                    const roomText = `${buildingNumber}-${roomNumber}`;
+                    if (!roomText.includes(roomSearch)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 현황 필터
+                if (statusFilter && row.cells[3]?.textContent !== statusFilter) {
+                    shouldShow = false;
+                }
+                
+                // 실거주여부 필터
+                if (occupiedFilter !== '') {
+                    const occupiedCell = row.cells[8];
+                    const isOccupied = occupiedCell?.textContent.includes('실거주') || occupiedCell?.textContent.includes('O');
+                    if (occupiedFilter === 'true' && !isOccupied) {
+                        shouldShow = false;
+                    } else if (occupiedFilter === 'false' && isOccupied) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 거래 유형 필터 (자동 인식)
+                if (transactionTypeFilter) {
+                    const jeonsePrice = parseInt(row.cells[4]?.textContent) || 0;
+                    const monthlyDeposit = parseInt(row.cells[5]?.textContent) || 0;
+                    const monthlyRent = parseInt(row.cells[6]?.textContent) || 0;
+                    const salePrice = parseInt(row.cells[7]?.textContent) || 0;
+                    
+                    let hasTransactionType = false;
+                    
+                    if (transactionTypeFilter === 'jeonse' && jeonsePrice > 0) {
+                        hasTransactionType = true;
+                    } else if (transactionTypeFilter === 'monthly' && (monthlyDeposit > 0 || monthlyRent > 0)) {
+                        hasTransactionType = true;
+                    } else if (transactionTypeFilter === 'sale' && salePrice > 0) {
+                        hasTransactionType = true;
+                    }
+                    
+                    if (!hasTransactionType) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 좋아요 필터
+                if (likesFilter !== '') {
+                    const likesCell = row.cells[13];
+                    const likesText = likesCell?.textContent || '';
+                    const likesCount = parseInt(likesText.match(/\d+/)?.[0]) || 0;
+                    if (likesCount !== parseInt(likesFilter)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 싫어요 필터
+                if (dislikesFilter !== '') {
+                    const dislikesCell = row.cells[14];
+                    const dislikesText = dislikesCell?.textContent || '';
+                    const dislikesCount = parseInt(dislikesText.match(/\d+/)?.[0]) || 0;
+                    if (dislikesCount !== parseInt(dislikesFilter)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 행 표시/숨김 처리
+                row.style.display = shouldShow ? '' : 'none';
+                if (shouldShow) visibleCount++;
+            });
+            
+            // 필터 결과 카운트 업데이트
+            document.getElementById('filter-count').textContent = `총 ${visibleCount}개 매물`;
+        }
+        
+        // 필터 초기화 함수
+        function resetFilters() {
+            document.getElementById('room-search').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('occupied-filter').value = '';
+            document.getElementById('transaction-type-filter').value = '';
+            document.getElementById('likes-filter').value = '';
+            document.getElementById('dislikes-filter').value = '';
+            
+            // 모든 행 표시
+            const rows = document.querySelectorAll('#maeiple-tbody tr');
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+            
+            // 카운트 업데이트
+            const totalCount = rows.length;
+            document.getElementById('filter-count').textContent = `총 ${totalCount}개 매물`;
         }
         
         // 새 매물 저장
         async function saveNewProperty(button) {
-            const row = button.closest('tr');
-            const cells = row.querySelectorAll('.editable-cell');
-            
-            const propertyData = {};
-            cells.forEach(cell => {
-                const field = cell.dataset.field;
-                if (field) {
-                    let value = cell.textContent.trim();
-                    
-                    // 특수 처리
-                    if (field === 'is_occupied') {
-                        value = value === 'O';
-                    } else if (field === 'status') {
-                        // 현재 표시된 텍스트 추출
-                        const badge = cell.querySelector('.badge');
-                        value = badge ? badge.textContent.trim() : value;
-                    } else if (value === '-') {
-                        value = '';
-                    }
-                    
-                    // 숫자 필드들 처리
-                    if (['building_number', 'room_number', 'jeonse_price', 'deposit', 'monthly_rent', 'sale_price'].includes(field)) {
-                        value = value ? parseInt(value) : null;
-                    }
-                    
-                    propertyData[field] = value;
-                }
-            });
-            
-            // 좋아요/싫어요 개수 추가
-            const likeElement = row.querySelector('td:nth-child(14) div');
-            const dislikeElement = row.querySelector('td:nth-child(15) div');
-            
-            propertyData.likes = parseInt(likeElement?.dataset.count || 0);
-            propertyData.dislikes = parseInt(dislikeElement?.dataset.count || 0);
-            
             try {
-                const response = await fetch('/api/employee/maeiple', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(propertyData)
+                console.log('=== 새 매물 저장 시작 ===');
+                
+                const row = button.closest('tr');
+                if (!row) {
+                    console.error('행을 찾을 수 없습니다.');
+                    showAlert('저장할 행을 찾을 수 없습니다.', 'error');
+                    return;
+                }
+                
+                const cells = row.querySelectorAll('.editable-cell');
+                console.log(`편집 가능한 셀 ${cells.length}개 발견`);
+                
+                const propertyData = {};
+                cells.forEach((cell, index) => {
+                    const field = cell.dataset.field;
+                    if (field) {
+                        let value = '';
+                        
+                        // 편집 중인 셀인지 확인
+                        if (cell.classList.contains('editing-cell')) {
+                            // 편집 중인 경우 input/select 요소에서 값 가져오기
+                            const inputElement = cell.querySelector('input, select');
+                            if (inputElement) {
+                                value = inputElement.value.trim();
+                                console.log(`편집 중인 셀 ${index}: ${field} = "${value}"`);
+                            } else {
+                                value = cell.textContent.trim();
+                                console.log(`편집 중이지만 input 요소 없음 ${index}: ${field} = "${value}"`);
+                            }
+                        } else {
+                            // 편집 중이 아닌 경우 텍스트 내용에서 값 가져오기
+                            value = cell.textContent.trim();
+                            console.log(`일반 셀 ${index}: ${field} = "${value}"`);
+                        }
+                        
+                        console.log(`필드 ${field}: 원본값 "${value}"`);
+                        
+                        // 특수 처리
+                        if (field === 'is_occupied') {
+                            value = value === 'O' || value === 'true';
+                        } else if (field === 'status') {
+                            // 현재 표시된 텍스트 추출
+                            const badge = cell.querySelector('.badge');
+                            value = badge ? badge.textContent.trim() : value;
+                            // 임시 저장된 상태가 있으면 사용
+                            if (row.dataset.tempStatus) {
+                                value = row.dataset.tempStatus;
+                            }
+                        } else if (value === '-' || value === '동 번호 입력' || value === '호수 입력' || 
+                                   value === '전세가 입력' || value === '월세보증금 입력' || value === '월세 입력' || 
+                                   value === '매매가 입력' || value === '연락처 입력') {
+                            value = '';
+                        } else if (field === 'memo' && (value === '메모 입력' || value === '')) {
+                            value = '';
+                        }
+                        
+                        // 숫자 필드들 처리
+                        if (['building_number', 'room_number', 'jeonse_price', 'monthly_deposit', 'monthly_rent', 'sale_price'].includes(field)) {
+                            if (value && value !== '') {
+                                // building_number와 room_number는 문자열로 유지 (예: "101동", "1001호")
+                                if (field === 'building_number' || field === 'room_number') {
+                                    value = value.toString().trim();
+                                } else {
+                                    // 가격 필드들만 숫자로 변환
+                                    const cleanValue = value.toString().replace(/[^0-9]/g, '');
+                                    value = cleanValue ? parseInt(cleanValue) : null;
+                                }
+                            } else {
+                                // building_number와 room_number가 비어있으면 빈 문자열
+                                if (field === 'building_number' || field === 'room_number') {
+                                    value = '';
+                                } else {
+                                    value = null;
+                                }
+                            }
+                        }
+                        
+                        propertyData[field] = value;
+                        console.log(`필드 ${field}: 처리된값 "${value}"`);
+                    }
                 });
                 
-                const result = await response.json();
+                console.log('수집된 매물 데이터:', propertyData);
+                
+                // 필수 필드 검증 제거 - 모든 필드가 선택사항
+                console.log('필수 필드 검증 건너뜀 - 모든 필드가 선택사항');
+                
+                // 좋아요/싫어요 개수 추가
+                const likeElement = row.querySelector('td:nth-child(14) div');
+                const dislikeElement = row.querySelector('td:nth-child(15) div');
+                
+                propertyData.likes = parseInt(likeElement?.dataset.count || 0);
+                propertyData.dislikes = parseInt(dislikeElement?.dataset.count || 0);
+                
+                // 현재 사용자 정보 추가 (서버에서 렌더링된 정보 사용)
+                try {
+                    // 서버에서 렌더링된 세션 정보 사용
+                    const serverEmployeeId = '{{ session.employee_id or "" }}';
+                    const serverEmployeeName = '{{ session.employee_name or "" }}';
+                    const serverEmployeeTeam = '{{ session.employee_team or "" }}';
+                    
+                    console.log('서버 세션 정보:', {
+                        employee_id: serverEmployeeId,
+                        employee_name: serverEmployeeName,
+                        employee_team: serverEmployeeTeam
+                    });
+                    
+                    // 세션 스토리지에서 사용자 정보 가져오기 (보조)
+                    let finalEmployeeId = serverEmployeeId || sessionStorage.getItem('employee_id') || '직원';
+                    let finalEmployeeName = serverEmployeeName || sessionStorage.getItem('employee_name') || '직원';
+                    let finalEmployeeTeam = serverEmployeeTeam || sessionStorage.getItem('employee_team') || '팀';
+                    
+                    propertyData.employee_id = finalEmployeeId;
+                    propertyData.employee_name = finalEmployeeName;
+                    propertyData.employee_team = finalEmployeeTeam;
+                    
+                    console.log('최종 사용자 정보:', {
+                        employee_id: finalEmployeeId,
+                        employee_name: finalEmployeeName,
+                        employee_team: finalEmployeeTeam
+                    });
+                    
+                } catch (e) {
+                    console.warn('사용자 정보 가져오기 실패, 기본값 사용:', e);
+                    propertyData.employee_id = '직원';
+                    propertyData.employee_name = '직원';
+                    propertyData.employee_team = '팀';
+                }
+                
+                console.log('최종 매물 데이터:', propertyData);
+                
+                // API 호출 전 최종 검증
+                if (!propertyData.employee_id || !propertyData.employee_name) {
+                    console.error('사용자 정보 누락:', propertyData);
+                    showAlert('사용자 정보를 가져올 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+                    return;
+                }
+                
+                try {
+                    console.log('API 호출 시작: /api/employee/maeiple');
+                    console.log('요청 데이터:', JSON.stringify(propertyData, null, 2));
+                    
+                    const response = await fetch('/api/employee/maeiple', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(propertyData)
+                    });
+                    
+                    console.log('API 응답 상태:', response.status);
+                    console.log('API 응답 헤더:', response.headers);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('API 응답 오류:', errorText);
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('API 응답 결과:', result);
+                    console.log('API 응답 타입:', typeof result);
+                    console.log('API 응답 success 필드:', result.success);
+                    console.log('API 응답 전체 내용:', JSON.stringify(result, null, 2));
 
-                if (result.success) {
-                    showAlert('매물이 성공적으로 추가되었습니다.', 'success');
+                    if (result && result.success === true) {
+                        showAlert('매물이 성공적으로 추가되었습니다.', 'success');
 
-                    // 최신 서버 상태를 다시 불러와 동기화
-                    await loadMaeipleProperties();
-                    await loadMaeipleData(); // 통계도 업데이트
-                } else {
-                    showAlert(result.error || '매물 추가에 실패했습니다.', 'error');
+                        // 최신 서버 상태를 다시 불러와 동기화
+                        await loadMaeipleProperties();
+                        await loadMaeipleData(); // 통계도 업데이트
+                        
+                        // 새 행 제거
+                        row.remove();
+                    } else {
+                        const errorMsg = result?.error || result?.message || '매물 추가에 실패했습니다.';
+                        console.error('매물 추가 실패:', errorMsg);
+                        console.error('전체 응답:', result);
+                        showAlert(errorMsg, 'error');
+                    }
+                } catch (error) {
+                    console.error('매물 저장 오류:', error);
+                    showAlert(`저장 실패: ${error.message}`, 'error');
                 }
             } catch (error) {
-                console.error('매물 저장 오류:', error);
-                showAlert('서버 오류가 발생했습니다.', 'error');
+                console.error('전체 저장 프로세스 오류:', error);
+                showAlert(`예상치 못한 오류가 발생했습니다: ${error.message}`, 'error');
             }
         }
         
@@ -1951,109 +2983,421 @@
             row.remove();
         }
         
-        // 기존 매물 셀 편집
+        // 로컬 데이터 저장소 (웹 메모리)
+        const localData = new Map();
+
+        // 기존 매물 셀 편집 - 완벽한 수정 기능
         function editExistingPropertyCell(cell, propertyId) {
-            // 기존 매물 편집 로직 (새 매물 편집과 유사하지만 서버 저장 포함)
+            console.log('기존 매물 셀 편집 시작:', { field: cell.dataset.field, type: cell.dataset.type, propertyId });
+            
+            // 이미 편집 중인 경우 현재 입력값을 보존하고 편집 모드 유지
             if (cell.classList.contains('editing-cell')) {
-                cell.classList.remove('editing-cell');
-                cell.innerHTML = cell.textContent;
+                const existingInput = cell.querySelector('input, select');
+                
+                // 기존 입력 요소가 있으면 현재 값을 유지하고 포커스만 설정
+                if (existingInput) {
+                    existingInput.focus();
+                    if (existingInput.tagName === 'INPUT') {
+                        existingInput.select(); // 텍스트 전체 선택
+                    }
+                    return; // 편집 모드 유지
+                }
+                
+                // 입력 요소가 없으면 편집 모드 종료
+                cancelPropertyCellEdit(cell);
+                return;
             }
             
             const field = cell.dataset.field;
             const type = cell.dataset.type;
-            let currentValue = cell.textContent.trim();
+            let currentValue = '';
             
-            // 배지에서 실제 값 추출
+            // 현재 값 추출 (배지, 텍스트 등)
             if (field === 'status') {
                 const badge = cell.querySelector('.badge');
-                currentValue = badge ? badge.textContent.trim() : currentValue;
-            }
-            
-            cell.classList.add('editing-cell');
-            
-            let inputElement;
-            if (type === 'select' && field === 'status') {
-                inputElement = document.createElement('select');
-                inputElement.innerHTML = `
-                    <option value="거래가능" ${currentValue === '거래가능' ? 'selected' : ''}>거래가능</option>
-                    <option value="거래중" ${currentValue === '거래중' ? 'selected' : ''}>거래중</option>
-                    <option value="계약완료" ${currentValue === '계약완료' ? 'selected' : ''}>계약완료</option>
-                    <option value="보류" ${currentValue === '보류' ? 'selected' : ''}>보류</option>
-                    <option value="부재" ${currentValue === '부재' ? 'selected' : ''}>부재</option>
-                `;
+                currentValue = badge ? badge.textContent.trim() : '거래가능';
+            } else if (field === 'is_occupied') {
+                const badge = cell.querySelector('.badge');
+                currentValue = badge ? (badge.textContent.trim() === 'O' ? 'true' : 'false') : 'false';
             } else {
-                inputElement = document.createElement('input');
-                inputElement.type = type;
+                currentValue = cell.textContent.trim();
+                if (currentValue === '-') currentValue = '';
                 // 숫자 필드는 '만원' 제거
                 if (type === 'number' && currentValue.includes('만원')) {
                     currentValue = currentValue.replace(/[^0-9]/g, '');
                 }
-                inputElement.value = currentValue === '-' ? '' : currentValue;
             }
             
+            // 원본 HTML을 저장 (복원용)
+            if (!cell.dataset.originalHtml) {
+                cell.dataset.originalHtml = cell.innerHTML;
+            }
+            
+            // 원래 값 백업 (롤백용)
+            cell.dataset.originalValue = currentValue;
+            
+            // 편집 모드 시작
+            cell.classList.add('editing-cell');
+            
+            let inputElement;
+            
+            if (type === 'select' && field === 'status') {
+                // 현황 선택 - 커스텀 드롭다운 UI 생성
+                const statusContainer = document.createElement('div');
+                statusContainer.className = 'status-selector';
+                statusContainer.innerHTML = `
+                    <div class="status-options">
+                        <button type="button" class="status-option ${currentValue === '거래가능' ? 'active' : ''}" data-value="거래가능">
+                            <span class="status-icon">🔄</span>
+                            <span class="status-text">거래가능</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '계약완료' ? 'active' : ''}" data-value="계약완료">
+                            <span class="status-icon">✅</span>
+                            <span class="status-text">계약완료</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '보류' ? 'active' : ''}" data-value="보류">
+                            <span class="status-icon">⏸️</span>
+                            <span class="status-text">보류</span>
+                        </button>
+                        <button type="button" class="status-option ${currentValue === '부재' ? 'active' : ''}" data-value="부재">
+                            <span class="status-icon">❌</span>
+                            <span class="status-text">부재</span>
+                        </button>
+                    </div>
+                `;
+                
+                // 기존 내용을 커스텀 드롭다운으로 교체
+                cell.innerHTML = '';
+                cell.appendChild(statusContainer);
+                
+                // 버튼 클릭 이벤트 처리
+                const buttons = statusContainer.querySelectorAll('.status-option');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const selectedValue = btn.dataset.value;
+                        console.log('현황 버튼 클릭:', { selectedValue, propertyId, field });
+                        
+                        // 편집 모드 종료
+                        cell.classList.remove('editing-cell');
+                        
+                        // 즉시 UI 업데이트 (낙관적 업데이트)
+                        updatePropertyCellUI(cell, field, selectedValue);
+                        
+                        // 성공 표시
+                        showQuickSuccessMessage('✓');
+                        
+                        // 백그라운드에서 서버 저장
+                        setTimeout(async () => {
+                            try {
+                                const response = await fetch('/api/employee/maeiple/update', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        id: propertyId,
+                                        field: field,
+                                        value: selectedValue
+                                    })
+                                });
+                                
+                                const result = await response.json();
+                                if (result.success) {
+                                    console.log('서버 저장 성공');
+                                    cell.dataset.originalValue = selectedValue;
+                                } else {
+                                    console.error('서버 저장 실패, 롤백');
+                                    rollbackPropertyCell(cell, field, cell.dataset.originalValue);
+                                    showErrorMessage('저장 실패 - 롤백됨');
+                                }
+                            } catch (error) {
+                                console.error('네트워크 오류, 롤백');
+                                rollbackPropertyCell(cell, field, cell.dataset.originalValue);
+                                showErrorMessage('네트워크 오류 - 롤백됨');
+                            }
+                        }, 10);
+                    });
+                });
+                
+                return; // 여기서 함수 종료
+            } else if (type === 'date') {
+                inputElement = document.createElement('input');
+                inputElement.type = 'date';
+                inputElement.value = currentValue || '';
+            } else if (type === 'number') {
+                inputElement = document.createElement('input');
+                inputElement.type = 'number';
+                inputElement.value = currentValue || '';
+                inputElement.placeholder = '숫자 입력';
+            } else {
+                inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.value = currentValue || '';
+                inputElement.placeholder = '텍스트 입력';
+            }
+            
+            // 입력 필드 스타일 적용
+            inputElement.style.cssText = `
+                width: 100%;
+                padding: 8px 12px;
+                border: 2px solid #6366f1;
+                border-radius: 6px;
+                font-size: 14px;
+                background: white;
+                box-sizing: border-box;
+            `;
+            
+            // 기존 내용을 입력 필드로 교체
             cell.innerHTML = '';
             cell.appendChild(inputElement);
             inputElement.focus();
             
+            // 날짜 타입인 경우 달력 자동 표시
+            if (type === 'date') {
+                setTimeout(() => {
+                    try {
+                        if (inputElement.showPicker && typeof inputElement.showPicker === 'function') {
+                            inputElement.showPicker();
+                        }
+                    } catch (error) {
+                        console.log('달력 표시 실패:', error);
+                    }
+                }, 100);
+            }
+            
             // 저장 함수
             const saveCell = async () => {
-                const newValue = inputElement.value.trim();
+                if (cell.classList.contains('updating')) {
+                    console.log('이미 저장 중입니다.');
+                    return;
+                }
                 
-                try {
-                    // 서버에 업데이트 요청
-                    const response = await fetch('/api/employee/maeiple/update', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            id: propertyId,
-                            field: field,
-                            value: type === 'number' ? (newValue ? parseInt(newValue) : null) : newValue
-                        })
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        cell.classList.remove('editing-cell');
+                let newValue = inputElement.value.trim();
+                
+                // 핸드폰번호 필드인 경우 포맷팅 적용
+                if (field === 'phone' && newValue) {
+                    newValue = formatPhoneNumber(newValue);
+                }
+                
+                console.log('셀 저장:', { field, newValue, propertyId });
+                
+                // 편집 모드 종료
+                cell.classList.remove('editing-cell');
+                
+                // 즉시 UI 업데이트 (낙관적 업데이트)
+                updatePropertyCellUI(cell, field, newValue);
+                
+                // 성공 표시
+                showQuickSuccessMessage('✓');
+                
+                // 백그라운드에서 서버 저장
+                setTimeout(async () => {
+                    try {
+                        const response = await fetch('/api/employee/maeiple/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: propertyId,
+                                field: field,
+                                value: type === 'number' ? (newValue ? parseInt(newValue) : null) : newValue
+                            })
+                        });
                         
-                        // UI 업데이트
-                        if (field === 'status') {
-                            const statusStyle = newValue === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
-                                              newValue === '보류' ? 'background: #fef3c7; color: #92400e;' : 
-                                              newValue === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
-                                              'background: #e0f2fe; color: #0369a1;';
-                            cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${newValue}</span>`;
-                        } else if (type === 'number' && ['jeonse_price', 'deposit', 'monthly_rent', 'sale_price'].includes(field)) {
-                            cell.textContent = newValue ? parseInt(newValue).toLocaleString() + ' 만원' : '-';
+                        const result = await response.json();
+                        if (result.success) {
+                            console.log('서버 저장 성공');
+                            cell.dataset.originalValue = newValue;
                         } else {
-                            cell.textContent = newValue || '-';
+                            console.error('서버 저장 실패, 롤백');
+                            rollbackPropertyCell(cell, field, cell.dataset.originalValue);
+                            showErrorMessage('저장 실패 - 롤백됨');
                         }
-                        
-                        showAlert('수정이 완료되었습니다.', 'success');
-                    } else {
-                        showAlert('수정에 실패했습니다.', 'error');
-                        cancelPropertyCellEdit(cell, currentValue);
+                    } catch (error) {
+                        console.error('네트워크 오류, 롤백');
+                        rollbackPropertyCell(cell, field, cell.dataset.originalValue);
+                        showErrorMessage('네트워크 오류 - 롤백됨');
                     }
-                } catch (error) {
-                    console.error('매물 수정 오류:', error);
-                    showAlert('서버 오류가 발생했습니다.', 'error');
-                    cancelPropertyCellEdit(cell, currentValue);
+                }, 10);
+            };
+
+            // 저장 후 다음 셀 이동
+            const saveCellAndMoveNext = async () => {
+                await saveCell();
+                
+                // 다음 편집 가능한 셀 찾기
+                const editableCells = Array.from(cell.parentElement.querySelectorAll('.editable-cell'));
+                const currentIndex = editableCells.indexOf(cell);
+                
+                if (currentIndex !== -1 && currentIndex < editableCells.length - 1) {
+                    const nextCell = editableCells[currentIndex + 1];
+                    setTimeout(() => {
+                        editExistingPropertyCell(nextCell, propertyId);
+                    }, 50);
                 }
             };
             
-            // 이벤트 리스너
-            inputElement.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
+            // 이벤트 리스너 설정
+            if (inputElement.tagName === 'SELECT') {
+                inputElement.addEventListener('change', () => {
+                    console.log('select 변경 즉시 저장');
                     saveCell();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelPropertyCellEdit(cell, currentValue);
-                }
-            });
-            
-            inputElement.addEventListener('blur', () => saveCell());
+                });
+                // SELECT는 change 이벤트만으로 충분 (blur 제거)
+            } else {
+                inputElement.addEventListener('blur', saveCell);
+                inputElement.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveCellAndMoveNext();
+                    } else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        saveCellAndMoveNext();
+                    } else if (e.key === 'Escape') {
+                        cancelPropertyCellEdit(cell);
+                    }
+                });
+            }
         }
+
+        // 매물 셀 편집 취소
+        function cancelPropertyCellEdit(cell) {
+            const field = cell.dataset.field;
+            const originalValue = cell.dataset.originalValue || '';
+            
+            cell.classList.remove('editing-cell');
+            
+            // 저장된 원본 HTML이 있으면 그것을 사용하여 완전 복원
+            if (cell.dataset.originalHtml) {
+                cell.innerHTML = cell.dataset.originalHtml;
+                // 복원 후 임시 데이터 정리
+                delete cell.dataset.originalHtml;
+                delete cell.dataset.originalValue;
+                return;
+            }
+            
+            // 원래 값으로 복원
+            updatePropertyCellUI(cell, field, originalValue);
+        }
+
+        // 매물 셀 UI 업데이트 헬퍼 함수
+        function updatePropertyCellUI(cell, field, value) {
+            if (field === 'status') {
+                const statusStyle = value === '계약완료' ? 'background: #d1fae5; color: #065f46;' : 
+                                   value === '보류' ? 'background: #fef3c7; color: #92400e;' : 
+                                   value === '부재' ? 'background: #ede9fe; color: #5b21b6;' : 
+                                   'background: #e0f2fe; color: #0369a1;';
+                cell.innerHTML = `<span class="badge" style="${statusStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${value || '거래가능'}</span>`;
+            } else if (field === 'is_occupied') {
+                const occupiedDisplay = value === 'true' ? 'O' : 'X';
+                const occupiedStyle = value === 'true' ? 'background: #d1fae5; color: #065f46;' : 'background: #fecaca; color: #dc2626;';
+                cell.innerHTML = `<span class="badge" style="${occupiedStyle}; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:500;">${occupiedDisplay}</span>`;
+            } else if (field === 'jeonse_price' || field === 'monthly_deposit' || field === 'monthly_rent' || field === 'sale_price') {
+                cell.textContent = value ? parseInt(value).toLocaleString() + ' 만원' : '-';
+                cell.style.color = value ? '#2563eb' : '#64748b';
+                cell.style.fontWeight = value ? '500' : 'normal';
+            } else if (field === 'check_date') {
+                cell.textContent = value || '-';
+                cell.style.color = value ? '#374151' : '#64748b';
+                cell.style.fontWeight = value ? 'normal' : 'normal';
+            } else if (field === 'phone') {
+                const formattedPhone = value ? formatPhoneNumber(value) : '-';
+                cell.textContent = formattedPhone;
+                cell.style.fontFamily = value ? 'monospace' : 'inherit';
+                cell.style.letterSpacing = value ? '0.5px' : 'normal';
+            } else {
+                cell.textContent = value || '-';
+            }
+        }
+
+        // 매물 셀 롤백 함수
+        function rollbackPropertyCell(cell, field, originalValue) {
+            updatePropertyCellUI(cell, field, originalValue);
+        }
+
+        // 빠른 성공 메시지 (0.5초 후 자동 제거)
+        function showQuickSuccessMessage(message) {
+            const quickPopup = document.createElement('div');
+            quickPopup.className = 'quick-success-popup';
+            quickPopup.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #10b981;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 10000;
+                animation: quickFadeIn 0.2s ease-out;
+            `;
+            
+            quickPopup.textContent = message;
+            document.body.appendChild(quickPopup);
+            
+            // 0.3초 후 자동 제거 (더 빠르게)
+            setTimeout(() => {
+                if (quickPopup.parentNode) {
+                    quickPopup.style.animation = 'quickFadeOut 0.15s ease-in';
+                    setTimeout(() => {
+                        if (quickPopup.parentNode) {
+                            document.body.removeChild(quickPopup);
+                        }
+                    }, 150);
+                }
+            }, 300);
+        }
+
+        // 빠른 에러 메시지
+        function showErrorMessage(message) {
+            const quickPopup = document.createElement('div');
+            quickPopup.className = 'quick-error-popup';
+            quickPopup.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #ef4444;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 10000;
+                animation: quickFadeIn 0.2s ease-out;
+            `;
+            
+            quickPopup.textContent = message;
+            document.body.appendChild(quickPopup);
+            
+            // 1초 후 자동 제거
+            setTimeout(() => {
+                if (quickPopup.parentNode) {
+                    quickPopup.style.animation = 'quickFadeOut 0.15s ease-in';
+                    setTimeout(() => {
+                        if (quickPopup.parentNode) {
+                            document.body.removeChild(quickPopup);
+                        }
+                    }, 150);
+                }
+            }, 1000);
+        }
+
+        // CSS 애니메이션 추가
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes quickFadeIn {
+                from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+                to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            }
+            @keyframes quickFadeOut {
+                from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                to { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+            }
+        `;
+        document.head.appendChild(style);
         
         // 실거주 여부 토글
         async function toggleOccupied(propertyId, currentStatus) {
@@ -2112,6 +3456,9 @@
             const finalCount = (newCount === currentCount) ? 0 : newCount;
             
             try {
+                console.log('=== 기존 toggleLikes 저장 시작 ===');
+                console.log('propertyId:', propertyId, 'type:', type, 'finalCount:', finalCount);
+                
                 const response = await fetch('/api/employee/maeiple/update', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2122,9 +3469,18 @@
                     })
                 });
                 
-                const result = await response.json();
+                console.log('toggleLikes 응답 상태:', response.status);
                 
-                if (result.success) {
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('toggleLikes HTTP 에러:', response.status, errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('toggleLikes 서버 응답:', result);
+                
+                if (result && result.success === true) {
                     // UI 업데이트
                     const hearts = [];
                     for (let i = 1; i <= 5; i++) {
@@ -2139,13 +3495,134 @@
                     // 클릭 이벤트 업데이트
                     element.onclick = () => toggleLikes(propertyId, finalCount, type, element);
                     
+                    showAlert(`${type === 'like' ? '좋아요' : '싫어요'}가 ${finalCount}로 변경되었습니다.`, 'success');
+                    console.log('=== toggleLikes 저장 완료 ===');
                 } else {
-                    showAlert('변경에 실패했습니다.', 'error');
+                    const errorMsg = result?.error || result?.message || '알 수 없는 오류';
+                    console.error('toggleLikes 저장 실패:', errorMsg);
+                    showAlert('변경에 실패했습니다: ' + errorMsg, 'error');
                 }
             } catch (error) {
-                console.error('하트 변경 오류:', error);
-                showAlert('서버 오류가 발생했습니다.', 'error');
+                console.error('=== toggleLikes 하트 변경 오류 ===');
+                console.error('에러:', error);
+                showAlert('서버 오류가 발생했습니다: ' + error.message, 'error');
             }
+        }
+        
+        // 좋아요/싫어요 표시 함수 (전역)
+        function renderLikesDisplay(count, type) {
+            const icon = type === 'like' ? '❤️' : '👎';
+            const color = type === 'like' ? '#ef4444' : '#6b7280';
+            
+            if (count === 0) {
+                return `<span style="color: #9ca3af; font-size: 14px;">${icon} 0</span>`;
+            }
+            
+            return `<span style="color: ${color}; font-weight: 600; font-size: 14px;">${icon} ${count}</span>`;
+        }
+        
+        // 새로운 좋아요/싫어요 편집 함수 (버튼 방식)
+        function editLikes(element, propertyId, currentCount, type) {
+            // 이미 편집 중인 경우 기존 편집 UI 제거
+            if (element.classList.contains('editing-likes')) {
+                const existingSelector = element.querySelector('.likes-selector');
+                if (existingSelector) {
+                    existingSelector.remove();
+                }
+                element.classList.remove('editing-likes');
+                return; // 편집 모드 종료
+            }
+            
+            console.log(`좋아요/싫어요 편집 시작: ${type}, 현재값: ${currentCount}`);
+            
+            // 기존 내용 백업 (여기서 정의)
+            const originalContent = element.innerHTML;
+            
+            element.classList.add('editing-likes');
+            
+            // 버튼 형태의 좋아요/싫어요 선택 UI 생성
+            const likesContainer = document.createElement('div');
+            likesContainer.className = 'likes-selector';
+            
+            const icon = type === 'like' ? '❤️' : '👎';
+            const title = type === 'like' ? '좋아요' : '싫어요';
+            
+            let buttonsHtml = '';
+            
+            // 0 (리셋) 버튼
+            buttonsHtml += `<button type="button" class="likes-option reset ${currentCount === 0 ? 'active' : ''}" data-value="0">0</button>`;
+            
+            // 1-5 버튼
+            for (let i = 1; i <= 5; i++) {
+                buttonsHtml += `<button type="button" class="likes-option ${currentCount === i ? 'active' : ''}" data-value="${i}">${icon} ${i}</button>`;
+            }
+            
+            likesContainer.innerHTML = `
+                <div class="likes-options">
+                    ${buttonsHtml}
+                </div>
+            `;
+            
+            element.innerHTML = '';
+            element.appendChild(likesContainer);
+            
+            // 버튼 클릭 이벤트 처리
+            const buttons = likesContainer.querySelectorAll('.likes-option');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const selectedValue = parseInt(btn.dataset.value);
+                    console.log(`좋아요/싫어요 버튼 클릭: ${type}, 선택값: ${selectedValue}`);
+                    
+                    // 편집 모드 종료 및 UI 정리
+                    element.classList.remove('editing-likes');
+                    
+                    // UI 즉시 업데이트 (낙관적 업데이트)
+                    element.innerHTML = renderLikesDisplay(selectedValue, type);
+                    
+                    // 성공 표시
+                    showQuickSuccessMessage('✓');
+                    
+                    // 클릭 이벤트 업데이트 (즉시)
+                    element.onclick = () => editLikes(element, propertyId, selectedValue, type);
+                    
+                    // 백그라운드에서 서버 저장
+                    setTimeout(async () => {
+                        try {
+                            const response = await fetch('/api/employee/maeiple/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    id: propertyId,
+                                    field: type === 'like' ? 'likes' : 'dislikes',
+                                    value: selectedValue
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            if (result.success) {
+                                console.log('서버 저장 성공');
+                            } else {
+                                console.error('서버 저장 실패, 롤백');
+                                // 원래 내용으로 복원
+                                element.innerHTML = originalContent;
+                                element.onclick = () => editLikes(element, propertyId, currentCount, type);
+                                showErrorMessage('저장 실패 - 롤백됨');
+                            }
+                        } catch (error) {
+                            console.error('네트워크 오류, 롤백');
+                            // 원래 내용으로 복원
+                            element.innerHTML = originalContent;
+                            element.onclick = () => editLikes(element, propertyId, currentCount, type);
+                            showErrorMessage('네트워크 오류 - 롤백됨');
+                        }
+                    }, 10);
+                });
+            });
+            
+            // 외부 클릭으로 닫히지 않음 - 선택 후 자동으로 닫힘
         }
         
         // 새 매물 행에서 하트 토글 (저장 전)
@@ -2179,11 +3656,105 @@
             element.dataset.count = finalCount;
         }
         
+        // 새 매물에서 좋아요/싫어요 편집 함수 (버튼 방식)
+        function editNewPropertyLikes(element, type) {
+            // 이미 편집 중인 경우 기존 편집 UI 제거
+            if (element.classList.contains('editing-likes')) {
+                const existingSelector = element.querySelector('.likes-selector');
+                if (existingSelector) {
+                    existingSelector.remove();
+                }
+                element.classList.remove('editing-likes');
+                return; // 편집 모드 종료
+            }
+            
+            const currentCount = parseInt(element.dataset.count || 0);
+            console.log(`새 매물 좋아요/싫어요 편집 시작: ${type}, 현재값: ${currentCount}`);
+            
+            element.classList.add('editing-likes');
+            
+            // 버튼 형태의 좋아요/싫어요 선택 UI 생성
+            const likesContainer = document.createElement('div');
+            likesContainer.className = 'likes-selector';
+            
+            const icon = type === 'like' ? '❤️' : '👎';
+            
+            let buttonsHtml = '';
+            
+            // 0 (리셋) 버튼
+            buttonsHtml += `<button type="button" class="likes-option reset ${currentCount === 0 ? 'active' : ''}" data-value="0">0</button>`;
+            
+            // 1-5 버튼
+            for (let i = 1; i <= 5; i++) {
+                buttonsHtml += `<button type="button" class="likes-option ${currentCount === i ? 'active' : ''}" data-value="${i}">${icon} ${i}</button>`;
+            }
+            
+            likesContainer.innerHTML = `
+                <div class="likes-options">
+                    ${buttonsHtml}
+                </div>
+            `;
+            
+            // 기존 내용 백업
+            const originalContent = element.innerHTML;
+            element.innerHTML = '';
+            element.appendChild(likesContainer);
+            
+            // 버튼 클릭 이벤트 처리
+            const buttons = likesContainer.querySelectorAll('.likes-option');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const selectedValue = parseInt(btn.dataset.value);
+                    console.log(`새 매물 좋아요/싫어요 버튼 클릭: ${type}, 선택값: ${selectedValue}`);
+                    
+                    // 편집 모드 종료 및 UI 정리
+                    element.classList.remove('editing-likes');
+                    
+                    // UI 즉시 업데이트
+                    element.innerHTML = renderLikesDisplay(selectedValue, type);
+                    
+                    // 데이터 속성에 값 저장 (저장 시 사용)
+                    element.dataset.count = selectedValue;
+                    
+                    // 클릭 이벤트 업데이트
+                    element.onclick = () => editNewPropertyLikes(element, type);
+                });
+            });
+            
+            // 외부 클릭으로 닫히지 않음 - 선택 후 자동으로 닫힘
+        }
+        
         // 페이지 로드 시 실행
         document.addEventListener('DOMContentLoaded', function() {
             // 디버깅: URL 확인
             console.log('주거 사이트 URL:', '{{ residence_site_url }}');
             console.log('업무 사이트 URL:', '{{ business_site_url }}');
+            
+            // 서버에서 렌더링된 사용자 정보를 JavaScript 변수로 저장
+            const serverUserInfo = {
+                employee_id: '{{ session.employee_id or "" }}',
+                employee_name: '{{ session.employee_name or "" }}',
+                employee_team: '{{ session.employee_team or "" }}'
+            };
+            
+            console.log('서버에서 받은 사용자 정보:', serverUserInfo);
+            
+            // 사용자 정보를 세션 스토리지에 저장
+            try {
+                // 세션 스토리지에 저장
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem('employee_id', serverUserInfo.employee_id);
+                    sessionStorage.setItem('employee_name', serverUserInfo.employee_name);
+                    sessionStorage.setItem('employee_team', serverUserInfo.employee_team);
+                    
+                    console.log('사용자 정보 세션 스토리지에 저장됨:', serverUserInfo);
+                }
+            } catch (e) {
+                console.warn('사용자 정보 저장 실패:', e);
+            }
             
             loadCustomers();
             updateStats();
@@ -2282,13 +3853,26 @@
         }
         
         // 고객 목록 표시
-        function displayCustomers(customerList) {
+        async function displayCustomers(customerList) {
+            console.log('--- displayCustomers() 시작 ---');
+            console.log('표시할 고객 수:', customerList.length);
+            
+            // 첫 번째 고객의 미확인 좋아요 수 확인
+            if (customerList.length > 0) {
+                const firstCustomer = customerList[0];
+                console.log('첫 번째 고객 미확인 좋아요:', {
+                    name: firstCustomer.customer_name,
+                    residence: firstCustomer.unchecked_likes_residence,
+                    business: firstCustomer.unchecked_likes_business
+                });
+            }
+            
             const tbody = document.getElementById('customers-list');
             
             if (customerList.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="14">
+                        <td colspan="15">
                             <div class="empty-state">
                                 <div class="empty-state-icon">👥</div>
                                 <div class="empty-state-title">등록된 고객이 없습니다</div>
@@ -2300,29 +3884,57 @@
                 return;
             }
             
-            tbody.innerHTML = customerList.map(customer => {
-                const statusClass = customer.progress_status === '계약' ? 'status-complete' : 
-                                   customer.progress_status === '보류' ? 'status-hold' : 'status-progress';
+            // 각 고객의 미확인 좋아요 수를 실시간으로 계산
+            const customersWithLikes = await Promise.all(customerList.map(async (customer) => {
+                if (!customer.management_site_id) {
+                    return { ...customer, unchecked_likes_residence: 0, unchecked_likes_business: 0 };
+                }
+                
+                try {
+                    // 주거사이트 미확인 좋아요 수 조회
+                    const residenceResponse = await fetch(`/api/employee/unchecked-likes?management_site_id=${customer.management_site_id}&type=residence`);
+                    const residenceData = await residenceResponse.json();
+                    const unchecked_residence_count = residenceData.success ? residenceData.count : 0;
+                    
+                    // 업무사이트 미확인 좋아요 수 조회
+                    const businessResponse = await fetch(`/api/employee/unchecked-likes?management_site_id=${customer.management_site_id}&type=business`);
+                    const businessData = await businessResponse.json();
+                    const unchecked_business_count = businessData.success ? businessData.count : 0;
+                    
+                    return {
+                        ...customer,
+                        unchecked_likes_residence: unchecked_residence_count,
+                        unchecked_likes_business: unchecked_business_count
+                    };
+                } catch (error) {
+                    console.error(`고객 ${customer.customer_name}의 좋아요 수 조회 실패:`, error);
+                    return { ...customer, unchecked_likes_residence: 0, unchecked_likes_business: 0 };
+                }
+            }));
+            
+            tbody.innerHTML = customersWithLikes.map(customer => {
+                const statusClass = customer.status === '계약' ? 'status-complete' : 
+                                   customer.status === '보류' ? 'status-hold' : 'status-progress';
                 const memoText = customer.memo || '-';
-                const memoDisplay = memoText.length > 10 ? memoText.substring(0, 10) + '...' : memoText;
-                // 미확인 좋아요 알림 텍스트
+                const memoDisplay = memoText === '-' ? '-' : (memoText.length > 60 ? memoText.substring(0, 60) + '...' : memoText);
+                // 미확인 좋아요 알림 텍스트 (실시간 계산된 값 사용)
                 const residenceAlarm = customer.unchecked_likes_residence > 0 ? 
-                    `<span class='like-alarm' style="background:#e8f5e9; color:#4caf50; border-radius:8px; padding:2px 8px; margin-left:6px; font-weight:600; font-size:13px; display:inline-block;">🔔 좋아요 ${customer.unchecked_likes_residence}건</span>` : '';
+                    `<div class='like-alarm' style="background:linear-gradient(135deg, #4caf50, #45a049); color:white; border-radius:12px; padding:4px 10px; margin:4px 0; font-weight:700; font-size:12px; display:inline-block; box-shadow:0 2px 8px rgba(76,175,80,0.3); animation:pulse 2s infinite;">❤️ ${customer.unchecked_likes_residence}건 신규</div>` : '';
                 const businessAlarm = customer.unchecked_likes_business > 0 ? 
-                    `<span class='like-alarm' style="background:#fffbe6; color:#ff9800; border-radius:8px; padding:2px 8px; margin-left:6px; font-weight:600; font-size:13px; display:inline-block;">🔔 좋아요 ${customer.unchecked_likes_business}건</span>` : '';
+                    `<div class='like-alarm' style="background:linear-gradient(135deg, #ff9800, #f57c00); color:white; border-radius:12px; padding:4px 10px; margin:4px 0; font-weight:700; font-size:12px; display:inline-block; box-shadow:0 2px 8px rgba(255,152,0,0.3); animation:pulse 2s infinite;">💼 ${customer.unchecked_likes_business}건 신규</div>` : '';
                 return `
                     <tr data-customer-id="${customer.id}">
                         <td class="editable-cell" data-field="inquiry_date" data-type="date" onclick="editCell(this)">${customer.inquiry_date || '-'}</td>
                         <td class="editable-cell" data-field="move_in_date" data-type="date" onclick="editCell(this)">${customer.move_in_date || '-'}</td>
                         <td class="editable-cell" data-field="customer_name" data-type="text" onclick="editCell(this)"><strong>${customer.customer_name || '-'}</strong>${customer.employee_id && '{{ employee_name }}' === '관리자' ? `<br><small style="color: #6366f1;">(${customer.employee_id})</small>` : ''}</td>
-                        <td class="editable-cell" data-field="customer_phone" data-type="tel" onclick="editCell(this)">${customer.customer_phone || '-'}</td>
+                        <td class="editable-cell" data-field="customer_phone" data-type="tel" onclick="editCell(this)" style="font-family: monospace; letter-spacing: 0.5px;">${customer.customer_phone ? formatPhoneNumber(customer.customer_phone) : '-'}</td>
                         <td class="editable-cell" data-field="budget" data-type="text" onclick="editCell(this)">${customer.budget || '-'}</td>
                         <td class="editable-cell" data-field="rooms" data-type="text" onclick="editCell(this)">${customer.rooms || '-'}</td>
                         <td class="editable-cell" data-field="location" data-type="text" onclick="editCell(this)">${customer.location || '-'}</td>
-                        <td class="editable-cell" data-field="loan_needed" data-type="text" onclick="editCell(this)">${customer.loan_needed || '-'}</td>
-                        <td class="editable-cell" data-field="parking_needed" data-type="text" onclick="editCell(this)">${customer.parking_needed || '-'}</td>
+                        <td class="editable-cell" data-field="loan_needed" data-type="text" onclick="editCell(this)">${customer.loan_needed === false ? '-' : (customer.loan_needed || '-')}</td>
+                        <td class="editable-cell" data-field="parking_needed" data-type="text" onclick="editCell(this)">${customer.parking_needed === false ? '-' : (customer.parking_needed || '-')}</td>
                         <td class="editable-cell" data-field="pets" data-type="text" onclick="editCell(this)">${customer.pets || '-'}</td>
-                        <td class="memo-cell" onclick="openMemoModal(${customer.id}, '${(customer.memo || '').replace(/'/g, "\\'")}')" title="${customer.memo || ''}">${memoDisplay}</td>
+                        <td class="memo-cell" onclick="openCustomerMemoModal(${customer.id}, '${(customer.memo || '').replace(/'/g, "\\'")}', '${customer.customer_name || ''}')" style="color: #64748b; font-style: italic; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;" title="${customer.memo || ''}">${memoDisplay}</td>
                         <td class="editable-cell" data-field="status" data-type="select" onclick="editCell(this)">
                             <span class="status-badge ${statusClass}">
                                 ${customer.status || '진행중'}
@@ -2330,21 +3942,23 @@
                         </td>
                                         <td>
                     ${customer.management_site_id ? 
-                        `<a href="/residence/customer/${customer.management_site_id}" target="_blank" class="management-link">주거사이트</a> ${residenceAlarm}` :
+                        `<a href="/residence/customer/${customer.management_site_id}" target="_blank" class="management-link" onclick="markResidenceLikesChecked('${customer.management_site_id}')">주거사이트</a> ${residenceAlarm}` :
                         '<span class="property-link-placeholder">주거사이트 없음</span>'
                     }
                 </td>
                 <td>
                     ${customer.management_site_id ? 
-                        `<a href="/business/customer/${customer.management_site_id}" target="_blank" class="management-link">업무사이트</a> ${businessAlarm}` :
+                        `<a href="/business/customer/${customer.management_site_id}" target="_blank" class="management-link" onclick="markBusinessLikesChecked('${customer.management_site_id}')">업무사이트</a> ${businessAlarm}` :
                         '<span class="property-link-placeholder">업무사이트 없음</span>'
                     }
                 </td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${customer.id})">삭제</button>
-                            </div>
-                        </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${customer.id}, '${customer.customer_name}')" title="고객 삭제">
+                            🗑️ 삭제
+                        </button>
+                    </div>
+                </td>
                     </tr>
                 `;
             }).join('');
@@ -2419,7 +4033,7 @@
                 <td class="editable-cell" data-field="loan_needed" data-type="text" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="parking_needed" data-type="text" onclick="editCell(this)">-</td>
                 <td class="editable-cell" data-field="pets" data-type="text" onclick="editCell(this)">-</td>
-                <td class="memo-cell" onclick="editMemo(this)">-</td>
+                <td class="memo-cell" onclick="openNewCustomerMemoModal(this)" style="color: #64748b; cursor: pointer;">메모 입력</td>
                 <td class="editable-cell" data-field="status" data-type="select" onclick="editCell(this)">
                     <span class="status-badge status-progress">진행중</span>
                 </td>
@@ -2440,42 +4054,120 @@
             const row = button.closest('tr');
             const cells = row.querySelectorAll('.editable-cell, .memo-cell');
             
+            // 디버깅: 세션 정보 확인
+            console.log('세션 정보 확인 중...');
+            try {
+                const sessionResponse = await fetch('/api/employee/session-info');
+                const sessionData = await sessionResponse.json();
+                console.log('현재 세션 정보:', sessionData);
+                
+                if (!sessionData.employee_id) {
+                    showAlert('로그인이 필요합니다. 다시 로그인해주세요.', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('세션 정보 확인 실패:', error);
+                showAlert('세션 정보를 확인할 수 없습니다.', 'error');
+                return;
+            }
+            
             const customerData = {};
             cells.forEach(cell => {
                 const field = cell.dataset.field;
                 if (field) {
                     let value = cell.textContent.trim();
-                    // 빈 값이나 기본 플레이스홀더만 제외
-                    if (value === '-') {
+                    // 빈 값이나 기본 플레이스홀더 제외
+                    if (value === '-' || value === '클릭하여 입력') {
                         value = '';
                     }
-                    // customer_name은 자동생성된 이름이나 사용자 입력값 모두 유지
                     customerData[field] = value;
                 }
             });
             
+            // 메모 셀 처리 - dataset 우선, textContent는 백업
             const memoCell = row.querySelector('.memo-cell');
-            customerData.memo = memoCell.textContent.trim() === '-' ? '' : memoCell.textContent.trim();
+            if (memoCell) {
+                let memoValue = memoCell.dataset.memo || memoCell.textContent.trim();
+                if (memoValue === '-' || memoValue === '클릭하여 메모 추가' || memoValue === '메모 입력') {
+                    memoValue = '';
+                }
+                customerData.memo = memoValue;
+            } else {
+                customerData.memo = '';
+            }
+            
+            // 임시로 저장된 진행여부가 있으면 포함
+            if (row.dataset.tempStatus) {
+                customerData.status = row.dataset.tempStatus;
+            } else if (!customerData.status) {
+                customerData.status = '진행중';
+            }
+            
+            // budget를 숫자로 변환
+            if (customerData.budget) {
+                const budgetNum = parseInt(customerData.budget.replace(/[^0-9]/g, ''));
+                customerData.budget = isNaN(budgetNum) ? null : budgetNum;
+            } else {
+                customerData.budget = null;
+            }
+            
+            // 필수 필드 확인
+            if (!customerData.customer_name) {
+                showAlert('고객명을 입력해주세요.', 'error');
+                return;
+            }
+            
+            // integer 필드 기본값 설정 (미확인 좋아요 개수)
+            customerData.unchecked_likes_residence = 0;
+            customerData.unchecked_likes_business = 0;
+            
+            // loan_needed, parking_needed는 값이 없으면 필드 자체를 제거
+            if (!customerData.loan_needed || customerData.loan_needed === '-' || customerData.loan_needed === '') {
+                delete customerData.loan_needed;
+            }
+            if (!customerData.parking_needed || customerData.parking_needed === '-' || customerData.parking_needed === '') {
+                delete customerData.parking_needed;
+            }
+            // rooms는 텍스트 필드로 유지, 빈 값이면 null로 설정
+            if (!customerData.rooms || customerData.rooms === '-') {
+                customerData.rooms = null;
+            }
+            
+            console.log('새 고객 저장 데이터:', customerData);
             
             try {
+                console.log('📤 API 요청 전송 중...');
+                console.log('📋 요청 데이터:', customerData);
+                
                 const response = await fetch('/api/customers', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(customerData)
                 });
                 
+                console.log('📥 API 응답 상태:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ API 오류 응답:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const result = await response.json();
+                console.log('✅ 고객 추가 API 응답:', result);
 
                 if (result.success && result.customer) {
-                    showAlert('고객이 성공적으로 추가되었습니다.', 'success');
+                    showAlert(result.message || '고객이 성공적으로 추가되었습니다.', 'success');
 
                     // 최신 서버 상태를 다시 불러와 동기화
                     await loadCustomers();
                 } else {
+                    console.error('❌ 고객 추가 실패:', result);
                     showAlert(result.message || '고객 추가에 실패했습니다.', 'error');
                 }
             } catch (error) {
-                showAlert('서버 오류가 발생했습니다.', 'error');
+                console.error('❌ 고객 추가 오류:', error);
+                showAlert(`서버 오류가 발생했습니다: ${error.message}`, 'error');
             }
         }
         
@@ -2485,36 +4177,248 @@
             row.remove();
         }
         
-        // 셀 편집
-        function editCell(cell) {
-            // 이미 편집 중이어도 강제로 편집 진입 (클래스 제거)
-            if (cell.classList.contains('editing-cell')) {
-                cell.classList.remove('editing-cell');
-                cell.innerHTML = cell.textContent; // 기존 내용 복원
+        // 고객 삭제 함수
+        async function deleteCustomer(customerId, customerName) {
+            if (!confirm(`정말로 "${customerName}" 고객을 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) {
+                return;
             }
             
-            const field = cell.dataset.field;
-            const type = cell.dataset.type;
-            const currentValue = cell.textContent.trim();
+            try {
+                const response = await fetch(`/api/customers/${customerId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`"${customerName}" 고객이 삭제되었습니다.`, 'success');
+                    // 고객 목록 새로고침
+                    await loadCustomers();
+                } else {
+                    showAlert('고객 삭제에 실패했습니다: ' + (result.message || '알 수 없는 오류'), 'error');
+                }
+            } catch (error) {
+                console.error('고객 삭제 오류:', error);
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 포맷팅된 데이터에서 원본 값 추출
+        function extractOriginalValue(cell, field, type) {
+            let value = cell.textContent.trim();
+            
+            // 필드별 원본 값 추출
+            switch (field) {
+                case 'customer_phone':
+                    // 전화번호: 하이픈, 괄호, 공백 제거하여 숫자만 추출
+                    value = value.replace(/[^0-9]/g, '');
+                    // 빈 값이거나 너무 짧은 경우 처리
+                    if (!value || value.length < 8) {
+                        value = '';
+                    }
+                    break;
+                    
+                case 'budget':
+                    // 금액: 숫자만 추출 (콤마, 만원, 원 등 단위 제거)
+                    value = value.replace(/[^0-9]/g, '');
+                    if (!value) {
+                        value = '';
+                    }
+                    break;
+                    
+                case 'status':
+                    // 상태: 배지에서 텍스트 추출
+                    const badge = cell.querySelector('.status-badge');
+                    if (badge) {
+                        value = badge.textContent.trim();
+                    }
+                    // 기본값 설정
+                    if (!value || value === '-') {
+                        value = '진행중';
+                    }
+                    break;
+                    
+                case 'customer_name':
+                    // 고객명: strong 태그 안의 텍스트만 추출
+                    const strongTag = cell.querySelector('strong');
+                    if (strongTag) {
+                        value = strongTag.textContent.trim();
+                    } else {
+                        // strong 태그가 없는 경우 전체 텍스트에서 첫 줄만 추출
+                        value = value.split('\n')[0].trim();
+                        // 괄호 안의 내용 제거 (직원 ID 등)
+                        value = value.replace(/\([^)]*\).*$/, '').trim();
+                    }
+                    break;
+                    
+                case 'inquiry_date':
+                case 'move_in_date':
+                    // 날짜: YYYY-MM-DD 형식 확인
+                    if (value === '-' || !value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        value = '';
+                    }
+                    break;
+                    
+                case 'loan_needed':
+                case 'parking_needed':
+                    // 대출여부, 주차: false 값을 빈 문자열로 처리
+                    if (value === '-' || value === 'false') {
+                        value = '';
+                    }
+                    break;
+                    
+                case 'rooms':
+                    // 룸수: 숫자 또는 텍스트 (1, 2, 원룸 등)
+                    if (value === '-') {
+                        value = '';
+                    }
+                    break;
+                    
+                default:
+                    // 기본적으로는 textContent 사용, 하지만 '-' 인 경우 빈 문자열로
+                    if (value === '-') {
+                        value = '';
+                    }
+                    break;
+            }
+            
+            console.log('📋 원본값 추출:', { field, original: cell.textContent.trim(), extracted: value });
+            return value;
+        }
+        
+        // 셀 편집
+        function editCell(cell) {
+            // 이미 편집 중인 경우 현재 입력값을 보존하고 편집 모드 유지
+            if (cell.classList.contains('editing-cell')) {
+                const existingInput = cell.querySelector('input, select');
+                const existingSelector = cell.querySelector('.status-selector');
+                
+                // 기존 입력 요소가 있으면 현재 값을 유지하고 포커스만 설정
+                if (existingInput && !existingSelector) {
+                    existingInput.focus();
+                    if (existingInput.tagName === 'INPUT') {
+                        existingInput.select(); // 텍스트 전체 선택
+                    }
+                    return; // 편집 모드 유지
+                }
+                
+                // 상태 선택기가 있는 경우만 제거 후 종료
+                if (existingSelector) {
+                    existingSelector.remove();
+                    cell.classList.remove('editing-cell');
+                    return; // 편집 모드 종료
+                }
+                
+                return; // 기타 경우 편집 모드 유지
+            }
+            
+            // 데이터 타입 안내 메시지 - 부모 요소에서도 찾아보기
+            let targetCell = cell;
+            
+            // 다양한 방법으로 올바른 셀 찾기
+            if (!cell.dataset.field) {
+                // 1. 가장 가까운 .editable-cell 찾기
+                if (cell.closest('.editable-cell')) {
+                    targetCell = cell.closest('.editable-cell');
+                }
+                // 2. 부모가 td이고 editable-cell 클래스를 가지고 있는 경우
+                else if (cell.parentElement && cell.parentElement.tagName === 'TD' && cell.parentElement.classList.contains('editable-cell')) {
+                    targetCell = cell.parentElement;
+                }
+                // 3. 클릭된 요소가 td 내부 요소인 경우, td 찾기
+                else if (cell.tagName !== 'TD') {
+                    let parent = cell.parentElement;
+                    while (parent && parent.tagName !== 'TD') {
+                        parent = parent.parentElement;
+                    }
+                    if (parent && parent.classList.contains('editable-cell')) {
+                        targetCell = parent;
+                    }
+                }
+            }
+            
+            const field = targetCell.dataset.field;
+            const type = targetCell.dataset.type;
+            let helpText = '';
+            
+            console.log('🔍 editCell 시작:', {
+                originalElement: cell,
+                originalTagName: cell.tagName,
+                originalClasses: cell.className,
+                targetCell: targetCell,
+                targetTagName: targetCell.tagName,
+                targetClasses: targetCell.className,
+                field: field,
+                type: type,
+                dataset: targetCell.dataset,
+                innerHTML: cell.innerHTML.substring(0, 100)
+            });
+            
+            if (!field) {
+                console.error('❌ field가 없습니다!', {
+                    cell: cell,
+                    targetCell: targetCell,
+                    cellParents: {
+                        parent: cell.parentElement,
+                        grandParent: cell.parentElement?.parentElement
+                    },
+                    datasets: {
+                        cell: cell.dataset,
+                        target: targetCell.dataset,
+                        parent: cell.parentElement?.dataset
+                    }
+                });
+                return;
+            }
+            
+            if (field === 'budget') {
+                helpText = '숫자만 입력 (예: 5000)';
+            }
+            
+            // 원본 데이터 추출 및 저장
+            let currentValue = extractOriginalValue(targetCell, field, type);
+            
+            // 실제 편집은 원래 클릭된 요소에서 하되, 데이터는 targetCell에서 가져옴
+            cell = targetCell;
+            
+            // 원본 HTML을 저장 (복원용)
+            if (!cell.dataset.originalHtml) {
+                cell.dataset.originalHtml = cell.innerHTML;
+            }
+            
+            // 원본 값을 저장 (복원용)
+            cell.dataset.originalValue = currentValue;
             
             cell.classList.add('editing-cell');
             
             let inputElement;
-            if (type === 'select' && field === 'progress_status') {
+            if (type === 'select' && field === 'status') {
+                console.log('진행여부 편집 시작:', { field, type, currentValue });
+                
+                // 진행여부 필드에서 실제 값 추출 (배지에서 텍스트 가져오기)
+                let actualValue = currentValue;
+                const badge = cell.querySelector('.status-badge');
+                if (badge) {
+                    actualValue = badge.textContent.trim();
+                }
+                
+                console.log('실제 진행여부 값:', actualValue);
+                
                 // 예쁜 버튼 형태의 진행여부 선택 UI 생성
                 const statusContainer = document.createElement('div');
                 statusContainer.className = 'status-selector';
                 statusContainer.innerHTML = `
                     <div class="status-options">
-                        <button type="button" class="status-option ${currentValue === '진행중' ? 'active' : ''}" data-value="진행중">
+                        <button type="button" class="status-option ${actualValue === '진행중' ? 'active' : ''}" data-value="진행중">
                             <span class="status-icon">🔄</span>
                             <span class="status-text">진행중</span>
                         </button>
-                        <button type="button" class="status-option ${currentValue === '계약' ? 'active' : ''}" data-value="계약">
+                        <button type="button" class="status-option ${actualValue === '계약' ? 'active' : ''}" data-value="계약">
                             <span class="status-icon">✅</span>
                             <span class="status-text">계약</span>
                         </button>
-                        <button type="button" class="status-option ${currentValue === '보류' ? 'active' : ''}" data-value="보류">
+                        <button type="button" class="status-option ${actualValue === '보류' ? 'active' : ''}" data-value="보류">
                             <span class="status-icon">⏸️</span>
                             <span class="status-text">보류</span>
                         </button>
@@ -2527,32 +4431,75 @@
                 // 버튼 클릭 이벤트 처리
                 const buttons = statusContainer.querySelectorAll('.status-option');
                 buttons.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
+                    btn.addEventListener('click', async (e) => {
                         e.preventDefault();
+                        e.stopPropagation();
+                        
                         const selectedValue = btn.dataset.value;
                         const customerId = cell.closest('tr').dataset.customerId;
                         
+                        console.log('진행여부 버튼 클릭:', { selectedValue, customerId, field });
+                        
+                        // 편집 모드 종료 및 UI 정리
+                        cell.classList.remove('editing-cell');
+                        
+                        // UI 즉시 업데이트 (서버 저장과 무관하게)
+                        const statusClass = selectedValue === '계약' ? 'status-complete' : 
+                                           selectedValue === '보류' ? 'status-hold' : 'status-progress';
+                        cell.innerHTML = `<span class="status-badge ${statusClass}">${selectedValue}</span>`;
+                        
                         if (customerId) {
-                            updateCustomerField(customerId, field, selectedValue, cell, false);
+                            // 기존 고객: 서버에 저장
+                            try {
+                                console.log('기존 고객 진행여부 저장 시도:', customerId, selectedValue);
+                                const response = await fetch(`/api/customers/${customerId}/field`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: selectedValue })
+                                });
+                                
+                                const result = await response.json();
+                                console.log('서버 응답:', result);
+                                
+                                if (result.success) {
+                                    showAlert('진행여부가 변경되었습니다.', 'success');
+                                } else {
+                                    showAlert('저장에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'error');
+                                }
+                            } catch (error) {
+                                console.error('진행여부 저장 오류:', error);
+                                showAlert('서버 오류가 발생했습니다.', 'error');
+                            }
                         } else {
-                            // 새 행의 경우 바로 업데이트
-                            cell.classList.remove('editing-cell');
-                            const statusClass = selectedValue === '계약' ? 'status-complete' : 
-                                               selectedValue === '보류' ? 'status-hold' : 'status-progress';
-                            cell.innerHTML = `<span class="status-badge ${statusClass}">${selectedValue}</span>`;
+                            // 새 행의 경우 - 저장 시까지 임시로 저장
+                            const row = cell.closest('tr');
+                            row.dataset.tempStatus = selectedValue;
+                            console.log('새 고객 진행여부 임시 저장:', selectedValue);
                         }
                     });
                 });
                 
-                // ESC 키로 취소
-                document.addEventListener('keydown', function escHandler(e) {
-                    if (e.key === 'Escape') {
-                        cancelCellEdit(cell, currentValue);
-                        document.removeEventListener('keydown', escHandler);
-                    }
-                });
+                // 외부 클릭 시 편집 모드 종료
+                setTimeout(() => {
+                    const closeSelector = (e) => {
+                        if (!statusContainer.contains(e.target) && e.target !== cell) {
+                            cell.classList.remove('editing-cell');
+                            // 원래 상태로 복원
+                            const badge = cell.querySelector('.status-badge');
+                            if (!badge) {
+                                cell.innerHTML = `<span class="status-badge status-progress">진행중</span>`;
+                            }
+                            document.removeEventListener('click', closeSelector);
+                        }
+                    };
+                    document.addEventListener('click', closeSelector);
+                }, 100);
                 
-                return; // select 처리 부분을 건너뛰기 위해 return
+                return;
+            } else if (field === 'memo') {
+                // 메모 필드는 특별한 편집 UI 사용
+                editMemo(cell);
+                return;
             } else {
                 inputElement = document.createElement('input');
                 inputElement.type = type;
@@ -2580,7 +4527,19 @@
             
             // 엔터키 또는 포커스 아웃 시 저장
             const saveCell = (moveNext = false) => {
-                const newValue = inputElement.value.trim();
+                let newValue = inputElement.value.trim();
+                
+                console.log('💾 saveCell 시작:', {
+                    field: field,
+                    newValue: newValue,
+                    cellDataset: cell.dataset
+                });
+                
+                // 핸드폰번호 필드인 경우 포맷팅 적용
+                if (field === 'customer_phone' && newValue) {
+                    newValue = formatPhoneNumber(newValue);
+                }
+                
                 const customerId = cell.closest('tr').dataset.customerId;
                 
                 if (customerId) {
@@ -2589,10 +4548,14 @@
                 } else {
                     // 새 행의 경우 바로 텍스트 업데이트
                     cell.classList.remove('editing-cell');
-                    if (field === 'progress_status') {
+                    if (field === 'status') {
                         const statusClass = newValue === '계약' ? 'status-complete' : 
                                            newValue === '보류' ? 'status-hold' : 'status-progress';
                         cell.innerHTML = `<span class=\"status-badge ${statusClass}\">${newValue}</span>`;
+                    } else if (field === 'customer_phone') {
+                        cell.textContent = newValue || '-';
+                        cell.style.fontFamily = newValue ? 'monospace' : 'inherit';
+                        cell.style.letterSpacing = newValue ? '0.5px' : 'normal';
                     } else {
                         cell.textContent = newValue || '-';
                     }
@@ -2610,10 +4573,15 @@
             inputElement.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    saveCell(true); // 옆 셀로 이동
+                    saveCell(true); // 엔터키로 오른쪽 셀로 이동
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    saveCell(true); // 탭키로 오른쪽 셀로 이동
                 } else if (e.key === 'Escape') {
                     e.preventDefault();
-                    cancelCellEdit(cell, currentValue);
+                    // 저장된 원본 값을 사용하여 취소
+                    const originalValue = cell.dataset.originalValue || currentValue;
+                    cancelCellEdit(cell, originalValue);
                 }
             });
             
@@ -2637,38 +4605,79 @@
         function cancelCellEdit(cell, originalValue) {
             cell.classList.remove('editing-cell');
             
-            if (cell.dataset.field === 'progress_status') {
+            // 저장된 원본 HTML이 있으면 그것을 사용하여 완전 복원
+            if (cell.dataset.originalHtml) {
+                cell.innerHTML = cell.dataset.originalHtml;
+                // 복원 후 임시 데이터 정리
+                delete cell.dataset.originalHtml;
+                delete cell.dataset.originalValue;
+                return;
+            }
+            
+            // 기존 로직 유지 (백업)
+            if (cell.dataset.field === 'status') {
                 const statusClass = originalValue === '계약' ? 'status-complete' : 
                                    originalValue === '보류' ? 'status-hold' : 'status-progress';
                 cell.innerHTML = `<span class="status-badge ${statusClass}">${originalValue}</span>`;
+            } else if (cell.dataset.field === 'customer_phone' && originalValue) {
+                // 전화번호는 포맷팅하여 복원
+                cell.innerHTML = `<span style="font-family: monospace; letter-spacing: 0.5px;">${formatPhoneNumber(originalValue)}</span>`;
+            } else if (cell.dataset.field === 'customer_name' && originalValue) {
+                // 고객명은 strong 태그로 복원
+                cell.innerHTML = `<strong>${originalValue}</strong>`;
             } else {
-                cell.textContent = originalValue;
+                // 기타 필드는 원본 값 또는 '-' 표시
+                cell.textContent = originalValue || '-';
             }
         }
         
         // 고객 필드 업데이트
         async function updateCustomerField(customerId, field, value, cell, moveNext = false) {
+            console.log('🔄 필드 업데이트 시작:', {
+                customerId: customerId,
+                field: field,
+                value: value,
+                valueType: typeof value
+            });
+            
             try {
+                const requestData = { [field]: value };
+                console.log('📤 서버 요청 데이터:', requestData);
+                
                 const response = await fetch(`/api/customers/${customerId}/field`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ [field]: value })
+                    body: JSON.stringify(requestData)
                 });
                 
                 const result = await response.json();
+                console.log('📥 서버 응답:', {
+                    status: response.status,
+                    result: result
+                });
                 
                 if (result.success) {
                     cell.classList.remove('editing-cell');
                     
                     // 셀 내용 업데이트
-                    if (field === 'progress_status') {
+                    if (field === 'status') {
                         const statusClass = value === '계약' ? 'status-complete' : 
                                            value === '보류' ? 'status-hold' : 'status-progress';
-                        cell.innerHTML = `<span class=\"status-badge ${statusClass}\">${value}</span>`;
+                        cell.innerHTML = `<span class="status-badge ${statusClass}">${value}</span>`;
+                        showAlert('진행여부가 변경되었습니다.', 'success');
                     } else {
+                        // 텍스트 내용만 업데이트하고 data 속성은 유지
                         cell.textContent = value || '-';
+                        // data 속성이 혹시 손실되었을 경우를 대비해 복원
+                        if (!cell.dataset.field) {
+                            cell.dataset.field = field;
+                        }
+                        if (!cell.dataset.type) {
+                            cell.dataset.type = 'text';
+                        }
+                        showAlert(`${field} 필드가 저장되었습니다.`, 'success');
                     }
                     // 저장 후 옆 셀로 이동
                     if (moveNext) {
@@ -2679,30 +4688,31 @@
                         }
                     }
                 } else {
-                    showAlert('수정 실패: ' + (result.error || '알 수 없는 오류'), 'error');
+                    console.error('❌ 서버에서 저장 실패:', {
+                        field: field,
+                        value: value,
+                        result: result,
+                        error: result.error,
+                        message: result.message
+                    });
+                    showAlert('수정 실패: ' + (result.error || result.message || '알 수 없는 오류'), 'error');
                     cancelCellEdit(cell, cell.textContent);
                 }
             } catch (error) {
-                showAlert('수정 중 오류가 발생했습니다.', 'error');
+                console.error('❌ 네트워크 오류:', error);
+                showAlert('수정 중 오류가 발생했습니다: ' + error.message, 'error');
                 cancelCellEdit(cell, cell.textContent);
             }
         }
         
-        // 메모 편집 (새 행용)
-        function editMemo(cell) {
-            const currentValue = cell.textContent.trim();
-            const newValue = prompt('메모를 입력하세요:', currentValue === '-' ? '' : currentValue);
-            if (newValue !== null) {
-                cell.textContent = newValue.trim() || '-';
-            }
-        }
+
         
-        // 메모 모달 (기존 고객용)
-        function openMemoModal(customerId, currentMemo) {
-            currentMemoCustomerId = customerId;
+        // 고객 메모 모달 열기 (기존 고객용) - 메이플관리 방식 적용
+        function openCustomerMemoModal(customerId, currentMemo, customerName) {
             const modal = document.getElementById('memo-modal');
             const textarea = document.getElementById('memo-textarea');
             
+            // 현재 메모 내용 설정
             textarea.value = currentMemo || '';
             modal.classList.add('active');
             
@@ -2711,22 +4721,71 @@
                 textarea.focus();
                 textarea.setSelectionRange(textarea.value.length, textarea.value.length);
             }, 300);
+            
+            // 전역 변수에 현재 편집 중인 고객 정보 저장
+            window.currentCustomerMemo = {
+                id: customerId,
+                element: null
+            };
         }
+        
+        // 새 고객용 메모 모달 열기
+        function openNewCustomerMemoModal(element) {
+            const modal = document.getElementById('memo-modal');
+            const textarea = document.getElementById('memo-textarea');
+            
+            // 현재 메모 내용 설정 (셀에서 가져오기)
+            const currentMemo = element.textContent === '메모 입력' ? '' : element.textContent;
+            textarea.value = currentMemo;
+            
+            // 모달 표시
+            modal.classList.add('active');
+            
+            // 포커스 설정
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }, 300);
+            
+            // 전역 변수에 현재 편집 중인 고객 정보 저장
+            window.currentCustomerMemo = {
+                id: null,
+                element: element
+            };
+        }
+        
+
         
         // 메모 모달 닫기
         function closeMemoModal() {
             const modal = document.getElementById('memo-modal');
             modal.classList.remove('active');
+            window.currentCustomerMemo = null;
             currentMemoCustomerId = null;
+            window.currentNewCustomerMemoCell = null;
         }
         
-        // 메모 저장
-        function saveMemo() {
+        // 메모 저장 (기존 고객과 새 고객 모두 처리) - 메이플관리 방식 적용
+        async function saveMemo() {
             const textarea = document.getElementById('memo-textarea');
             const memo = textarea.value.trim();
             
-            if (currentMemoCustomerId) {
-                updateCustomerMemo(currentMemoCustomerId, memo);
+            if (!window.currentCustomerMemo) {
+                showAlert('고객 정보를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            const { id, element } = window.currentCustomerMemo;
+            
+            if (id) {
+                // 기존 고객: 서버에 저장
+                await updateCustomerMemo(id, memo);
+            } else if (element) {
+                // 새 고객: UI만 업데이트 (저장 시 일괄 처리)
+                element.textContent = memo || '메모 입력';
+                element.style.color = memo ? '#374151' : '#64748b';
+                element.dataset.memo = memo;
+                showAlert('메모가 임시 저장되었습니다. 고객 저장 시 함께 저장됩니다.', 'success');
             }
             
             closeMemoModal();
@@ -2736,12 +4795,187 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeMemoModal();
+                closePropertyMemoModal();
             }
         });
         
-        // 고객 메모 업데이트
+        // 매물 메모 모달 열기 (기존 매물용)
+        function openPropertyMemoModal(propertyId, currentMemo, buildingNumber, roomNumber) {
+            const modal = document.getElementById('property-memo-modal');
+            const textarea = document.getElementById('property-memo-textarea');
+            const propertyInfo = document.getElementById('property-memo-info');
+            
+            // 매물 정보 표시
+            const propertyDisplay = `${buildingNumber || '동'}${roomNumber ? '-' + roomNumber + '호' : ''}`;
+            propertyInfo.textContent = propertyDisplay;
+            
+            // 현재 메모 내용 설정
+            textarea.value = currentMemo || '';
+            
+            // 모달 표시
+            modal.classList.add('active');
+            
+            // 포커스 설정
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }, 300);
+            
+            // 전역 변수에 현재 편집 중인 매물 정보 저장
+            window.currentPropertyMemo = {
+                id: propertyId,
+                element: null
+            };
+        }
+        
+        // 새 매물 메모 모달 열기
+        function openNewPropertyMemoModal(element) {
+            const modal = document.getElementById('property-memo-modal');
+            const textarea = document.getElementById('property-memo-textarea');
+            const propertyInfo = document.getElementById('property-memo-info');
+            
+            // 매물 정보 표시 (새 매물이므로 기본값)
+            propertyInfo.textContent = '새 매물';
+            
+            // 현재 메모 내용 설정 (셀에서 가져오기)
+            const currentMemo = element.textContent === '메모 입력' ? '' : element.textContent;
+            textarea.value = currentMemo;
+            
+            // 모달 표시
+            modal.classList.add('active');
+            
+            // 포커스 설정
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }, 300);
+            
+            // 전역 변수에 현재 편집 중인 매물 정보 저장
+            window.currentPropertyMemo = {
+                id: null,
+                element: element
+            };
+        }
+        
+        // 매물 메모 모달 닫기
+        function closePropertyMemoModal() {
+            const modal = document.getElementById('property-memo-modal');
+            modal.classList.remove('active');
+            window.currentPropertyMemo = null;
+        }
+        
+        // 매물 메모 저장
+        async function savePropertyMemo() {
+            const textarea = document.getElementById('property-memo-textarea');
+            const memo = textarea.value.trim();
+            
+            if (!window.currentPropertyMemo) {
+                showAlert('매물 정보를 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            const { id, element } = window.currentPropertyMemo;
+            
+            if (id) {
+                // 기존 매물: 서버에 저장
+                await updatePropertyMemo(id, memo);
+            } else if (element) {
+                // 새 매물: UI만 업데이트 (저장 시 일괄 처리)
+                element.textContent = memo || '메모 입력';
+                element.style.color = memo ? '#374151' : '#64748b';
+                showAlert('메모가 임시 저장되었습니다. 매물 저장 시 함께 저장됩니다.', 'success');
+            }
+            
+            closePropertyMemoModal();
+        }
+        
+        // 매물 메모 업데이트 (서버 저장)
+        async function updatePropertyMemo(propertyId, memo) {
+            try {
+                const response = await fetch('/api/employee/maeiple/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: propertyId,
+                        field: 'memo',
+                        value: memo
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('메모가 성공적으로 저장되었습니다.', 'success');
+                    // UI만 업데이트 (순서 유지)
+                    updateMemoInUI(propertyId, memo);
+                } else {
+                    showAlert('메모 저장에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'error');
+                }
+            } catch (error) {
+                console.error('매물 메모 저장 오류:', error);
+                showAlert('서버 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        // 핸드폰번호 포맷팅 함수
+        function formatPhoneNumber(phoneNumber) {
+            if (!phoneNumber) return '';
+            
+            // 숫자만 추출
+            const digits = phoneNumber.replace(/\D/g, '');
+            
+            // 길이에 따른 포맷팅
+            if (digits.length === 11) {
+                // 010-1234-5678 형식
+                return digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+            } else if (digits.length === 10) {
+                // 02-123-4567 또는 031-123-4567 형식
+                if (digits.startsWith('02')) {
+                    return digits.replace(/(\d{2})(\d{3,4})(\d{4})/, '$1-$2-$3');
+                } else {
+                    return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+                }
+            } else if (digits.length === 9) {
+                // 02-123-4567 형식
+                return digits.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3');
+            } else if (digits.length === 8) {
+                // 1234-5678 형식
+                return digits.replace(/(\d{4})(\d{4})/, '$1-$2');
+            }
+            
+            // 기본적으로 원본 반환
+            return phoneNumber;
+        }
+
+        // 메모 UI만 업데이트 (순서 유지)
+        function updateMemoInUI(propertyId, memo) {
+            // 해당 매물의 메모 셀 찾기
+            const memoCell = document.querySelector(`[onclick*="openPropertyMemoModal(${propertyId},"]`);
+            if (memoCell) {
+                // 메모 내용 업데이트
+                const displayText = memo ? (memo.length > 60 ? memo.substring(0, 60) + '...' : memo) : '-';
+                memoCell.textContent = displayText;
+                memoCell.style.color = memo ? '#374151' : '#64748b';
+                memoCell.style.fontStyle = memo ? 'normal' : 'italic';
+                
+                // onclick 속성도 업데이트하여 새로운 메모 내용을 반영
+                const buildingNumber = memoCell.parentElement.querySelector('[data-field="building_number"]')?.textContent || '';
+                const roomNumber = memoCell.parentElement.querySelector('[data-field="room_number"]')?.textContent || '';
+                const escapedMemo = (memo || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                
+                memoCell.setAttribute('onclick', `openPropertyMemoModal(${propertyId}, '${escapedMemo}', '${buildingNumber}', '${roomNumber}')`);
+            }
+        }
+        
+        // 고객 메모 업데이트 (서버 저장)
         async function updateCustomerMemo(customerId, memo) {
             try {
+                console.log('📝 고객 메모 업데이트 요청:', {
+                    customerId: customerId,
+                    memoLength: memo.length,
+                    memo: memo
+                });
+                
                 const response = await fetch(`/api/customers/${customerId}/memo`, {
                     method: 'PUT',
                     headers: {
@@ -2753,36 +4987,40 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    loadCustomers();
+                    showAlert('메모가 성공적으로 저장되었습니다.', 'success');
+                    // UI만 업데이트 (순서 유지)
+                    updateCustomerMemoInUI(customerId, memo);
                 } else {
-                    showAlert('메모 수정에 실패했습니다.', 'error');
+                    showAlert('메모 저장에 실패했습니다: ' + (result.error || '알 수 없는 오류'), 'error');
                 }
             } catch (error) {
+                console.error('고객 메모 저장 오류:', error);
                 showAlert('서버 오류가 발생했습니다.', 'error');
             }
         }
         
-        // 고객 삭제
-        async function deleteCustomer(customerId) {
-            if (!confirm('이 고객을 삭제하시겠습니까?')) return;
-            
-            try {
-                const response = await fetch(`/api/customers/${customerId}`, {
-                    method: 'DELETE'
-                });
+        // 고객 메모 UI만 업데이트 (순서 유지)
+        function updateCustomerMemoInUI(customerId, memo) {
+            // 해당 고객의 메모 셀 찾기
+            const memoCell = document.querySelector(`[onclick*="openCustomerMemoModal(${customerId},"]`);
+            if (memoCell) {
+                // 메모 내용 업데이트
+                const displayText = memo ? (memo.length > 60 ? memo.substring(0, 60) + '...' : memo) : '-';
+                memoCell.textContent = displayText;
+                memoCell.style.color = memo ? '#374151' : '#64748b';
+                memoCell.style.fontStyle = memo ? 'normal' : 'italic';
+                memoCell.title = memo || '';
                 
-                const result = await response.json();
+                // onclick 속성도 업데이트하여 새로운 메모 내용을 반영
+                const row = memoCell.closest('tr');
+                const customerName = row.querySelector('[data-field="customer_name"]')?.textContent || '';
+                const escapedMemo = (memo || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
                 
-                if (result.success) {
-                    showAlert('고객이 성공적으로 삭제되었습니다.', 'success');
-                    loadCustomers();
-                } else {
-                    showAlert(result.message || '고객 삭제에 실패했습니다.', 'error');
-                }
-            } catch (error) {
-                showAlert('서버 오류가 발생했습니다.', 'error');
+                memoCell.setAttribute('onclick', `openCustomerMemoModal(${customerId}, '${escapedMemo}', '${customerName}')`);
             }
         }
+        
+
         
         // 필터 기능
         function filterCustomers(status) {
@@ -2797,7 +5035,7 @@
                 filteredCustomers = [...customers];
             } else {
                 filteredCustomers = customers.filter(customer => 
-                    customer.progress_status === status
+                    customer.status === status
                 );
             }
             
@@ -2933,28 +5171,54 @@
             showAlert('각 셀을 클릭해서 직접 수정하세요.', 'info');
         }
         
-        // 매물 삭제
-        async function deleteProperty(propertyId) {
-            if (!confirm('이 매물을 삭제하시겠습니까?')) return;
-            
+
+        
+        // 주거사이트 좋아요 알림 확인 처리
+        async function markResidenceLikesChecked(managementSiteId) {
             try {
-                const response = await fetch(`/api/employee/maeiple/${propertyId}`, {
-                    method: 'DELETE'
+                const response = await fetch('/api/mark-residence-likes-checked', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ management_site_id: managementSiteId })
                 });
                 
                 const result = await response.json();
-                
                 if (result.success) {
-                    alert('매물이 성공적으로 삭제되었습니다.');
-                    loadMaeipleProperties(); // 목록 새로고침
-                } else {
-                    alert('매물 삭제 실패: ' + (result.error || '알 수 없는 오류'));
+                    console.log('주거사이트 좋아요 알림 확인 처리됨:', managementSiteId);
+                    // 고객 목록 새로고침하여 알림 제거
+                    setTimeout(() => loadCustomers(), 500);
                 }
             } catch (error) {
-                console.error('매물 삭제 오류:', error);
-                alert('매물 삭제 중 오류가 발생했습니다.');
+                console.error('주거사이트 알림 확인 처리 오류:', error);
             }
         }
+        
+        // 업무사이트 좋아요 알림 확인 처리
+        async function markBusinessLikesChecked(managementSiteId) {
+            try {
+                const response = await fetch('/api/mark-business-likes-checked', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ management_site_id: managementSiteId })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('업무사이트 좋아요 알림 확인 처리됨:', managementSiteId);
+                    // 고객 목록 새로고침하여 알림 제거
+                    setTimeout(() => loadCustomers(), 500);
+                }
+            } catch (error) {
+                console.error('업무사이트 알림 확인 처리 오류:', error);
+            }
+        }
+        
+        // 새 매물 저장
+        
+
     </script>
+
+
+
 </body>
 </html> 
