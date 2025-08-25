@@ -77,14 +77,7 @@ python 관리자페이지.py
 
 ## 🔐 기본 계정
 
-### 관리자 계정
-- **ID**: `admin`
-- **비밀번호**: `ejxkqdnjs1emd`
 
-### 테스트 직원 계정
-- **원형** / `1` (관리자)
-- **테스트** / `1` (관리자)
-- **수정** / `1` (팀장)
 
 ## 🚂 Railway 배포
 
@@ -127,11 +120,7 @@ FLASK_ENV=production
 
 ## 🤝 기여하기
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+
 
 ## 📞 문의
 
