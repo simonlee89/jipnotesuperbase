@@ -1,38 +1,45 @@
 #!/usr/bin/env python3
 """
-로컬 실행용 스크립트
-환경변수를 직접 설정하여 Supabase 연결 문제를 해결합니다.
+로컬 개발 서버 실행 스크립트
+환경변수는 .env 파일에서 자동으로 로드됩니다.
 """
 
 import os
 import sys
+from dotenv import load_dotenv
 
-# 환경변수 설정
-os.environ['SUPABASE_URL'] = 'https://gkoohafmugtqwtustbrp.supabase.co'
-os.environ['SUPABASE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrb29oYWZtdWd0cXd0dXN0YnJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzUwNTMsImV4cCI6MjA3MDkxMTA1M30.nREE7LgpxGUUA__GuzryUx2t_F4mwVtto0bPTFOqEFk'
+# .env 파일 로드
+load_dotenv()
+
+# 환경변수 검증
+required_vars = ['SUPABASE_URL', 'SUPABASE_KEY', 'ADMIN_ID', 'ADMIN_PASSWORD']
+missing_vars = [var for var in required_vars if not os.environ.get(var)]
+
+if missing_vars:
+    print("❌ 오류: 필수 환경변수가 설정되지 않았습니다:")
+    for var in missing_vars:
+        print(f"  - {var}")
+    print("\n.env 파일을 확인하거나 .env.example을 참고하여 생성하세요.")
+    sys.exit(1)
+
+# 플라스크 환경 설정
 os.environ['FLASK_ENV'] = 'development'
 os.environ['FLASK_DEBUG'] = 'True'
 
-# 관리자페이지 모듈 import
-from 관리자페이지 import app
+# src 디렉토리를 Python 경로에 추가
+src_path = os.path.join(os.path.dirname(__file__), 'src')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
-if __name__ == '__main__':
-    print("로컬 서버 시작")
-    print("접속 주소: http://localhost:5000")
-    print("테스트 계정:")
-    print("   - 관리자: admin / ejxkqdnjs1emd")
-    print("   - 직원: 원형 / 1")
-    print("   - 팀장: 수정 / 1")
-    print("=" * 50)
-    
-    try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
-    except Exception as e:
-        print(f"서버 시작 실패: {e}")
-        # 포트 5000이 사용 중인 경우 다른 포트 시도
-        try:
-            print("포트 5001로 시도합니다...")
-            app.run(host='0.0.0.0', port=5001, debug=True)
-        except Exception as e2:
-            print(f"포트 5001도 실패: {e2}")
-            print("다른 포트를 사용하거나 실행 중인 프로세스를 종료해주세요.")
+print("🚀 로컬 개발 서버를 시작합니다...")
+print(f"📁 작업 디렉토리: {os.getcwd()}")
+print(f"🔑 환경변수 로드 완료")
+
+# 관리자페이지 모듈 임포트 및 실행
+try:
+    from 관리자페이지 import app
+    app.run(debug=True, host='0.0.0.0', port=5000)
+except ImportError as e:
+    print(f"❌ 모듈 임포트 오류: {e}")
+    print("src/관리자페이지.py 파일이 존재하는지 확인하세요.")
+    sys.exit(1)

@@ -1,23 +1,24 @@
 #!/bin/bash
 
-echo "🚀 집노트 로컬 서버 시작"
+echo "================================="
+echo "   로컬 개발 서버 시작"
+echo "================================="
 echo ""
-echo "📦 의존성 설치 확인 중..."
-pip install -r requirements.txt
-echo ""
-echo "🌍 환경변수 설정 중..."
-export SUPABASE_URL="https://gkoohafmugtqwtustbrp.supabase.co"
-export SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrb29oYWZtdWd0cXd0dXN0YnJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzUwNTMsImV4cCI6MjA3MDkxMTA1M30.nREE7LgpxGUUA__GuzryUx2t_F4mwVtto0bPTFOqEFk"
-export FLASK_ENV="development"
-export FLASK_DEBUG="True"
-echo ""
-echo "🔑 테스트 계정 정보:"
-echo "   - 관리자: admin / ejxkqdnjs1emd"
-echo "   - 직원: 원형 / 1"
-echo "   - 팀장: 수정 / 1"
-echo ""
-echo "📱 접속 주소: http://localhost:5000"
-echo ""
-echo "========================================"
-echo ""
-python3 run_local.py
+
+# .env 파일 확인
+if [ ! -f .env ]; then
+    echo "[오류] .env 파일이 없습니다!"
+    echo ".env.example을 참고하여 .env 파일을 생성하세요."
+    exit 1
+fi
+
+echo "[정보] .env 파일에서 환경변수를 로드합니다..."
+
+# Python 실행
+python3 run_local.py || python run_local.py
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "[오류] 서버 실행 중 오류가 발생했습니다."
+    exit 1
+fi

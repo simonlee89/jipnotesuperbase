@@ -37,8 +37,8 @@ def test_customer_api():
     # 관리자 로그인 시도
     print("\n2. 관리자 로그인 시도...")
     login_data = {
-        'employee_id': 'admin',
-        'password': 'ejxkqdnjs1emd'
+        'employee_id': 'test_admin',
+        'password': 'test_password'  # 실제 테스트 시 환경변수 사용
     }
     
     # 관리자 전용 로그인 API 시도

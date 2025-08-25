@@ -68,7 +68,12 @@ def test_supabase_connection():
 
 if __name__ == "__main__":
     # 환경변수 설정 (하드코딩된 값 사용)
-    os.environ['SUPABASE_URL'] = 'https://gkoohafmugtqwtustbrp.supabase.co'
-    os.environ['SUPABASE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrb29oYWZtdWd0cXd0dXN0YnJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzUwNTMsImV4cCI6MjA3MDkxMTA1M30.nREE7LgpxGUUA__GuzryUx2t_F4mwVtto0bPTFOqEFk'
+    # 환경변수는 .env 파일에서 로드
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    if not os.environ.get('SUPABASE_URL') or not os.environ.get('SUPABASE_KEY'):
+        print("⚠️ .env 파일에서 환경변수를 설정하세요")
+        return
     
     test_supabase_connection()

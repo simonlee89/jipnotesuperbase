@@ -58,8 +58,9 @@ pip install -r requirements.txt
 ### 3. 환경변수 설정
 `.env` 파일 생성 또는 환경변수 설정:
 ```bash
-SUPABASE_URL=https://gkoohafmugtqwtustbrp.supabase.co
-SUPABASE_KEY=your_supabase_key_here
+# .env.example 파일을 .env로 복사하고 실제 값을 입력하세요
+cp .env.example .env
+# .env 파일을 편집하여 실제 값 입력
 ```
 
 ### 4. 애플리케이션 실행
@@ -94,8 +95,9 @@ python 관리자페이지.py
 
 ### 2. 환경변수 설정
 ```bash
-SUPABASE_URL=https://gkoohafmugtqwtustbrp.supabase.co
-SUPABASE_KEY=your_supabase_key_here
+# .env.example 파일을 .env로 복사하고 실제 값을 입력하세요
+cp .env.example .env
+# .env 파일을 편집하여 실제 값 입력
 FLASK_ENV=production
 ```
 

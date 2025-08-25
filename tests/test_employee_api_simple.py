@@ -8,7 +8,7 @@ def test_employee_customer_api():
     session = requests.Session()
     
     print('1. 직원 로그인 시도...')
-    login_data = {'employee_id': '강태석', 'password': '1'}
+    login_data = {'employee_id': 'test_employee', 'password': 'test_password'}  # 테스트용 데이터
     headers = {'Content-Type': 'application/json'}
     login_response = session.post(f'{base_url}/login', headers=headers, json=login_data)
     print(f'로그인 응답: {login_response.status_code}')

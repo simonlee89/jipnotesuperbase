@@ -10,14 +10,12 @@ from dotenv import load_dotenv
 # 환경변수 로드
 load_dotenv()
 
-# 개발용 환경변수 강제 설정 (테스트 모드 방지)
+# 환경변수 검증
 if not os.environ.get('SUPABASE_URL'):
-    os.environ['SUPABASE_URL'] = 'https://gkoohafmugtqwtustbrp.supabase.co'
-    print(" SUPABASE_URL 환경변수 설정됨")
+    raise ValueError("SUPABASE_URL 환경변수가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
 if not os.environ.get('SUPABASE_KEY'):
-    os.environ['SUPABASE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrb29oYWZtdWd0cXd0dXN0YnJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzUwNTMsImV4cCI6MjA3MDkxMTA1M30.nREE7LgpxGUUA__GuzryUx2t_F4mwVtto0bPTFOqEFk'
-    print(" SUPABASE_KEY 환경변수 설정됨")
+    raise ValueError("SUPABASE_KEY 환경변수가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
 # 환경변수에서 사이트 URL 가져오기 (Railway 배포용)
 # Railway 환경에서는 환경변수로, 로컬에서는 기본값 사용
@@ -38,7 +36,7 @@ FORCE_TEST_MODE = False  # False로 설정하여 실제 Supabase DB 사용
 print(f"테스트 모드 강제 활성화: {FORCE_TEST_MODE}")
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # 세션용 비밀키
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')  # 세션용 비밀키
 
 # 개발 환경에서 캐싱 방지 및 자동 리로드 설정
 if app.debug:
@@ -142,8 +140,8 @@ def admin_login():
     admin_id = data.get('admin_id')
     admin_password = data.get('admin_password')
     
-    ADMIN_ID = 'admin'
-    ADMIN_PASSWORD = 'ejxkqdnjs1emd'
+    ADMIN_ID = os.environ.get('ADMIN_ID', 'admin')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'change-this-password')
     
     if admin_id == ADMIN_ID and admin_password == ADMIN_PASSWORD:
         session['is_admin'] = True

@@ -17,8 +17,8 @@ def test_login_as_team_leader():
     
     # 로그인 요청
     login_data = {
-        'username': '수정',
-        'password': '1'
+        'username': 'test_leader',
+        'password': 'test_password'  # 테스트용 데이터
     }
     
     response = session.post(f'{BASE_URL}/login', 

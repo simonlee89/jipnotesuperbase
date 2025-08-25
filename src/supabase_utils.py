@@ -7,6 +7,10 @@ import os
 import logging
 from typing import Dict, List, Optional, Any
 from supabase import create_client, Client
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -20,8 +24,11 @@ def init_supabase():
     global _supabase_client
     
     try:
-        SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://gkoohafmugtqwtustbrp.supabase.co')
-        SUPABASE_KEY = os.environ.get('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdrb29oYWZtdWd0cXd0dXN0YnJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzMzUwNTMsImV4cCI6MjA3MDkxMTA1M30.nREE7LgpxGUUA__GuzryUx2t_F4mwVtto0bPTFOqEFk')
+        SUPABASE_URL = os.environ.get('SUPABASE_URL')
+        SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+        
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            raise ValueError("환경변수 SUPABASE_URL 또는 SUPABASE_KEY가 설정되지 않았습니다.")
         
         _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
         logger.info("✅ Supabase 클라이언트 초기화 성공")
