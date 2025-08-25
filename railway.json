@@ -4,6 +4,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 120 src.관리자페이지:app"
+    "startCommand": "PYTHONPATH=/app/src:$PYTHONPATH gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 120 src.관리자페이지:app"
   }
 }

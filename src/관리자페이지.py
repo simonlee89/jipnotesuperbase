@@ -2,8 +2,13 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import uuid
 from datetime import datetime
 import os
+import sys
 import requests
 import time
+
+# src 디렉토리를 Python 경로에 추가
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import supabase_utils
 from dotenv import load_dotenv
 
