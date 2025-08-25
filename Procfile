@@ -1,1 +1,1 @@
-web: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 src.관리자페이지:app
+web: gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 120 src.관리자페이지:app
