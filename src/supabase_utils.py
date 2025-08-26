@@ -532,21 +532,37 @@ def add_customer(customer_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def get_guarantee_insurance_links(limit: int = 20) -> List[Dict[str, Any]]:
-    """보증보험 매물 목록을 조회합니다. (주거용 링크에서)"""
+    """보증보험 매물 목록을 조회합니다 (1달 이내 등록된 것만). (주거용 링크에서)"""
     try:
+        from datetime import datetime, timedelta
+        
         supabase = get_supabase()
         if not supabase:
             return []
         
+        # 1달 전 날짜 계산
+        one_month_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
         # 보증보험은 주거용 링크에서 관리되므로 residence_links 테이블 우선 사용
         try:
             # residence_links 테이블에서 guarantee_insurance 컬럼이 있는 경우
-            response = supabase.table('residence_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(limit).execute()
+            response = supabase.table('residence_links')\
+                .select('*')\
+                .eq('guarantee_insurance', True)\
+                .gte('date_added', one_month_ago)\
+                .order('id', desc=True)\
+                .limit(limit)\
+                .execute()
             return response.data
         except Exception:
-            # guarantee_insurance 컬럼이 없는 경우 모든 주거용 링크 반환
+            # guarantee_insurance 컬럼이 없는 경우 1달 이내 모든 주거용 링크 반환
             try:
-                response = supabase.table('residence_links').select('*').order('id', desc=True).limit(limit).execute()
+                response = supabase.table('residence_links')\
+                    .select('*')\
+                    .gte('date_added', one_month_ago)\
+                    .order('id', desc=True)\
+                    .limit(limit)\
+                    .execute()
                 return response.data
             except Exception:
                 # residence_links도 실패하면 빈 리스트 반환
@@ -649,13 +665,23 @@ def delete_maeiple_property(property_id: int) -> bool:
         return False
 
 def get_guarantee_list(limit: int = 50) -> List[Dict[str, Any]]:
-    """보증보험 목록을 조회합니다."""
+    """보증보험 목록을 조회합니다 (1달 이내 등록된 것만)."""
     try:
+        from datetime import datetime, timedelta
+        
         supabase = get_supabase()
         if not supabase:
             return []
+        
+        # 1달 전 날짜 계산
+        one_month_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
             
-        response = supabase.table('guarantee_list').select('*').order('id', desc=True).limit(limit).execute()
+        response = supabase.table('guarantee_list')\
+            .select('*')\
+            .gte('date_added', one_month_ago)\
+            .order('id', desc=True)\
+            .limit(limit)\
+            .execute()
         return response.data
     except Exception as e:
         logger.error(f"보증보험 목록 조회 실패: {e}")

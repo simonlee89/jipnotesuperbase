@@ -4044,16 +4044,29 @@ def team_leader_team_customers():
 
 @app.route('/api/guarantee-list')
 def get_guarantee_list():
-    """보증보험 가능한 매물 목록 조회"""
+    """보증보험 가능한 매물 목록 조회 (1달 이내 등록된 것만)"""
     if 'employee_id' not in session and 'is_admin' not in session:
         return jsonify({'error': '로그인이 필요합니다.'}), 401
     
     try:
+        from datetime import datetime, timedelta
+        
         supabase = supabase_utils.get_supabase()
         if not supabase:
             return jsonify([])
+        
+        # 1달 전 날짜 계산
+        one_month_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
         # 보증보험은 주거용 링크에서 관리되므로 residence_links 테이블 사용
-        res = supabase.table('residence_links').select('*').eq('guarantee_insurance', True).order('id', desc=True).limit(50).execute()
+        # 1달 이내 등록된 항목만 조회
+        res = supabase.table('residence_links')\
+            .select('*')\
+            .eq('guarantee_insurance', True)\
+            .gte('date_added', one_month_ago)\
+            .order('id', desc=True)\
+            .limit(50)\
+            .execute()
         return jsonify(res.data or [])
     except Exception as e:
         print(f"보증보험 목록 조회 오류: {e}")
